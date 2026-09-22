@@ -69,7 +69,6 @@ struct RevealView: View {
                     Mono("CONFIRM", size: 12, spacing: 0.16)
                     Spacer()
                     Button {
-                        Haptics.shared.tick()
                         draft.geotag?.cancel()
                         draft.debug?.log("retake", number: draft.number, modelId: draft.modelId)
                         dismiss()
@@ -143,7 +142,6 @@ struct RevealView: View {
                         holdButton
                     } else {
                         Button {
-                            Haptics.shared.tick()
                             editing = true
                         } label: {
                             Text(number == nil ? "Type the number" : "Pick the model")
@@ -156,7 +154,6 @@ struct RevealView: View {
                         .buttonStyle(StickerPressStyle())
                     }
                     Button {
-                        Haptics.shared.tick()
                         editing = true
                     } label: {
                         Mono(ready ? "WRONG NUMBER?" : "EDIT DETAILS", size: 12.5, color: Palette.sub)

@@ -19,7 +19,6 @@ struct MeView: View {
                     Mono("ME", size: 12, spacing: 0.16)
                 } trailing: {
                     Button {
-                        Haptics.shared.tick()
                         showSettings = true
                     } label: { Mono("SETTINGS", size: 12) }
                     .buttonStyle(.plain)
@@ -51,7 +50,6 @@ struct MeView: View {
                     SectionLabel(text: "WHERE YOU SPOT")
                     Spacer()
                     Button {
-                        Haptics.shared.tick()
                         showMap = true
                     } label: { Mono("OPEN MAP", size: 10.5, color: Palette.yellow) }
                     .buttonStyle(.plain)
@@ -65,7 +63,6 @@ struct MeView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.06)))
                     .onTapGesture {
-                        Haptics.shared.tick()
                         showMap = true
                     }
                     .padding(.horizontal, 22)
@@ -295,6 +292,9 @@ struct SettingsSheet: View {
                 }
                 Section {
                     Toggle("Debug mode", isOn: $debugMode)
+                    if debugMode {
+                        NavigationLink("Haptics lab") { HapticsLab() }
+                    }
                     if debugMode || debugCount > 0 {
                         LabeledContent("Logged shots", value: "\(debugCount)")
                         Button(exporting ? "Zipping…" : "Share as ZIP") {
@@ -337,6 +337,23 @@ struct SettingsSheet: View {
                 debugCount = 0
             }
         }
+    }
+}
+
+/// Plays every haptic moment on demand, for tuning on a real phone.
+struct HapticsLab: View {
+    var body: some View {
+        List {
+            Section {
+                ForEach(Haptics.shared.labMoments, id: \.name) { m in
+                    Button(m.name, action: m.play)
+                }
+            } footer: {
+                Text("Tap each one a few times. Tell Claude which feel wrong and what they remind you of — too buzzy, too weak, too long, late, like a phone ringing…")
+            }
+        }
+        .navigationTitle("Haptics lab")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

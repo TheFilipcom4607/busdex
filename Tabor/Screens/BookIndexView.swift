@@ -138,14 +138,13 @@ struct DexRow: View {
     }
 }
 
-/// Rows dim and shrink a touch under the finger, with a light click.
+/// Rows dim and shrink a touch under the finger. Silent: navigation doesn't click.
 struct RowPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .opacity(configuration.isPressed ? 0.85 : 1)
             .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
-            .onChange(of: configuration.isPressed) { _, down in if down { Haptics.shared.tick() } }
     }
 }
 

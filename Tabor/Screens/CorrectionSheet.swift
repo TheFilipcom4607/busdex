@@ -99,7 +99,6 @@ struct CorrectionSheet: View {
                         draft.modelId = modelId
                         draft.line = line.nonEmpty
                         draft.modelPickedByHand = pickedByHand
-                        Haptics.shared.tick()
                         dismiss()
                     }
                     .fontWeight(.bold)

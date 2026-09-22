@@ -188,7 +188,6 @@ struct CatchView: View {
                 camera.focus(at: devicePoint)
             }
             .simultaneousGesture(SpatialTapGesture().onEnded { e in
-                Haptics.shared.tick()
                 withAnimation(.spring(response: 0.3)) { focusPoint = e.location }
                 Task {
                     try? await Task.sleep(for: .seconds(0.9))

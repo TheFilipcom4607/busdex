@@ -5,6 +5,13 @@ import UIKit
 /// Hand-designed Core Haptics patterns. Every moment in the app has its own feel;
 /// rarer catches get longer, bigger build-ups. Falls back to UIKit generators on
 /// hardware without a Taptic Engine that supports Core Haptics.
+///
+/// Rules these follow (Apple's "Practice audio haptic design", WWDC21):
+/// - Crisp transients carry the feel; continuous events only for a visible build-up,
+///   never a buzz under a tap (a transient inside a continuous event gets masked).
+/// - Nothing below ~0.3 intensity: the Taptic Engine renders it as mush.
+/// - Each hit lands on the frame the eye sees the impact, not when the animation starts.
+/// - Selection changes click; navigation stays silent, so the big moments stand out.
 @MainActor
 final class Haptics {
     static let shared = Haptics()
@@ -13,8 +20,10 @@ final class Haptics {
     static let enabledKey = "hapticsEnabled"
 
     private var engine: CHHapticEngine?
+    private var engineRunning = false
     private let supported = CHHapticEngine.capabilitiesForHardware().supportsHaptics
-    private var holdPlayer: CHHapticAdvancedPatternPlayer?
+    /// Last ratchet step played by the hold-to-stick gesture.
+    private var holdStep = -1
 
     private var enabled: Bool {
         UserDefaults.standard.object(forKey: Self.enabledKey) as? Bool ?? true
@@ -24,165 +33,202 @@ final class Haptics {
         prepare()
     }
 
+    /// Keeps the engine warm: auto-shutdown adds a noticeable lag to the first tap after
+    /// a pause, which makes every haptic feel late. The system stops it in the background;
+    /// the next `play` restarts it.
     func prepare() {
         guard supported, engine == nil else { return }
         do {
             let e = try CHHapticEngine()
             e.playsHapticsOnly = true
-            e.isAutoShutdownEnabled = true
+            e.isAutoShutdownEnabled = false
             e.resetHandler = { [weak self] in
-                Task { @MainActor in try? self?.engine?.start() }
+                Task { @MainActor in
+                    self?.engineRunning = false
+                    self?.startEngine()
+                }
             }
-            e.stoppedHandler = { _ in }
-            try e.start()
+            e.stoppedHandler = { [weak self] _ in
+                Task { @MainActor in self?.engineRunning = false }
+            }
             engine = e
+            startEngine()
         } catch {
             engine = nil
         }
     }
 
+    private func startEngine() {
+        guard let engine, !engineRunning else { return }
+        do {
+            try engine.start()
+            engineRunning = true
+        } catch {
+            engineRunning = false
+        }
+    }
+
     // MARK: - Moments
 
-    /// Tab switch: a crisp, light click.
-    func tab() {
-        play([tap(0, 0.45, 0.85)], fallback: .light)
-    }
-
-    /// Filter chip / sort toggle: a tiny detent.
+    /// Filter chip / mode / toggle: a light detent, like a segmented control.
     func tick() {
-        play([tap(0, 0.35, 1.0)], fallback: .selection)
+        play([tap(0, 0.5, 0.75)], fallback: .selection)
     }
 
-    /// OCR locked a number: two quick clicks, like a dial clicking into place.
-    /// A never-seen vehicle adds a short rising shimmer so you can feel "new" without looking.
+    /// OCR locked a number: one clean click, like a dial settling.
+    /// A never-seen vehicle adds a second, brighter click — "new" without looking.
     func numberLocked(isNew: Bool) {
-        var events = [tap(0, 0.5, 0.9), tap(0.055, 0.8, 0.6)]
-        if isNew {
-            events.append(hum(0.11, 0.18, intensity: 0.25, sharpness: 0.7))
-            events += [tap(0.14, 0.3, 1), tap(0.19, 0.4, 1), tap(0.24, 0.5, 1)]
-        }
+        var events = [tap(0, 0.75, 0.6)]
+        if isNew { events.append(tap(0.09, 0.9, 1)) }
         play(events, fallback: .medium)
     }
 
-    /// Shutter: the sharp snap of the mirror, a short mechanical buzz, then the return.
+    /// Shutter: one firm snap and a soft return, like the iPhone camera.
     func shutter() {
-        play([
-            tap(0, 1.0, 0.95),
-            hum(0.012, 0.07, intensity: 0.45, sharpness: 0.35),
-            tap(0.09, 0.55, 0.5),
-        ], curves: [curve(.hapticIntensityControl, [(0.012, 1), (0.08, 0.1)])], fallback: .heavy)
+        play([tap(0, 1, 0.6), tap(0.075, 0.4, 0.3)], fallback: .heavy)
     }
 
-    /// Reveal: the sticker lands. Common = a clean thunk, rarer = longer charge-up + sparkle tail.
+    /// Reveal: the sticker lands. Common = one clean thunk; rarer = a build-up that
+    /// matches the glow, a landing timed to the visual impact, then a sparkle tail.
     func reveal(tier: Tier, isNewModel: Bool) {
         var events: [CHHapticEvent] = []
         var curves: [CHHapticParameterCurve] = []
         let build: TimeInterval
         switch tier {
         case .common:
-            build = 0
+            build = 0.05
         case .rare:
+            // A swell that rises with the glow and stops just before the hit.
             build = 0.35
-            events.append(hum(0, build, intensity: 1, sharpness: 0.3))
-            curves.append(curve(.hapticIntensityControl, [(0, 0.1), (build, 0.7)]))
+            events.append(hum(0, build - 0.06, intensity: 1, sharpness: 0.25))
+            curves.append(curve(.hapticIntensityControl, [(0, 0.3), (build - 0.06, 0.75)]))
         case .gold:
-            // Heartbeat that speeds up.
+            // A heartbeat that speeds up and gets harder.
             build = 0.62
-            for (t, i) in [(0.0, 0.35), (0.22, 0.45), (0.38, 0.55), (0.5, 0.65), (0.58, 0.75)] as [(TimeInterval, Float)] {
-                events.append(tap(t, i, 0.25))
+            for (t, i) in [(0.0, 0.4), (0.2, 0.5), (0.35, 0.6), (0.46, 0.7), (0.54, 0.8)] as [(TimeInterval, Float)] {
+                events.append(tap(t, i, 0.3))
             }
-            events.append(hum(0.3, 0.32, intensity: 1, sharpness: 0.2))
-            curves.append(curve(.hapticIntensityControl, [(0.3, 0.05), (build, 0.6)]))
         case .legendary:
-            // A long rumble that swells and sharpens, then the drop.
+            // A drumroll: ticks that accelerate and sharpen, over a swell that cuts out
+            // right before the drop so nothing masks it.
             build = 1.0
-            events.append(hum(0, build, intensity: 1, sharpness: 0.1))
-            curves.append(curve(.hapticIntensityControl, [(0, 0.05), (0.6, 0.55), (build, 1)]))
-            curves.append(curve(.hapticSharpnessControl, [(0, -0.3), (build, 0.4)]))
-            for t in stride(from: 0.55, to: build, by: 0.07) { events.append(tap(t, 0.5, 0.6)) }
+            var t = 0.0, gap = 0.16
+            while t < build - 0.08 {
+                let p = Float(t / build)
+                events.append(tap(t, 0.4 + 0.5 * p, 0.3 + 0.6 * p))
+                t += gap
+                gap = max(0.045, gap * 0.8)
+            }
+            events.append(hum(0.55, 0.37, intensity: 1, sharpness: 0.2))
+            curves.append(curve(.hapticIntensityControl, [(0.55, 0.3), (0.92, 0.8)]))
         }
-        // The landing.
-        events.append(tap(build, 1.0, tier == .common ? 0.55 : 0.35))
-        events.append(hum(build, 0.09, intensity: 0.7, sharpness: 0.1))
-        // Sparkle: fast, bright, fading taps. New model or rare+ only.
+        // The landing: the spring overshoots, so a heavy hit plus a smaller bounce.
+        let land = build + 0.1
+        events.append(tap(land, 1, tier == .common ? 0.5 : 0.35))
+        events.append(tap(land + 0.075, 0.45, 0.3))
+        // Sparkle: fast, bright, fading clicks. New model or rare+ only.
         if isNewModel || tier != .common {
-            let count = tier == .legendary ? 9 : tier == .gold ? 7 : 5
+            let count = tier == .legendary ? 8 : tier == .gold ? 6 : 4
             for k in 0..<count {
-                let t = build + 0.16 + Double(k) * 0.045
-                events.append(tap(t, Float(0.55 - Double(k) * 0.05), 1))
+                events.append(tap(land + 0.18 + Double(k) * 0.055, max(0.32, 0.7 - Float(k) * 0.06), 1))
             }
         }
         play(events, curves: curves, fallback: tier == .common ? .medium : .success)
     }
 
-    /// Sticking it into the book: the peel (a sharp tearing sweep), a pause, then the
-    /// firm slap of the palm, then two soft smoothing strokes.
+    /// Sticking it into the book: a crackle as it peels off the backing (while the
+    /// sticker lifts and straightens), then the slap when it lands in the book.
     func stick() {
-        play([
-            hum(0, 0.2, intensity: 0.5, sharpness: 1),
-            tap(0.27, 1.0, 0.2),
-            hum(0.27, 0.06, intensity: 0.8, sharpness: 0),
-            hum(0.42, 0.12, intensity: 0.25, sharpness: 0.15),
-            hum(0.6, 0.12, intensity: 0.18, sharpness: 0.15),
-        ], curves: [
-            curve(.hapticSharpnessControl, [(0, 0.4), (0.2, -0.4)]),
-            curve(.hapticIntensityControl, [(0, 0.3), (0.12, 1), (0.2, 0.2)]),
-        ], fallback: .heavy)
+        var events = [0.0, 0.03, 0.055, 0.085, 0.11, 0.15].enumerated().map { i, t in
+            tap(t, [0.45, 0.55, 0.5, 0.6, 0.5, 0.4][i], 0.95)
+        }
+        events.append(tap(0.52, 1, 0.2))
+        events.append(tap(0.58, 0.5, 0.15))
+        play(events, fallback: .heavy)
     }
 
-    /// Batch or model completed: three rising taps and a long warm swell.
+    /// Batch or model completed: three rising clicks, a big hit, then a warm fade.
     func completed() {
         play([
-            tap(0, 0.5, 0.4), tap(0.1, 0.7, 0.55), tap(0.2, 0.9, 0.7),
-            hum(0.3, 0.6, intensity: 0.9, sharpness: 0.3),
-            tap(0.3, 1, 0.5),
-        ], curves: [curve(.hapticIntensityControl, [(0.3, 1), (0.9, 0)])], fallback: .success)
+            tap(0, 0.55, 0.4), tap(0.1, 0.7, 0.55), tap(0.2, 0.85, 0.7),
+            tap(0.34, 1, 0.5),
+            hum(0.4, 0.5, intensity: 0.8, sharpness: 0.25),
+        ], curves: [curve(.hapticIntensityControl, [(0.4, 1), (0.9, 0.35)])], fallback: .success)
     }
 
     /// Nothing readable / unknown number: a soft, low double-bump. Never harsh.
     func nope() {
-        play([tap(0, 0.45, 0.1), tap(0.11, 0.35, 0.1)], fallback: .warning)
+        play([tap(0, 0.55, 0.15), tap(0.12, 0.42, 0.15)], fallback: .warning)
     }
 
-    /// A single digit / wheel detent in the correction sheet.
+    /// A digit typed in the correction sheet.
     func detent() {
-        play([tap(0, 0.3, 0.7)], fallback: .selection)
+        play([tap(0, 0.4, 0.8)], fallback: .selection)
     }
 
-    /// A sticker in the book gets pressed: a soft squish.
+    /// A sticker in the book gets pressed: a soft, round squish.
     func press() {
-        play([tap(0, 0.4, 0.3), hum(0, 0.05, intensity: 0.3, sharpness: 0.2)], fallback: .soft)
+        play([tap(0, 0.45, 0.15)], fallback: .soft)
     }
 
-    // MARK: - Hold to stick (continuous, driven live by the gesture)
+    // MARK: - Hold to stick (driven live by the gesture)
 
-    /// Starts a low rumble whose intensity follows `updateHold(progress:)`.
+    /// Starts the ratchet. A continuous rumble here felt like a phone vibrating; a
+    /// row of clicks that speed up, harden and brighten feels like winding something up.
     func beginHold() {
-        guard enabled, let engine else { return }
-        let pattern = try? CHHapticPattern(events: [
-            CHHapticEvent(eventType: .hapticContinuous, parameters: [
-                .init(parameterID: .hapticIntensity, value: 1),
-                .init(parameterID: .hapticSharpness, value: 0.2),
-            ], relativeTime: 0, duration: 30),
-        ], parameters: [])
-        guard let pattern, let player = try? engine.makeAdvancedPlayer(with: pattern) else { return }
-        try? engine.start()
-        try? player.start(atTime: CHHapticTimeImmediate)
-        holdPlayer = player
+        holdStep = -1
         updateHold(progress: 0)
     }
 
     func updateHold(progress: Double) {
-        let p = Float(max(0, min(progress, 1)))
-        try? holdPlayer?.sendParameters([
-            CHHapticDynamicParameter(parameterID: .hapticIntensityControl, value: 0.08 + p * p * 0.75, relativeTime: 0),
-            CHHapticDynamicParameter(parameterID: .hapticSharpnessControl, value: -0.2 + p * 0.6, relativeTime: 0),
-        ], atTime: CHHapticTimeImmediate)
+        let p = max(0, min(progress, 1))
+        // Steps get closer together as it fills: 10 clicks, front-loaded spacing.
+        let step = Int((p * p * 0.6 + p * 0.4) * 10)
+        guard step > holdStep, step < 10 else { return }
+        holdStep = step
+        let f = Float(p)
+        play([tap(0, 0.35 + 0.5 * f, 0.35 + 0.55 * f)], fallback: .selection)
     }
 
     func endHold() {
-        try? holdPlayer?.stop(atTime: CHHapticTimeImmediate)
-        holdPlayer = nil
+        holdStep = -1
+    }
+
+    // MARK: - Lab
+
+    /// Every moment, for tuning on a real phone (Me → Settings → Haptics lab).
+    var labMoments: [(name: String, play: () -> Void)] {
+        [
+            ("Tick (chips, toggles)", { self.tick() }),
+            ("Number locked", { self.numberLocked(isNew: false) }),
+            ("Number locked · new", { self.numberLocked(isNew: true) }),
+            ("Shutter", { self.shutter() }),
+            ("Reveal · common", { self.reveal(tier: .common, isNewModel: false) }),
+            ("Reveal · common, new model", { self.reveal(tier: .common, isNewModel: true) }),
+            ("Reveal · rare", { self.reveal(tier: .rare, isNewModel: false) }),
+            ("Reveal · gold", { self.reveal(tier: .gold, isNewModel: false) }),
+            ("Reveal · legendary", { self.reveal(tier: .legendary, isNewModel: false) }),
+            ("Hold to stick (0.55 s)", { self.demoHold() }),
+            ("Stick", { self.stick() }),
+            ("Completed", { self.completed() }),
+            ("Nope", { self.nope() }),
+            ("Digit", { self.detent() }),
+            ("Sticker press", { self.press() }),
+        ]
+    }
+
+    private func demoHold() {
+        beginHold()
+        Task { @MainActor in
+            let start = Date()
+            while true {
+                let p = Date().timeIntervalSince(start) / 0.55
+                if p >= 1 { break }
+                updateHold(progress: p)
+                try? await Task.sleep(for: .milliseconds(16))
+            }
+            endHold()
+        }
     }
 
     // MARK: - Building blocks
@@ -212,12 +258,20 @@ final class Haptics {
     private func play(_ events: [CHHapticEvent], curves: [CHHapticParameterCurve] = [], fallback: Fallback) {
         guard enabled else { return }
         guard let engine else { return playFallback(fallback) }
+        startEngine()
         do {
             let pattern = try CHHapticPattern(events: events, parameterCurves: curves)
-            try engine.start()
             try engine.makePlayer(with: pattern).start(atTime: CHHapticTimeImmediate)
         } catch {
-            playFallback(fallback)
+            // The engine may have been stopped under us (backgrounding); retry once.
+            engineRunning = false
+            startEngine()
+            do {
+                let pattern = try CHHapticPattern(events: events, parameterCurves: curves)
+                try engine.makePlayer(with: pattern).start(atTime: CHHapticTimeImmediate)
+            } catch {
+                playFallback(fallback)
+            }
         }
     }
 
