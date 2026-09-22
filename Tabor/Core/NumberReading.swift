@@ -34,7 +34,13 @@ public enum NumberExtractor {
     /// database hit, since short/long digit runs are usually line numbers or plates.
     public static func best(in observations: [TextObservation], mode: CatchMode,
                             catalog: FleetCatalog) -> Int? {
-        var scored: [(Int, Double)] = []
+        candidates(in: observations, mode: mode, catalog: catalog).max { $0.score < $1.score }?.number
+    }
+
+    /// Every plausible number in the frame with its score; `best` picks the top one.
+    public static func candidates(in observations: [TextObservation], mode: CatchMode,
+                                  catalog: FleetCatalog) -> [(number: Int, score: Double)] {
+        var scored: [(number: Int, score: Double)] = []
         for obs in observations {
             for (value, digits) in digitTokens(obs.text) {
                 let known = catalog.isKnown(number: value, kind: mode.kind)
@@ -46,7 +52,7 @@ public enum NumberExtractor {
                 scored.append((value, score))
             }
         }
-        return scored.max { $0.1 < $1.1 }?.0
+        return scored
     }
 
     /// Standalone 2–5 digit runs with their length: "8465", "Nr 1974", but not

@@ -22,6 +22,8 @@ struct CatchDraft: Identifiable {
     /// Screen-sized copy of the photo; decoding the full-res shot on every frame of the
     /// reveal's animations would stutter on device.
     var preview: UIImage?
+    /// Debug-mode record for this shot (nil when debug mode is off).
+    var debug: DebugRecord?
 }
 
 struct CatchView: View {
@@ -29,6 +31,7 @@ struct CatchView: View {
     @Query private var manual: [ManualAssignment]
     @AppStorage("saveToGallery") private var saveToGallery = true
     @AppStorage("geotag") private var geotag = true
+    @AppStorage(DebugRecord.enabledKey) private var debugMode = false
 
     private let camera = CameraModel.shared
     @State private var mode: CatchMode = .auto
@@ -63,6 +66,12 @@ struct CatchView: View {
                 VStack(spacing: 0) {
                     HStack {
                         Mono("SPOTTING", size: 12, spacing: 0.16, color: .white.opacity(0.75))
+                        if debugMode {
+                            Mono("DEBUG", size: 9.5, weight: 700, spacing: 0.1, color: .white)
+                                .padding(.vertical, 3)
+                                .padding(.horizontal, 6)
+                                .background(Palette.red, in: RoundedRectangle(cornerRadius: 4))
+                        }
                         Spacer()
                         HStack(spacing: 6) {
                             ForEach(CatchMode.allCases, id: \.self) { m in
@@ -157,6 +166,7 @@ struct CatchView: View {
                     await begin(with: data, live: nil, fromCamera: false)
                 } else {
                     Haptics.shared.nope()
+                    DebugRecord.begin(source: "import", mode: mode)?.update { $0.error = "couldn't load the picked photo" }
                 }
                 pickerItem = nil
             }
@@ -381,24 +391,72 @@ struct CatchView: View {
         Haptics.shared.shutter()
         withAnimation(.easeOut(duration: 0.06)) { flash = true }
         let live = camera.reading
+        let frame = camera.lastFrame
         let data = await camera.capture()
         withAnimation(.easeOut(duration: 0.35)) { flash = false }
-        guard let data else { Haptics.shared.nope(); return }
-        await begin(with: data, live: live, fromCamera: true)
+        let record = DebugRecord.begin(source: "camera", mode: mode)
+        let angle = Double(camera.captureAngle), torch = camera.torchOn
+        record?.update {
+            $0.liveReading = live
+            $0.liveFrame = DebugRecord.obs(frame)
+            $0.captureAngle = angle
+            $0.torch = torch
+        }
+        guard let data else {
+            let why = camera.lastCaptureError ?? "unknown"
+            record?.update { $0.error = "capture failed: \(why)" }
+            Haptics.shared.nope()
+            return
+        }
+        await begin(with: data, live: live, fromCamera: true, record: record)
     }
 
-    private func begin(with data: Data, live: Int?, fromCamera: Bool) async {
+    private func begin(with data: Data, live: Int?, fromCamera: Bool, record: DebugRecord? = nil) async {
+        let record = record ?? DebugRecord.begin(source: fromCamera ? "camera" : "import", mode: mode)
+        record?.attach(photo: data)
         // Start cutting the sticker immediately; it finishes while the reveal builds up.
         let sticker = Task.detached(priority: .userInitiated) {
-            StickerMaker.sticker(from: data).flatMap(StickerMaker.pngData)
+            let start = Date()
+            let result = StickerMaker.make(from: data)
+            let png = (try? result.get()).flatMap(StickerMaker.pngData)
+            if let record {
+                let ms = Int(Date().timeIntervalSince(start) * 1000)
+                let failure: String? = switch result {
+                case .failure(let f): f.description
+                case .success: png == nil ? "PNG encoding failed" : nil
+                }
+                record.update { $0.sticker = .init(ok: png != nil, durationMs: ms, failure: failure) }
+                if let png { record.attach(sticker: png) }
+            }
+            return png
         }
         var number = live
-        if number == nil { number = await TextReader.bestNumber(in: data, mode: mode) }
+        if number == nil {
+            let report = await TextReader.read(data, mode: mode)
+            number = report.number
+            record?.update { $0.ocr = DebugRecord.ocr(report) }
+        } else if let record {
+            // Live lock skipped the still read; run it anyway in the background to compare.
+            let mode = mode
+            Task.detached(priority: .utility) {
+                let report = await TextReader.read(data, mode: mode)
+                record.update { $0.stillCheck = DebugRecord.ocr(report) }
+            }
+        }
         let preview = await Task.detached(priority: .userInitiated) {
             PhotoStore.downsample(data, maxPixel: 900).map(UIImage.init(cgImage:))
         }.value
-        var d = CatchDraft(photo: data, number: number, fromCamera: fromCamera, sticker: sticker, preview: preview)
-        if let n = number { d.modelId = catalog.match(number: n, kind: mode.kind, manual: manual.map).suggested?.id }
+        var d = CatchDraft(photo: data, number: number, fromCamera: fromCamera, sticker: sticker, preview: preview,
+                           debug: record)
+        if let n = number {
+            let match = catalog.match(number: n, kind: mode.kind, manual: manual.map)
+            d.modelId = match.suggested?.id
+            let described = DebugRecord.describe(match), suggested = d.modelId
+            record?.update {
+                $0.match = described
+                $0.suggestedModel = suggested
+            }
+        }
         if fromCamera {
             if geotag { d.geotag = Task { await LocationService.shared.geotag() } }
         } else {

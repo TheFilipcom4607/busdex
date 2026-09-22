@@ -71,6 +71,7 @@ struct RevealView: View {
                     Button {
                         Haptics.shared.tick()
                         draft.geotag?.cancel()
+                        draft.debug?.log("retake", number: draft.number, modelId: draft.modelId)
                         dismiss()
                     } label: { Mono("RETAKE", size: 12) }
                     .buttonStyle(.plain)
@@ -174,8 +175,8 @@ struct RevealView: View {
         .sheet(isPresented: $editing) {
             CorrectionSheet(draft: $draft)
         }
-        .onChange(of: draft.modelId) { _, _ in replayReveal() }
-        .onChange(of: draft.number) { _, _ in replayReveal() }
+        // One key, so fixing number and model together replays the reveal once.
+        .onChange(of: "\(draft.number ?? -1)|\(draft.modelId ?? "")") { _, _ in edited() }
         .task { await playReveal(run: 0) }
     }
 
@@ -392,6 +393,11 @@ struct RevealView: View {
         withAnimation(.easeOut(duration: 0.8)) { charge = 0.35 }
     }
 
+    private func edited() {
+        draft.debug?.log("edited", number: draft.number, modelId: draft.modelId, line: draft.line)
+        replayReveal()
+    }
+
     private func replayReveal() {
         revealRun += 1
         landed = false
@@ -435,6 +441,7 @@ struct RevealView: View {
                          photoFile: PhotoStore.save(draft.photo, ext: PhotoStore.fileExtension(of: draft.photo)),
                          stickerFile: stickerPNG.flatMap { PhotoStore.save($0, ext: "png") })
         context.insert(s)
+        draft.debug?.log("stuck", number: number, modelId: model.id, line: s.line)
         if draft.modelPickedByHand {
             if let m = manual.first(where: { $0.number == number }) { m.modelId = model.id }
             else { context.insert(ManualAssignment(number: number, modelId: model.id)) }
@@ -456,7 +463,10 @@ struct RevealView: View {
         }
         if let tagTask = draft.geotag {
             Task { @MainActor in
-                guard let tag = await tagTask.value else { return }
+                let tag = await tagTask.value
+                let place = tag.map { "\($0.coordinate.latitude), \($0.coordinate.longitude) · \($0.street ?? "?"), \($0.district ?? "?")" }
+                draft.debug?.update { $0.geotag = place ?? "no location" }
+                guard let tag else { return }
                 s.latitude = tag.coordinate.latitude
                 s.longitude = tag.coordinate.longitude
                 s.street = tag.street

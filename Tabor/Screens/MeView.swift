@@ -277,6 +277,11 @@ struct SettingsSheet: View {
     @AppStorage(Haptics.enabledKey) private var haptics = true
     @AppStorage("saveToGallery") private var saveToGallery = true
     @AppStorage("geotag") private var geotag = true
+    @AppStorage(DebugRecord.enabledKey) private var debugMode = false
+    @State private var debugCount = DebugRecord.count
+    @State private var exportURL: URL?
+    @State private var exporting = false
+    @State private var confirmDelete = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -287,6 +292,26 @@ struct SettingsSheet: View {
                         .onChange(of: haptics) { _, on in if on { Haptics.shared.completed() } }
                     Toggle("Save catches to Photos", isOn: $saveToGallery)
                     Toggle("Geotag catches", isOn: $geotag)
+                }
+                Section {
+                    Toggle("Debug mode", isOn: $debugMode)
+                    if debugMode || debugCount > 0 {
+                        LabeledContent("Logged shots", value: "\(debugCount)")
+                        Button(exporting ? "Zipping…" : "Share as ZIP") {
+                            exporting = true
+                            Task {
+                                exportURL = await Task.detached { DebugRecord.exportZip() }.value
+                                exporting = false
+                            }
+                        }
+                        .disabled(debugCount == 0 || exporting)
+                        Button("Delete debug data", role: .destructive) { confirmDelete = true }
+                            .disabled(debugCount == 0)
+                    }
+                } header: {
+                    Text("Debug")
+                } footer: {
+                    Text("Saves every shot — failed reads and retakes included — with what the OCR and sticker cutter saw. Also in Files › On My iPhone › TABOR › Debug.")
                 }
                 Section("Fleet data") {
                     LabeledContent("Vehicles", value: Fleet.catalog.totalFleet.grouped)
@@ -304,5 +329,28 @@ struct SettingsSheet: View {
         }
         .tint(Palette.yellow)
         .presentationDetents([.medium, .large])
+        .onAppear { debugCount = DebugRecord.count }
+        .sheet(item: $exportURL) { url in ShareSheet(items: [url]) }
+        .confirmationDialog("Delete all debug data?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Delete \(debugCount) shots", role: .destructive) {
+                DebugRecord.deleteAll()
+                debugCount = 0
+            }
+        }
     }
+}
+
+extension URL: @retroactive Identifiable {
+    public var id: String { absoluteString }
+}
+
+/// UIKit share sheet, for files that only exist once a button is tapped.
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
 }

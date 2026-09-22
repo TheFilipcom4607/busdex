@@ -51,6 +51,10 @@ struct RootView: View {
         }
         .background(Palette.bg.ignoresSafeArea())
         .environment(router)
+        // The Lock Screen / Control Center control lands here.
+        .onReceive(NotificationCenter.default.publisher(for: .taborOpenCatch)) { _ in
+            router.tab = .catchTab
+        }
     }
 }
 

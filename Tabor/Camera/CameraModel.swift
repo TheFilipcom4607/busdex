@@ -39,8 +39,15 @@ final class CameraModel: NSObject, @unchecked Sendable {
     @ObservationIgnored private var rotationObservation: NSKeyValueObservation?
     @ObservationIgnored private var _captureAngle: CGFloat = 90
 
+    @ObservationIgnored private var _lastFrame: [TextObservation] = []
+    @ObservationIgnored private var _lastCaptureError: String?
+
     /// Horizon-level rotation for captured frames, in degrees. Guarded by `lock`.
-    private var captureAngle: CGFloat { lock.withLock { _captureAngle } }
+    var captureAngle: CGFloat { lock.withLock { _captureAngle } }
+    /// What live OCR saw in the most recent frame it read (for debug mode).
+    var lastFrame: [TextObservation] { lock.withLock { _lastFrame } }
+    /// Why the last `capture()` came back empty, if it did.
+    var lastCaptureError: String? { lock.withLock { _lastCaptureError } }
 
     // MARK: - Lifecycle
 
@@ -156,7 +163,13 @@ final class CameraModel: NSObject, @unchecked Sendable {
     func capture() async -> Data? {
         await withCheckedContinuation { cont in
             sessionQueue.async {
-                guard self.session.isRunning, self.photoContinuation == nil else { cont.resume(returning: nil); return }
+                guard self.session.isRunning, self.photoContinuation == nil else {
+                    self.lock.withLock {
+                        self._lastCaptureError = self.session.isRunning ? "a capture was already in flight" : "session not running"
+                    }
+                    cont.resume(returning: nil)
+                    return
+                }
                 self.photoContinuation = cont
                 if let conn = self.photoOutput.connection(with: .video) {
                     let angle = self.captureAngle
@@ -197,6 +210,7 @@ extension CameraModel: AVCaptureVideoDataOutputSampleBufferDelegate {
         try? handler.perform([request])
 
         let observations = TextReader.observations(from: request.results ?? [])
+        lock.withLock { _lastFrame = observations }
         let best = NumberExtractor.best(in: observations, mode: mode, catalog: Fleet.catalog)
         let stable = voter.push(best)
         Task { @MainActor in
@@ -208,6 +222,9 @@ extension CameraModel: AVCaptureVideoDataOutputSampleBufferDelegate {
 extension CameraModel: AVCapturePhotoCaptureDelegate {
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
         let data = photo.fileDataRepresentation()
+        lock.withLock {
+            _lastCaptureError = error.map { $0.localizedDescription } ?? (data == nil ? "no file data in the photo" : nil)
+        }
         sessionQueue.async {
             self.photoContinuation?.resume(returning: data)
             self.photoContinuation = nil
@@ -226,22 +243,45 @@ enum TextReader {
         }
     }
 
+    /// Everything a still read saw, for debug mode.
+    struct Report: Sendable {
+        var number: Int?
+        /// "full", "tiles", "none", or "decode-failed".
+        var pass: String
+        var full: [TextObservation] = []
+        var tiles: [TextObservation] = []
+        var candidates: [(number: Int, score: Double)] = []
+        var duration: TimeInterval = 0
+    }
+
     /// Accurate OCR over a captured or imported photo. Returns the best fleet number.
+    static func bestNumber(in data: Data, mode: CatchMode) async -> Int? {
+        await read(data, mode: mode).number
+    }
+
     /// Full frame first; if nothing is found, re-read overlapping 3×3 tiles so small
     /// numbers on a whole-vehicle shot get enough pixels (e.g. yellow-on-black "4425").
-    static func bestNumber(in data: Data, mode: CatchMode) async -> Int? {
+    static func read(_ data: Data, mode: CatchMode) async -> Report {
         await Task.detached(priority: .userInitiated) {
-            guard let image = UIImage(data: data), let cg = image.cgImage else { return nil }
+            let start = Date()
+            guard let image = UIImage(data: data), let cg = image.cgImage else { return Report(pass: "decode-failed") }
             let orientation = CGImagePropertyOrientation(image.imageOrientation)
-            let full = read(cg, orientation: orientation, roi: nil)
-            if let n = NumberExtractor.best(in: full, mode: mode, catalog: Fleet.catalog) { return n }
-            var tiles: [TextObservation] = []
-            for y in [0.0, 0.3, 0.6] {
-                for x in [0.0, 0.3, 0.6] {
-                    tiles += read(cg, orientation: orientation, roi: CGRect(x: x, y: y, width: 0.4, height: 0.4))
+            var report = Report(pass: "full")
+            report.full = read(cg, orientation: orientation, roi: nil)
+            report.candidates = NumberExtractor.candidates(in: report.full, mode: mode, catalog: Fleet.catalog)
+            if report.candidates.isEmpty {
+                report.pass = "tiles"
+                for y in [0.0, 0.3, 0.6] {
+                    for x in [0.0, 0.3, 0.6] {
+                        report.tiles += read(cg, orientation: orientation, roi: CGRect(x: x, y: y, width: 0.4, height: 0.4))
+                    }
                 }
+                report.candidates = NumberExtractor.candidates(in: report.tiles, mode: mode, catalog: Fleet.catalog)
             }
-            return NumberExtractor.best(in: tiles, mode: mode, catalog: Fleet.catalog)
+            report.number = report.candidates.max { $0.score < $1.score }?.number
+            if report.number == nil { report.pass = "none" }
+            report.duration = Date().timeIntervalSince(start)
+            return report
         }.value
     }
 

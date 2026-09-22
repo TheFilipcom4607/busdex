@@ -14,33 +14,53 @@ enum StickerMaker {
         var border: CGFloat = 0.034
     }
 
+    /// Why no sticker came out — recorded by debug mode.
+    enum Failure: Error, CustomStringConvertible {
+        case decode, lifting(String), noSubject, mask(String), tinySubject, render
+
+        var description: String {
+            switch self {
+            case .decode: "couldn't decode the photo"
+            case .lifting(let e): "subject lifting failed: \(e)"
+            case .noSubject: "no subject found"
+            case .mask(let e): "mask generation failed: \(e)"
+            case .tinySubject: "subject too small"
+            case .render: "rendering the sticker failed"
+            }
+        }
+    }
+
     private static let context = CIContext(options: [.cacheIntermediates: false])
 
     static func sticker(from data: Data, options: Options = Options()) -> CGImage? {
-        // Downsample + apply EXIF orientation in one go.
-        guard let cg = PhotoStore.downsample(data, maxPixel: Int(options.maxSide)) else { return nil }
-        return sticker(from: cg, options: options)
+        try? make(from: data, options: options).get()
     }
 
-    static func sticker(from cg: CGImage, options: Options = Options()) -> CGImage? {
+    static func make(from data: Data, options: Options = Options()) -> Result<CGImage, Failure> {
+        // Downsample + apply EXIF orientation in one go.
+        guard let cg = PhotoStore.downsample(data, maxPixel: Int(options.maxSide)) else { return .failure(.decode) }
+        return make(from: cg, options: options)
+    }
+
+    static func make(from cg: CGImage, options: Options = Options()) -> Result<CGImage, Failure> {
         let request = VNGenerateForegroundInstanceMaskRequest()
         let handler = VNImageRequestHandler(cgImage: cg, options: [:])
         do {
             try handler.perform([request])
         } catch {
-            #if DEBUG
-            print("StickerMaker: subject lifting unavailable — \(error.localizedDescription)")
-            #endif
-            return nil
+            return .failure(.lifting(error.localizedDescription))
         }
-        guard let obs = request.results?.first,
-              let instance = largestInstance(obs),
-              let maskBuffer = try? obs.generateScaledMaskForImage(forInstances: [instance], from: handler)
-        else { return nil }
+        guard let obs = request.results?.first, let instance = largestInstance(obs) else { return .failure(.noSubject) }
+        let maskBuffer: CVPixelBuffer
+        do {
+            maskBuffer = try obs.generateScaledMaskForImage(forInstances: [instance], from: handler)
+        } catch {
+            return .failure(.mask(error.localizedDescription))
+        }
 
         let image = CIImage(cgImage: cg)
         let full = image.extent
-        guard let box = boundingBox(of: maskBuffer), box.width > 20, box.height > 20 else { return nil }
+        guard let box = boundingBox(of: maskBuffer), box.width > 20, box.height > 20 else { return .failure(.tinySubject) }
 
         // The white border scales with the subject, not the photo.
         let r = max(6, max(box.width, box.height) * options.border)
@@ -74,12 +94,14 @@ enum StickerMaker {
         cut.backgroundImage = clear
         cut.maskImage = paddedMask
 
-        guard let whiteLayer = white.outputImage, let cutLayer = cut.outputImage else { return nil }
+        guard let whiteLayer = white.outputImage, let cutLayer = cut.outputImage else { return .failure(.render) }
         let crop = CGRect(x: box.minX - pad, y: full.height - box.maxY - pad,
                           width: box.width + pad * 2, height: box.height + pad * 2)
         let composed = cutLayer.composited(over: whiteLayer).cropped(to: crop)
-        return context.createCGImage(composed, from: crop, format: .RGBA8,
-                                     colorSpace: CGColorSpace(name: CGColorSpace.sRGB))
+        guard let out = context.createCGImage(composed, from: crop, format: .RGBA8,
+                                              colorSpace: CGColorSpace(name: CGColorSpace.sRGB))
+        else { return .failure(.render) }
+        return .success(out)
     }
 
     static func pngData(_ image: CGImage) -> Data? {
