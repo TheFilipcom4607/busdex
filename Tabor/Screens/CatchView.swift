@@ -48,6 +48,8 @@ struct CatchView: View {
     /// so what you framed is what gets saved.
     @State private var finderSize: CGSize = .zero
     @State private var bracketFrame: CGRect = .zero
+    /// Zoom when the current pinch started.
+    @State private var pinchStart: CGFloat?
     @Environment(\.scenePhase) private var scenePhase
 
     private let catalog = Fleet.catalog
@@ -202,6 +204,16 @@ struct CatchView: View {
                     withAnimation(.easeOut) { focusPoint = nil }
                 }
             })
+            .simultaneousGesture(MagnifyGesture()
+                .onChanged { v in
+                    let start = pinchStart ?? camera.zoom
+                    if pinchStart == nil { pinchStart = start }
+                    let before = camera.zoom
+                    camera.setZoom(start * v.magnification, smooth: false)
+                    // Click as the zoom crosses onto another lens.
+                    if camera.zoomStops.contains(where: { (before - $0) * (camera.zoom - $0) < 0 }) { Haptics.shared.tick() }
+                }
+                .onEnded { _ in pinchStart = nil })
         case .idle:
             Color.black
         case .denied, .unavailable:
@@ -276,6 +288,9 @@ struct CatchView: View {
 
     private func controls(stats: CollectionStats) -> some View {
         VStack(spacing: 0) {
+            if camera.status == .running, camera.zoomStops.count > 1 {
+                zoomBar.padding(.top, 12)
+            }
             HStack(spacing: 16) {
                 toggleChip("SAVE TO GALLERY", on: $saveToGallery)
                 toggleChip("GEOTAG", on: $geotag)
@@ -343,6 +358,41 @@ struct CatchView: View {
             .padding(.bottom, 10)
         }
         .background(Palette.bg)
+    }
+
+    /// One button per lens, like the Camera app: the active one shows the exact zoom.
+    private var zoomBar: some View {
+        let stops = camera.zoomStops
+        let active = stops.last { camera.zoom >= $0 - 0.05 } ?? stops.first!
+        return HStack(spacing: 8) {
+            ForEach(stops, id: \.self) { s in
+                let on = s == active
+                Button {
+                    guard abs(camera.zoom - s) > 0.01 else { return }
+                    Haptics.shared.tick()
+                    camera.setZoom(s, smooth: true)
+                } label: {
+                    Text(on ? Self.zoomLabel(camera.zoom) + "×" : Self.zoomLabel(s))
+                        .font(TaborFont.mono(on ? 12 : 11, on ? 700 : 500))
+                        .foregroundStyle(on ? Palette.bg : .white.opacity(0.8))
+                        .frame(minWidth: on ? 44 : 34, minHeight: on ? 34 : 30)
+                        .padding(.horizontal, on ? 4 : 0)
+                        .background(on ? Palette.yellow : Color.white.opacity(0.1), in: Capsule())
+                        .contentTransition(.numericText())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Zoom \(Self.zoomLabel(s)) times")
+            }
+        }
+        .padding(4)
+        .background(Color.white.opacity(0.05), in: Capsule())
+        .animation(.snappy(duration: 0.2), value: active)
+    }
+
+    /// "0.5", "1", "2.4", "5".
+    static func zoomLabel(_ z: CGFloat) -> String {
+        let r = (z * 10).rounded() / 10
+        return r == r.rounded() ? String(Int(r)) : String(format: "%.1f", r)
     }
 
     private func toggleChip(_ label: String, on: Binding<Bool>) -> some View {

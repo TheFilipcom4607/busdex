@@ -14,6 +14,14 @@ final class CameraModel: NSObject, @unchecked Sendable {
     /// A fleet number that has been stable across several frames.
     private(set) var reading: Int?
     private(set) var torchOn = false
+    /// Zoom as the Camera app shows it: 1 = main lens, 0.5 = ultra-wide, 5 = telephoto.
+    private(set) var zoom: CGFloat = 1
+    /// One stop per physical lens (plus 2× on phones whose main sensor crops cleanly),
+    /// e.g. [0.5, 1, 2, 5] on an iPhone 16 Pro.
+    private(set) var zoomStops: [CGFloat] = [1]
+    private(set) var zoomRange: ClosedRange<CGFloat> = 1...1
+    /// Device zoom factor that the UI calls 1× (the main lens on a virtual device).
+    @ObservationIgnored private var zoomScale: CGFloat = 1
 
     /// Read from the vision queue; guarded by `lock`.
     var mode: CatchMode {
@@ -102,15 +110,33 @@ final class CameraModel: NSObject, @unchecked Sendable {
         session.addOutput(videoOutput)
         session.commitConfiguration()
 
-        // Buses are big and far: keep continuous focus and a touch of zoom on multi-cam
-        // devices so the ultra-wide doesn't take over.
+        // A virtual (multi-lens) device hands off between the physical cameras by itself as
+        // the zoom factor crosses each switch-over point, so 0.5× really is the ultra-wide
+        // and 5× the telephoto — not a digital crop of the main lens.
+        let switchOvers = cam.virtualDeviceSwitchOverVideoZoomFactors.map { CGFloat(truncating: $0) }
+        let hasUltraWide = cam.constituentDevices.contains { $0.deviceType == .builtInUltraWideCamera }
+        let scale = hasUltraWide ? (switchOvers.first ?? 1) : 1
+        var stops = Set(([1] + switchOvers).map { ($0 / scale * 10).rounded() / 10 })
+        if hasUltraWide { stops.insert(0.5) }
+        // The 48MP main sensor gives a clean 2× crop (like the Camera app); add it when the
+        // next lens is further than that.
+        if let tele = stops.filter({ $0 > 1 }).min(), tele > 2.5 { stops.insert(2) } else if stops.count == 1 { stops.insert(2) }
+        let maxUI = min(cam.maxAvailableVideoZoomFactor / scale, max(stops.max() ?? 1, 2) * 3)
+        let minUI = cam.minAvailableVideoZoomFactor / scale
+
+        // Buses are big and far: continuous focus, and start on the main lens (1×).
         try? cam.lockForConfiguration()
         if cam.isFocusModeSupported(.continuousAutoFocus) { cam.focusMode = .continuousAutoFocus }
         if cam.isSmoothAutoFocusSupported { cam.isSmoothAutoFocusEnabled = true }
-        if let switchOver = cam.virtualDeviceSwitchOverVideoZoomFactors.first {
-            cam.videoZoomFactor = CGFloat(truncating: switchOver)
-        }
+        cam.videoZoomFactor = max(cam.minAvailableVideoZoomFactor, min(scale, cam.maxAvailableVideoZoomFactor))
         cam.unlockForConfiguration()
+        zoomScale = scale
+        let sortedStops = stops.filter { $0 >= minUI - 0.01 && $0 <= maxUI + 0.01 }.sorted()
+        Task { @MainActor in
+            self.zoomStops = sortedStops
+            self.zoomRange = minUI...max(minUI, maxUI)
+            self.zoom = 1
+        }
 
         let coordinator = AVCaptureDevice.RotationCoordinator(device: cam, previewLayer: nil)
         rotationObservation = coordinator.observe(\.videoRotationAngleForHorizonLevelCapture, options: [.initial, .new]) {
@@ -140,6 +166,20 @@ final class CameraModel: NSObject, @unchecked Sendable {
     }
 
     var hasTorch: Bool { device?.hasTorch ?? false }
+
+    /// Sets the zoom in Camera-app terms (0.5, 1, 2, 5…). Buttons ramp smoothly; pinch
+    /// sets it directly so it tracks the fingers.
+    func setZoom(_ value: CGFloat, smooth: Bool) {
+        guard let d = device else { return }
+        let ui = min(max(value, zoomRange.lowerBound), zoomRange.upperBound)
+        zoom = ui
+        let factor = min(max(ui * zoomScale, d.minAvailableVideoZoomFactor), d.maxAvailableVideoZoomFactor)
+        sessionQueue.async {
+            guard (try? d.lockForConfiguration()) != nil else { return }
+            if smooth { d.ramp(toVideoZoomFactor: factor, withRate: 12) } else { d.videoZoomFactor = factor }
+            d.unlockForConfiguration()
+        }
+    }
 
     func focus(at devicePoint: CGPoint) {
         guard let d = device else { return }
