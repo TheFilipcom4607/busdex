@@ -125,9 +125,9 @@ CARRIERS = {
 # ZTM lists factory type codes; spotters know the marketing names. The code stays
 # visible as `code` on the model page.
 DISPLAY_NAMES = {
-    ("MAN", "A21"): "MAN Lion\u2019s City",
+    ("MAN", "A21"): "MAN Lion\u2019s City CNG",
     ("MAN", "A23"): "MAN Lion\u2019s City G",
-    ("MAN", "A37"): "MAN Lion\u2019s City",
+    ("MAN", "A37"): "MAN Lion\u2019s City Hybrid",
     ("Mercedes-Benz", "628"): "Mercedes-Benz Conecto G",
     ("Mercedes-Benz", "628B01"): "Mercedes-Benz Conecto",
     ("Mercedes-Benz", "628B02"): "Mercedes-Benz Conecto G",
@@ -140,7 +140,7 @@ DISPLAY_NAMES = {
     ("Solbus", "SM18"): "Solbus Solcity 18",
     ("Solbus", "SM12"): "Solbus Solcity 12",
     ("Scania", "M323"): "Scania CityWide",
-    ("Otokar", "LA16SR2BX"): "Otokar Kent C",
+    ("Otokar", "LA16SR2BX"): "Otokar Vectio C",
     ("Güleryüz", "GD272"): "Güleryüz Cobra GD272",
     ("Yutong", "U12-B"): "Yutong U12",
     ("Ursus", "CS2"): "Ursus City Smile",
@@ -149,7 +149,10 @@ DISPLAY_NAMES = {
     ("HRC", "142N"): "Hyundai Rotem 142N",
     ("HCP", "123N"): "Cegielski 123N",
     ("Konstal", "105N"): "Konstal 105Na",
-    ("Alstom Konstal", "105N"): "Alstom Konstal 105Na",
+    ("Alstom Konstal", "105N"): "Konstal 105N2k",
+    ("Alstom Konstal", "116N"): "Alstom 116Na",
+    ("Pesa", "120N"): "Pesa 120N / 120Na Swing",
+    ("Linke-Hoffmann", "Lw"): "Linke-Hofmann Lw",
     ("Gdańska Fabryka Wagonów / WIwK", "K"): "Gdańsk type K",
     ("Credé/Düwag", "4EGTw"): "Credé/Düwag 4EGTw",
 }
@@ -170,6 +173,9 @@ VINTAGE = {
 # vintage model of their own. KMKM-owned 105Na sets (kmkm.waw.pl/tramwaje-lista).
 VINTAGE_NUMBERS = {
     ("TRAM", "Konstal", "105N"): {1000, 1001, 1251, 1252},
+    # MZA's own heritage buses sit in the 69xx range (with the Ikarus and Urbino 15).
+    ("BUS", "MAN", "A23"): {6922},
+    ("BUS", "Solaris", "Urbino 18"): {6923},
 }
 
 # Preserved buses that aren't in the ZTM database at all: the KMKM club's collection
@@ -208,10 +214,20 @@ EXTRA_VINTAGE_BUSES = [
 ]
 
 
+# ZTM files some vehicles of one type under a different make/model string; live tracking
+# shows they're the same type, so they join it: (kind, make, model) -> (make, model).
+MERGE = {
+    ("TRAM", "Alstom Konstal", ""): ("Alstom Konstal", "105N"),  # #2011, #2013: 105N2k
+    ("TRAM", "Konstal", "116N"): ("Alstom Konstal", "116N"),     # #3002-3004: 116Na
+}
+
+
 def with_vintage_extras(vehicles):
     """ZTM rows plus the preserved buses it doesn't list; marks split-out vintage rows."""
     out = []
     for v in vehicles:
+        make, model = MERGE.get((v["kind"], v["make"], v["model"]), (v["make"], v["model"]))
+        v = {**v, "make": make, "model": model}
         split = VINTAGE_NUMBERS.get((v["kind"], v["make"], v["model"]), set())
         out.append({**v, "vintage": v["number"].isdigit() and int(v["number"]) in split})
     for make, model, number, owner in EXTRA_VINTAGE_BUSES:
