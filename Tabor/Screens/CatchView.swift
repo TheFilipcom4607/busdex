@@ -44,6 +44,10 @@ struct CatchView: View {
     /// Sticking a catch jumps to the Book tab while the reveal is still up; the cover's
     /// dismissal must not wake the camera behind a screen that's gone.
     @State private var visible = false
+    /// The viewfinder's size and the brackets inside it: shots are cropped to the brackets,
+    /// so what you framed is what gets saved.
+    @State private var finderSize: CGSize = .zero
+    @State private var bracketFrame: CGRect = .zero
     @Environment(\.scenePhase) private var scenePhase
 
     private let catalog = Fleet.catalog
@@ -105,11 +109,13 @@ struct CatchView: View {
                         .contentTransition(.opacity)
                         .animation(.easeInOut, value: hint(match))
 
+                    // A 3:2 landscape frame, like a photo: the shot is cropped to it.
                     ViewfinderBrackets(locked: camera.reading != nil)
                         .opacity(camera.status == .running ? 1 : 0)
-                        .frame(height: 210)
+                        .aspectRatio(3 / 2, contentMode: .fit)
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("finder")) } action: { bracketFrame = $0 }
                         .padding(.horizontal, 20)
-                        .padding(.top, 60)
+                        .padding(.top, 44)
                         .allowsHitTesting(false)
 
                     Spacer()
@@ -131,6 +137,8 @@ struct CatchView: View {
 
                 Color.white.opacity(flash ? 0.85 : 0).allowsHitTesting(false)
             }
+            .coordinateSpace(.named("finder"))
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { finderSize = $0 }
             .clipped()
 
             controls(stats: stats)
@@ -403,11 +411,24 @@ struct CatchView: View {
             $0.captureAngle = angle
             $0.torch = torch
         }
-        guard let data else {
+        guard var data else {
             let why = camera.lastCaptureError ?? "unknown"
             record?.update { $0.error = "capture failed: \(why)" }
             Haptics.shared.nope()
             return
+        }
+        // Held upright: keep only what's inside the brackets (plus a little breathing room).
+        // Held sideways the whole landscape frame is already what you meant.
+        if angle == 90, bracketFrame.width > 0 {
+            let size = finderSize, frame = bracketFrame.insetBy(dx: -bracketFrame.width * 0.04, dy: -bracketFrame.height * 0.04)
+            let full = data
+            if let cropped = await Task.detached(priority: .userInitiated, operation: {
+                PhotoStore.crop(full, viewSize: size, frame: frame)
+            }).value {
+                data = cropped
+                record?.attach(original: full)
+                record?.update { $0.crop = "brackets \(frame.integral) in \(size.width)×\(size.height) viewfinder" }
+            }
         }
         await begin(with: data, live: live, fromCamera: true, record: record)
     }

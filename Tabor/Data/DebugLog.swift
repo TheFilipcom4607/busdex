@@ -62,6 +62,8 @@ final class DebugRecord: @unchecked Sendable {
         /// Raw text from the last live frame before the shutter.
         var liveFrame: [Obs]?
         var captureAngle: Double?
+        /// How the shot was cropped to the viewfinder brackets.
+        var crop: String?
         var torch: Bool?
         /// The read that decided the number ("live" skips it).
         var ocr: OCR?
@@ -127,6 +129,11 @@ final class DebugRecord: @unchecked Sendable {
             self.info.image = meta
             self.write()
         }
+    }
+
+    /// The uncropped camera frame, when the shot was cropped to the brackets.
+    func attach(original data: Data) {
+        queue.async { try? data.write(to: self.folder.appendingPathComponent("photo-full.jpg")) }
     }
 
     func attach(sticker png: Data) {

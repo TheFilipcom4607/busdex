@@ -36,6 +36,45 @@ enum PhotoStore {
         return ext == "jpeg" ? "jpg" : ext
     }
 
+    /// Crops a camera shot to the part shown inside `frame`, given the preview filled a view
+    /// of `viewSize` (aspect-fill, like the capture preview). Re-encodes as an upright JPEG,
+    /// keeping the EXIF/GPS metadata.
+    static func crop(_ data: Data, viewSize: CGSize, frame: CGRect) -> Data? {
+        guard viewSize.width > 0, viewSize.height > 0,
+              let src = CGImageSourceCreateWithData(data as CFData, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
+              let w = props[kCGImagePropertyPixelWidth] as? Int, let h = props[kCGImagePropertyPixelHeight] as? Int
+        else { return nil }
+        // Full-size, upright decode.
+        let opts: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: max(w, h),
+        ]
+        guard let upright = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) else { return nil }
+        let iw = CGFloat(upright.width), ih = CGFloat(upright.height)
+        let scale = max(viewSize.width / iw, viewSize.height / ih)
+        let offX = (viewSize.width - iw * scale) / 2, offY = (viewSize.height - ih * scale) / 2
+        let rect = CGRect(x: (frame.minX - offX) / scale, y: (frame.minY - offY) / scale,
+                          width: frame.width / scale, height: frame.height / scale)
+            .intersection(CGRect(x: 0, y: 0, width: iw, height: ih)).integral
+        guard rect.width > 100, rect.height > 100, let cut = upright.cropping(to: rect) else { return nil }
+
+        var meta = props
+        meta[kCGImagePropertyOrientation] = 1
+        if var tiff = meta[kCGImagePropertyTIFFDictionary] as? [CFString: Any] {
+            tiff[kCGImagePropertyTIFFOrientation] = 1
+            meta[kCGImagePropertyTIFFDictionary] = tiff
+        }
+        meta[kCGImagePropertyPixelWidth] = nil
+        meta[kCGImagePropertyPixelHeight] = nil
+        meta[kCGImageDestinationLossyCompressionQuality] = 0.92
+        let out = NSMutableData()
+        guard let dest = CGImageDestinationCreateWithData(out, UTType.jpeg.identifier as CFString, 1, nil) else { return nil }
+        CGImageDestinationAddImage(dest, cut, meta as CFDictionary)
+        return CGImageDestinationFinalize(dest) ? out as Data : nil
+    }
+
     /// Decodes a downsampled, upright copy of an image without touching the full-res pixels.
     static func downsample(_ data: Data, maxPixel: Int) -> CGImage? {
         guard let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
