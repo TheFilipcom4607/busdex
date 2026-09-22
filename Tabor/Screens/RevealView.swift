@@ -349,6 +349,7 @@ struct RevealView: View {
         case .rare: 0.35
         case .gold: 0.62
         case .legendary: 1.0
+        case .vintage: 0.62
         }
     }
 

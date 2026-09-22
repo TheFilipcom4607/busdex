@@ -64,12 +64,18 @@ struct BookIndexView: View {
 
             ScrollView {
                 LazyVStack(spacing: 9) {
-                    ForEach(rows) { m in
-                        NavigationLink(value: BookRoute.model(m.id)) {
-                            DexRow(model: m, owned: stats.ownedCount(modelId: m.id),
-                                   latest: latestSticker(m.id, stats: stats))
+                    ForEach(rows.filter { !$0.vintage }) { m in row(m, stats: stats) }
+                    // Tourist-line stock lives in its own section: it's seasonal, not rare.
+                    let vintage = rows.filter(\.vintage)
+                    if !vintage.isEmpty {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Mono("VINTAGE", size: 10.5, weight: 700, spacing: 0.14, color: Palette.brass)
+                            Mono("TOURIST LINES ON SUMMER WEEKENDS · NOT PART OF THE FLEET %", size: 9.5, color: Palette.faint)
                         }
-                        .buttonStyle(RowPressStyle())
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 18)
+                        .padding(.bottom, 2)
+                        ForEach(vintage) { m in row(m, stats: stats) }
                     }
                     Mono(catalog.source.uppercased(), size: 9, spacing: 0.06, color: Palette.faint)
                         .multilineTextAlignment(.center)
@@ -81,6 +87,13 @@ struct BookIndexView: View {
             .scrollIndicators(.hidden)
         }
         .taborScreen()
+    }
+
+    private func row(_ m: VehicleModel, stats: CollectionStats) -> some View {
+        NavigationLink(value: BookRoute.model(m.id)) {
+            DexRow(model: m, owned: stats.ownedCount(modelId: m.id), latest: latestSticker(m.id, stats: stats))
+        }
+        .buttonStyle(RowPressStyle())
     }
 
     private func latestSticker(_ modelId: String, stats: CollectionStats) -> (number: Int, sticker: String?, photo: String?)? {

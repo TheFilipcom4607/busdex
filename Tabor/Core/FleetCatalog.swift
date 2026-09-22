@@ -50,7 +50,8 @@ public struct FleetCatalog: Sendable {
 
     public func model(id: String) -> VehicleModel? { byId[id] }
 
-    public var totalFleet: Int { models.reduce(0) { $0 + $1.fleet } }
+    /// Vehicles on regular routes; vintage stock doesn't count toward the fleet.
+    public var totalFleet: Int { models.filter { !$0.vintage }.reduce(0) { $0 + $1.fleet } }
 
     /// Manual assignments win, then the ZTM database.
     public func match(number: Int, kind: VehicleKind? = nil,

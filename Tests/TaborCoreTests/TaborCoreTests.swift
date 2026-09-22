@@ -35,6 +35,18 @@ private func sampleModel() -> VehicleModel {
     #expect(Tier.of(fleet: 186) == .common)
 }
 
+@Test func vintageStockIsItsOwnTierAndOutsideTheFleet() {
+    let vintage = catalog.models.filter(\.vintage)
+    #expect(vintage.contains { $0.id == "tram-falkenried-a" })
+    #expect(vintage.allSatisfy { $0.tier == .vintage })
+    // The 112N prototype still runs on regular lines: a real legendary, not vintage.
+    #expect(catalog.model(id: "tram-konstal-112n")?.tier == .legendary)
+    let all = catalog.models.reduce(0) { $0 + $1.fleet }
+    #expect(catalog.totalFleet == all - vintage.reduce(0) { $0 + $1.fleet })
+    let stats = CollectionStats(sightings: [SightingRecord(number: 43, modelId: "tram-falkenried-a", date: .now)])
+    #expect(stats.fleetShare(catalog: catalog) == 0)
+}
+
 // MARK: - Lookup
 
 @Test func knownVehiclesResolve() {

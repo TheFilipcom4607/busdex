@@ -108,6 +108,12 @@ final class Haptics {
             for (t, i) in [(0.0, 0.4), (0.2, 0.5), (0.35, 0.6), (0.46, 0.7), (0.54, 0.8)] as [(TimeInterval, Float)] {
                 events.append(tap(t, i, 0.3))
             }
+        case .vintage:
+            // An old tram over rail joints: ta-tam … ta-tam, getting closer.
+            build = 0.62
+            for (t, i) in [(0.0, 0.4), (0.1, 0.45), (0.4, 0.6), (0.5, 0.7)] as [(TimeInterval, Float)] {
+                events.append(tap(t, i, 0.55))
+            }
         case .legendary:
             // A drumroll: ticks that accelerate and sharpen, over a swell that cuts out
             // right before the drop so nothing masks it.
@@ -208,6 +214,7 @@ final class Haptics {
             ("Reveal · rare", { self.reveal(tier: .rare, isNewModel: false) }),
             ("Reveal · gold", { self.reveal(tier: .gold, isNewModel: false) }),
             ("Reveal · legendary", { self.reveal(tier: .legendary, isNewModel: false) }),
+            ("Reveal · vintage", { self.reveal(tier: .vintage, isNewModel: false) }),
             ("Hold to stick (0.55 s)", { self.demoHold() }),
             ("Stick", { self.stick() }),
             ("Completed", { self.completed() }),

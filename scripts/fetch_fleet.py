@@ -155,6 +155,18 @@ DISPLAY_NAMES = {
 }
 
 
+# Tourist-line and museum stock: out on summer weekends (tram lines T and 36, bus
+# line 100) or only for special events, never on regular routes. The app tags these
+# VINTAGE and leaves them out of the "% of fleet" total. Checked 2026-09-22 against
+# kmkm.waw.pl/wlt-2026 and live tracking (api.zbiorkom.live).
+VINTAGE = {
+    "tram-falkenried-a", "tram-linke-hoffmann-lw", "tram-lilpop-c",
+    "tram-gdanska-fabryka-wagonow-wiwk-k", "tram-cred-d-wag-4egtw", "tram-konstal-n",
+    "tram-konstal-4n", "tram-konstal-13n", "tram-konstal-102n",
+    "bus-ikarus-260", "bus-ikarus-280", "bus-solaris-urbino-15",
+}
+
+
 def display_name(make, model):
     return DISPLAY_NAMES.get((make, model), f"{make} {model}".strip())
 
@@ -196,8 +208,9 @@ def build(vehicles):
                 "numbers": sorted(int(v["number"]) for v in bvs),
             })
         years = [v["year"] for v in vs if v["year"]]
+        model_id = slug(f"{kind}-{make}-{model}")
         models.append({
-            "id": slug(f"{kind}-{make}-{model}"),
+            "id": model_id,
             "name": display_name(make, model),
             "make": make,
             "code": f"{make} {model}".strip(),
@@ -207,8 +220,11 @@ def build(vehicles):
             "firstYear": min(years) if years else None,
             "lastYear": max(years) if years else None,
             "batches": batches,
+            "vintage": model_id in VINTAGE,
         })
     models.sort(key=lambda m: (m["kind"], -m["fleet"], m["name"]))
+    missing = VINTAGE - {m["id"] for m in models}
+    assert not missing, f"VINTAGE ids not in the data any more: {missing}"
 
     depots = sorted({parse_depot(v["depot"]) + (v["kind"],) for v in vehicles if v["depot"]})
     raw = json.loads(RAW.read_text())

@@ -264,7 +264,7 @@ struct SpotMap: View {
     }
 
     private func pinColor(_ t: Tier) -> Color {
-        t == .legendary || t == .rare ? t.color : Palette.yellow
+        t == .legendary || t == .rare || t == .vintage ? t.color : Palette.yellow
     }
 }
 

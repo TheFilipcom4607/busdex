@@ -23,6 +23,8 @@ enum Palette {
     static let red = Color(hex: 0xE4002B)
     static let green = Color(hex: 0x23E5A0)
     static let greenInk = Color(hex: 0xB9F5DE)
+    /// Vintage tier: old brass fittings.
+    static let brass = Color(hex: 0xD2A064)
 
     // Sticker (white die-cut) internals
     static let paper = Color.white
@@ -53,6 +55,7 @@ extension Tier {
         case .gold: Palette.yellow
         case .rare: Palette.green
         case .common: Palette.dim
+        case .vintage: Palette.brass
         }
     }
 
@@ -62,6 +65,7 @@ extension Tier {
         case .gold: Palette.yellow
         case .rare: Palette.green
         case .common: Color(hex: 0x4A5158)
+        case .vintage: Palette.brass
         }
     }
 }

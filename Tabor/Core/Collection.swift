@@ -60,7 +60,7 @@ public struct CollectionStats: Sendable {
     public func fleetShare(catalog: FleetCatalog) -> Double {
         let total = catalog.totalFleet
         guard total > 0 else { return 0 }
-        let counted = vehicles.filter { catalog.model(id: $0.modelId) != nil }.count
+        let counted = vehicles.filter { catalog.model(id: $0.modelId).map { !$0.vintage } ?? false }.count
         return Double(counted) / Double(total)
     }
 }
@@ -97,6 +97,11 @@ public enum RevealHint {
                             isNewVehicle: Bool, timesSeen: Int) -> String {
         guard isNewVehicle else {
             return "Seen it before — that's sighting #\(timesSeen) of \(number). It still counts toward your streak."
+        }
+        if model.vintage {
+            let left = model.numbers.filter { !owned.contains($0) }.count
+            let more = left == 0 ? "That's all of them." : "\(left) more to find."
+            return "A vintage \(model.kind.rawValue.lowercased()) — it only comes out on tourist lines. Nice timing. \(more)"
         }
         let modelLeft = model.numbers.filter { !owned.contains($0) }
         if modelLeft.isEmpty { return "That's every \(model.name) in Warsaw. Model complete." }

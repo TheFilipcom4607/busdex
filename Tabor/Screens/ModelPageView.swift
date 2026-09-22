@@ -60,6 +60,15 @@ struct ModelPageView: View {
             .padding(.horizontal, 22)
             .padding(.bottom, 14)
 
+            if let place = model.vintageWhere {
+                Mono(place, size: 10.5, spacing: 0.1, color: Palette.brass)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .padding(.horizontal, 22)
+                    .padding(.top, -6)
+                    .padding(.bottom, 12)
+            }
+
             HStack(spacing: 11) {
                 ProgressBar(fraction: Double(owned.count) / Double(max(model.fleet, 1)), color: model.tier.bar)
                 OwnedCount(owned: owned.count, fleet: model.fleet)
