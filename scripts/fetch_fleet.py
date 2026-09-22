@@ -141,6 +141,7 @@ DISPLAY_NAMES = {
     ("Solbus", "SM12"): "Solbus Solcity 12",
     ("Scania", "M323"): "Scania CityWide",
     ("Otokar", "LA16SR2BX"): "Otokar Vectio C",
+    ("Otokar", "Kent C LF Mild Hybrid"): "Otokar Kent C Hybrid",
     ("Güleryüz", "GD272"): "Güleryüz Cobra GD272",
     ("Yutong", "U12-B"): "Yutong U12",
     ("Ursus", "CS2"): "Ursus City Smile",
@@ -222,14 +223,31 @@ MERGE = {
 }
 
 
+# Where the ZTM database lags behind the street (per Warszawikia, 2 Sep 2026):
+# Mobilis's new Otokars run since 1 Sep 2026 but aren't listed yet, and its MAN Lion's
+# City Hybrids (#9501-9561) were retired in 2026 but are still listed.
+EXTRA_BUSES = [
+    ("Otokar", "Kent C LF Mild Hybrid", n, "Mobilis", 2026) for n in range(9601, 9655)
+]
+RETIRED = {
+    ("BUS", "MAN", "A37", "Mobilis"): set(range(9501, 9562)),
+}
+
+
 def with_vintage_extras(vehicles):
     """ZTM rows plus the preserved buses it doesn't list; marks split-out vintage rows."""
     out = []
     for v in vehicles:
+        carrier = short_carrier(v["carrier"])
+        if v["number"].isdigit() and int(v["number"]) in RETIRED.get((v["kind"], v["make"], v["model"], carrier), set()):
+            continue
         make, model = MERGE.get((v["kind"], v["make"], v["model"]), (v["make"], v["model"]))
         v = {**v, "make": make, "model": model}
         split = VINTAGE_NUMBERS.get((v["kind"], v["make"], v["model"]), set())
         out.append({**v, "vintage": v["number"].isdigit() and int(v["number"]) in split})
+    for make, model, number, owner, year in EXTRA_BUSES:
+        out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
+                    "carrier": owner, "depot": "Ursus", "kind": "BUS", "year": year, "vintage": False})
     for make, model, number, owner in EXTRA_VINTAGE_BUSES:
         out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
                     "carrier": owner, "depot": "", "kind": "BUS", "year": None, "vintage": True})
