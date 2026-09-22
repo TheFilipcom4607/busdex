@@ -1,0 +1,12 @@
+build/
+.build/
+.DS_Store
+xcuserdata/
+*.xcuserstate
+.swiftpm/
+
+# Test photos dropped in the root (third-party images; not committed)
+/*.jpg
+/*.jpeg
+/*.png
+/*.webp
