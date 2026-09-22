@@ -166,6 +166,59 @@ VINTAGE = {
     "bus-ikarus-260", "bus-ikarus-280", "bus-solaris-urbino-15",
 }
 
+# Vintage vehicles filed under a regular model in the ZTM database: split out into a
+# vintage model of their own. KMKM-owned 105Na sets (kmkm.waw.pl/tramwaje-lista).
+VINTAGE_NUMBERS = {
+    ("TRAM", "Konstal", "105N"): {1000, 1001, 1251, 1252},
+}
+
+# Preserved buses that aren't in the ZTM database at all: the KMKM club's collection
+# (kmkm.waw.pl/autobusy-lista, 2026-09-22) plus MZA heritage buses on tourist line 100
+# in 2026 (kmkm.waw.pl/wlt-2026). (make, model, number, owner). Makes/models match the
+# ZTM spelling where a model already exists, so they join it.
+EXTRA_VINTAGE_BUSES = [
+    ("Chausson", "AH 48", 395, "KMKM"),
+    ("Jelcz", "272 MEX", 1816, "KMKM"),
+    ("Jelcz", "272 MEX", 1983, "KMKM"),
+    ("Berliet", "PR100", 3873, "KMKM"),
+    ("Ikarus", "260", 289, "KMKM"),
+    ("Ikarus", "260", 6306, "KMKM"),
+    ("Ikarus", "280", 646, "KMKM"),
+    ("Ikarus", "280", 691, "KMKM"),
+    ("Ikarus", "280", 2600, "KMKM"),
+    ("Ikarus", "280", 5715, "KMKM"),
+    ("Ikarus", "280", 5741, "MZA"),
+    ("Ikarus", "405", 6454, "KMKM"),
+    ("Ikarus", "411", 6550, "KMKM"),
+    ("Ikarus Zemun", "IK-160P", 70504, "KMKM"),
+    ("Jelcz", "043", 8058, "KMKM"),
+    ("Jelcz", "043", 8081, "KMKM"),
+    ("Jelcz", "PO1", 618, "KMKM"),
+    ("Jelcz", "PAT-4", 643, "KMKM"),
+    ("Jelcz", "M11", 95, "KMKM"),
+    ("Jelcz", "L11", 90904, "KMKM"),
+    ("Jelcz", "PR110M", 4617, "KMKM"),
+    ("Jelcz", "PR110U", 5299, "KMKM"),
+    ("Jelcz", "120MM/1", 4340, "KMKM"),
+    ("Jelcz", "M121M", 4891, "KMKM"),
+    ("Jelcz", "M121I/4", 4942, "MZA"),
+    ("San", "H-100A", 8082, "KMKM"),
+    ("San", "H-100B", 160, "KMKM"),
+    ("Solaris", "Urbino 15", 8731, "KMKM"),
+]
+
+
+def with_vintage_extras(vehicles):
+    """ZTM rows plus the preserved buses it doesn't list; marks split-out vintage rows."""
+    out = []
+    for v in vehicles:
+        split = VINTAGE_NUMBERS.get((v["kind"], v["make"], v["model"]), set())
+        out.append({**v, "vintage": v["number"].isdigit() and int(v["number"]) in split})
+    for make, model, number, owner in EXTRA_VINTAGE_BUSES:
+        out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
+                    "carrier": owner, "depot": "", "kind": "BUS", "year": None, "vintage": True})
+    return out
+
 
 def display_name(make, model):
     return DISPLAY_NAMES.get((make, model), f"{make} {model}".strip())
@@ -189,13 +242,16 @@ def slug(s):
 
 def build(vehicles):
     groups = defaultdict(list)
-    for v in vehicles:
+    for v in with_vintage_extras(vehicles):
         if not v["number"].isdigit():
             continue  # e.g. "403-1": trailer cars of a heritage set
-        groups[(v["kind"], v["make"], v["model"])].append(v)
+        split = v["vintage"] and (v["kind"], v["make"], v["model"]) in VINTAGE_NUMBERS
+        groups[(v["kind"], v["make"], v["model"], split)].append(v)
 
     models = []
-    for (kind, make, model), vs in groups.items():
+    for (kind, make, model, split), vs in groups.items():
+        if len({v["number"] for v in vs}) != len(vs):
+            raise ValueError(f"duplicate fleet number in {make} {model}")
         by_year = defaultdict(list)
         for v in vs:
             by_year[v["year"]].append(v)
@@ -208,7 +264,7 @@ def build(vehicles):
                 "numbers": sorted(int(v["number"]) for v in bvs),
             })
         years = [v["year"] for v in vs if v["year"]]
-        model_id = slug(f"{kind}-{make}-{model}")
+        model_id = slug(f"{kind}-{make}-{model}") + ("-vintage" if split else "")
         models.append({
             "id": model_id,
             "name": display_name(make, model),
@@ -220,7 +276,8 @@ def build(vehicles):
             "firstYear": min(years) if years else None,
             "lastYear": max(years) if years else None,
             "batches": batches,
-            "vintage": model_id in VINTAGE,
+            # Curated models, split-out sets, and models that exist only as preserved buses.
+            "vintage": model_id in VINTAGE or split or all(v["vintage"] for v in vs),
         })
     models.sort(key=lambda m: (m["kind"], -m["fleet"], m["name"]))
     missing = VINTAGE - {m["id"] for m in models}

@@ -61,9 +61,17 @@ public struct FleetCatalog: Sendable {
         switch hits.count {
         case 0: return .unknown
         case 1: return .certain(hits[0])
-        // Buses outnumber trams; list the bigger fleet first.
-        default: return .ambiguous(hits.sorted { $0.fleet > $1.fleet })
+        // Regular stock before preserved vehicles, then the bigger fleet first.
+        default: return .ambiguous(hits.sorted { ($0.vintage ? 1 : 0, -$0.fleet) < ($1.vintage ? 1 : 0, -$1.fleet) })
         }
+    }
+
+    /// The camera's BUS/TRAM mode is a preference, not a filter: a bus number read in
+    /// TRAM mode still matches the bus (spotters forget to switch back).
+    public func match(number: Int, preferring kind: VehicleKind?,
+                      manual: [Int: String] = [:]) -> ModelMatch {
+        let strict = match(number: number, kind: kind, manual: manual)
+        return strict == .unknown && kind != nil ? match(number: number, manual: manual) : strict
     }
 
     public func isKnown(number: Int, kind: VehicleKind? = nil) -> Bool {

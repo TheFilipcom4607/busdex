@@ -81,6 +81,11 @@ private func sampleModel() -> VehicleModel {
     #expect(NumberExtractor.digitTokens("123456 20:15 3.1415").isEmpty)
     #expect(NumberExtractor.digitTokens("WI 5814N").isEmpty)
     #expect(NumberExtractor.digitTokens("-WX 2043F").isEmpty)
+    // OCR dropped the plate's trailing letter (seen on device: "IX 2021" for "WX 2021F").
+    #expect(NumberExtractor.digitTokens("IX 2021").isEmpty)
+    #expect(NumberExtractor.digitTokens("WX-2021").isEmpty)
+    #expect(NumberExtractor.digitTokens("NR 1974").map(\.value) == [1974])
+    #expect(NumberExtractor.digitTokens("LINIA 119").map(\.value) == [119])
 }
 
 @Test func extractorPrefersDatabaseHits() {
@@ -96,6 +101,28 @@ private func sampleModel() -> VehicleModel {
     let obs = [TextObservation(text: "705", confidence: 1, height: 0.2)]
     let got = NumberExtractor.best(in: obs, mode: .bus, catalog: catalog)
     #expect(got == nil || catalog.isKnown(number: got!, kind: .bus))
+}
+
+@Test func modeIsAPreferenceNotAFilter() {
+    // Seen on device: Yutong 1971 shot in TRAM mode, plate "WX 2021F" read as "IX 2021".
+    let obs = [
+        TextObservation(text: "192 KRASNOWOLA", confidence: 1, height: 0.05),
+        TextObservation(text: "1971", confidence: 1, height: 0.02),
+        TextObservation(text: "IX 2021", confidence: 1, height: 0.02),
+    ]
+    #expect(NumberExtractor.best(in: obs, mode: .tram, catalog: catalog) == 1971)
+    #expect(catalog.match(number: 1971, kind: .tram) == .unknown)
+    #expect(catalog.match(number: 1971, preferring: .tram).suggested?.id == "bus-yutong-u12-b")
+}
+
+@Test func preservedBusesOutsideZtmAreVintage() {
+    // KMKM's Solaris Urbino 15 #8731 isn't in the ZTM database.
+    let m = catalog.match(number: 8731, kind: .bus).suggested
+    #expect(m?.name == "Solaris Urbino 15" && m?.tier == .vintage)
+    // A club Jelcz shares 1983 with a Yutong: the regular bus is suggested first.
+    #expect(catalog.match(number: 1983, kind: .bus).suggested?.id == "bus-yutong-u12-b")
+    // Club-owned 105Na sets are split from the regular 105Na.
+    #expect(catalog.match(number: 1001, kind: .tram).suggested?.id == "tram-konstal-105n-vintage")
 }
 
 @Test func voterNeedsAgreement() {

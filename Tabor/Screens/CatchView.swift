@@ -50,7 +50,7 @@ struct CatchView: View {
 
     var body: some View {
         let stats = sightings.stats
-        let match = camera.reading.map { catalog.match(number: $0, kind: mode.kind, manual: manual.map) }
+        let match = camera.reading.map { catalog.match(number: $0, preferring: mode.kind, manual: manual.map) }
 
         VStack(spacing: 0) {
             ZStack {
@@ -153,7 +153,7 @@ struct CatchView: View {
         }
         .onChange(of: camera.reading) { _, n in
             guard let n else { return }
-            let m = catalog.match(number: n, kind: mode.kind, manual: manual.map)
+            let m = catalog.match(number: n, preferring: mode.kind, manual: manual.map)
             let isNew = m.suggested.map { stats.vehicle(number: n, modelId: $0.id) == nil } ?? false
             Haptics.shared.numberLocked(isNew: isNew)
         }
@@ -373,10 +373,12 @@ struct CatchView: View {
 
     private func chipCaption(_ match: ModelMatch?) -> String {
         switch match {
-        case .ambiguous(let ms): "ALSO A \(ms.dropFirst().first?.kind.rawValue ?? "") NUMBER · FIX IT AFTER THE SHOT"
+        case .ambiguous(let ms): "ALSO A \(ms.dropFirst().first?.name.uppercased() ?? "") · FIX IT AFTER THE SHOT"
         case .unknown, nil: "NOT IN THE ZTM DATABASE · PICK THE MODEL AFTER"
+        case .certain(let m) where mode.kind != nil && m.kind != mode.kind:
+            "A \(m.kind.rawValue) NUMBER · YOU'RE IN \(mode.rawValue) MODE"
         case .certain(let m):
-            [m.kind.rawValue, m.batch(containing: camera.reading ?? 0)?.year.map { "BUILT \($0)" }, "TAP TO CATCH"]
+            [m.vintage ? "VINTAGE" : nil, m.kind.rawValue, m.batch(containing: camera.reading ?? 0)?.year.map { "BUILT \($0)" }, "TAP TO CATCH"]
                 .compactMap { $0 }.joined(separator: " · ")
         }
     }
@@ -448,7 +450,7 @@ struct CatchView: View {
         var d = CatchDraft(photo: data, number: number, fromCamera: fromCamera, sticker: sticker, preview: preview,
                            debug: record)
         if let n = number {
-            let match = catalog.match(number: n, kind: mode.kind, manual: manual.map)
+            let match = catalog.match(number: n, preferring: mode.kind, manual: manual.map)
             d.modelId = match.suggested?.id
             let described = DebugRecord.describe(match), suggested = d.modelId
             record?.update {

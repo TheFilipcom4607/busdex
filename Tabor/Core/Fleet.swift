@@ -95,7 +95,7 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     /// Where to find a vintage vehicle, e.g. "TOURIST LINES T & 36 · SUMMER WEEKENDS".
     public var vintageWhere: String? {
         guard vintage else { return nil }
-        return kind == .tram ? "TOURIST LINES T & 36 · SUMMER WEEKENDS" : "TOURIST LINE 100 · SUMMER WEEKENDS"
+        return kind == .tram ? "TOURIST LINES T & 36 · SUMMER WEEKENDS" : "TOURIST LINE 100 & EVENTS · SUMMER WEEKENDS"
     }
 
     public func batch(containing number: Int) -> Batch? {
