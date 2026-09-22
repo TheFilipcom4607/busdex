@@ -233,7 +233,7 @@ struct RevealView: View {
 
     private var photoCard: some View {
         Group {
-            if let img = UIImage(data: draft.photo) {
+            if let img = draft.preview {
                 Image(uiImage: img).resizable().scaledToFill()
             } else {
                 Palette.photoWell
@@ -432,7 +432,7 @@ struct RevealView: View {
     private func save(model: VehicleModel, number: Int) {
         let s = Sighting(number: number, modelId: model.id, date: draft.date,
                          line: draft.line?.trimmingCharacters(in: .whitespaces).nonEmpty,
-                         photoFile: PhotoStore.save(draft.photo),
+                         photoFile: PhotoStore.save(draft.photo, ext: PhotoStore.fileExtension(of: draft.photo)),
                          stickerFile: stickerPNG.flatMap { PhotoStore.save($0, ext: "png") })
         context.insert(s)
         if draft.modelPickedByHand {
@@ -444,6 +444,15 @@ struct RevealView: View {
         if draft.fromCamera, saveToGallery {
             let data = draft.photo
             Task.detached { await PhotoStore.saveToGallery(data) }
+        }
+        // Subject lifting can outlast the reveal's 2.5 s cap (first run loads the model);
+        // attach the sticker whenever it's ready instead of losing it.
+        if s.stickerFile == nil, let stickerTask = draft.sticker {
+            Task { @MainActor in
+                guard let png = await stickerTask.value, let file = PhotoStore.save(png, ext: "png") else { return }
+                s.stickerFile = file
+                try? context.save()
+            }
         }
         if let tagTask = draft.geotag {
             Task { @MainActor in

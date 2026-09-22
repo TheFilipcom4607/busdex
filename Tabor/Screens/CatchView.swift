@@ -19,6 +19,9 @@ struct CatchDraft: Identifiable {
     var geotag: Task<Geotag?, Never>?
     /// Die-cut PNG, generated in the background while the reveal plays.
     var sticker: Task<Data?, Never>?
+    /// Screen-sized copy of the photo; decoding the full-res shot on every frame of the
+    /// reveal's animations would stutter on device.
+    var preview: UIImage?
 }
 
 struct CatchView: View {
@@ -27,7 +30,7 @@ struct CatchView: View {
     @AppStorage("saveToGallery") private var saveToGallery = true
     @AppStorage("geotag") private var geotag = true
 
-    @State private var camera = CameraModel()
+    private let camera = CameraModel.shared
     @State private var mode: CatchMode = .auto
     @State private var draft: CatchDraft?
     @State private var flash = false
@@ -35,6 +38,9 @@ struct CatchView: View {
     @State private var pickerItem: PhotosPickerItem?
     @State private var focusPoint: CGPoint?
     @State private var shutterDown = false
+    /// Sticking a catch jumps to the Book tab while the reveal is still up; the cover's
+    /// dismissal must not wake the camera behind a screen that's gone.
+    @State private var visible = false
     @Environment(\.scenePhase) private var scenePhase
 
     private let catalog = Fleet.catalog
@@ -121,14 +127,19 @@ struct CatchView: View {
             controls(stats: stats)
         }
         .background(Palette.bg)
+        .onAppear { visible = true }
         .task {
+            camera.mode = mode
             await camera.start()
             // Ask for location now, while spotting — never in the middle of a reveal.
             if geotag { LocationService.shared.requestPermission() }
         }
-        .onDisappear { camera.stop() }
+        .onDisappear {
+            visible = false
+            camera.stop()
+        }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active, draft == nil { Task { await camera.start() } }
+            if phase == .active, draft == nil, visible { Task { await camera.start() } }
             if phase == .background { camera.stop() }
         }
         .onChange(of: camera.reading) { _, n in
@@ -140,13 +151,19 @@ struct CatchView: View {
         .onChange(of: pickerItem) { _, item in
             guard let item else { return }
             Task {
-                if let data = try? await item.loadTransferable(type: Data.self) { await begin(with: data, live: nil, fromCamera: false) }
+                capturing = true
+                defer { capturing = false }
+                if let data = try? await item.loadTransferable(type: Data.self) {
+                    await begin(with: data, live: nil, fromCamera: false)
+                } else {
+                    Haptics.shared.nope()
+                }
                 pickerItem = nil
             }
         }
         .fullScreenCover(item: $draft, onDismiss: {
             camera.resetReading()
-            Task { await camera.start() }
+            if visible { Task { await camera.start() } }
         }) { d in
             RevealView(draft: d)
         }
@@ -263,6 +280,7 @@ struct CatchView: View {
                     .background(Palette.thumb, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).stroke(Color.white.opacity(0.18)))
                 }
+                .disabled(capturing)
                 .accessibilityLabel("Import a photo")
 
                 Spacer()
@@ -333,6 +351,8 @@ struct CatchView: View {
     }
 
     private func hint(_ match: ModelMatch?) -> String {
+        // The full-res read (and tile pass) can take a second or two on device.
+        if capturing { return "READING THE NUMBER…" }
         switch camera.status {
         case .running: break
         case .idle: return "WAKING THE CAMERA"
@@ -355,6 +375,7 @@ struct CatchView: View {
     // MARK: - Actions
 
     private func shoot() async {
+        guard !capturing else { return }
         capturing = true
         defer { capturing = false }
         Haptics.shared.shutter()
@@ -373,7 +394,10 @@ struct CatchView: View {
         }
         var number = live
         if number == nil { number = await TextReader.bestNumber(in: data, mode: mode) }
-        var d = CatchDraft(photo: data, number: number, fromCamera: fromCamera, sticker: sticker)
+        let preview = await Task.detached(priority: .userInitiated) {
+            PhotoStore.downsample(data, maxPixel: 900).map(UIImage.init(cgImage:))
+        }.value
+        var d = CatchDraft(photo: data, number: number, fromCamera: fromCamera, sticker: sticker, preview: preview)
         if let n = number { d.modelId = catalog.match(number: n, kind: mode.kind, manual: manual.map).suggested?.id }
         if fromCamera {
             if geotag { d.geotag = Task { await LocationService.shared.geotag() } }

@@ -3,8 +3,11 @@ import SwiftUI
 import Vision
 
 /// Owns the capture session, runs live OCR on video frames and takes stills.
+/// One shared instance, so hopping between tabs reuses the configured session.
 @Observable
 final class CameraModel: NSObject, @unchecked Sendable {
+    static let shared = CameraModel()
+
     enum Status { case idle, running, denied, unavailable }
 
     private(set) var status: Status = .idle
@@ -31,6 +34,13 @@ final class CameraModel: NSObject, @unchecked Sendable {
     @ObservationIgnored private var configured = false
     @ObservationIgnored private var device: AVCaptureDevice?
     @ObservationIgnored private var photoContinuation: CheckedContinuation<Data?, Never>?
+    /// Tracks how the phone is held so stills and OCR stay upright even though the UI is portrait-only.
+    @ObservationIgnored private var rotation: AVCaptureDevice.RotationCoordinator?
+    @ObservationIgnored private var rotationObservation: NSKeyValueObservation?
+    @ObservationIgnored private var _captureAngle: CGFloat = 90
+
+    /// Horizon-level rotation for captured frames, in degrees. Guarded by `lock`.
+    private var captureAngle: CGFloat { lock.withLock { _captureAngle } }
 
     // MARK: - Lifecycle
 
@@ -95,6 +105,15 @@ final class CameraModel: NSObject, @unchecked Sendable {
         }
         cam.unlockForConfiguration()
 
+        let coordinator = AVCaptureDevice.RotationCoordinator(device: cam, previewLayer: nil)
+        rotationObservation = coordinator.observe(\.videoRotationAngleForHorizonLevelCapture, options: [.initial, .new]) {
+            [weak self] c, _ in
+            guard let self else { return }
+            let angle = c.videoRotationAngleForHorizonLevelCapture
+            lock.withLock { self._captureAngle = angle }
+        }
+        rotation = coordinator
+
         device = cam
         configured = true
         return true
@@ -119,9 +138,11 @@ final class CameraModel: NSObject, @unchecked Sendable {
         guard let d = device else { return }
         sessionQueue.async {
             try? d.lockForConfiguration()
+            // Refocus around the tapped point but keep tracking: the next bus is never
+            // at the same distance, so a one-shot focus lock would leave it blurry.
             if d.isFocusPointOfInterestSupported {
                 d.focusPointOfInterest = devicePoint
-                d.focusMode = .autoFocus
+                d.focusMode = d.isFocusModeSupported(.continuousAutoFocus) ? .continuousAutoFocus : .autoFocus
             }
             if d.isExposurePointOfInterestSupported {
                 d.exposurePointOfInterest = devicePoint
@@ -135,8 +156,12 @@ final class CameraModel: NSObject, @unchecked Sendable {
     func capture() async -> Data? {
         await withCheckedContinuation { cont in
             sessionQueue.async {
-                guard self.session.isRunning else { cont.resume(returning: nil); return }
+                guard self.session.isRunning, self.photoContinuation == nil else { cont.resume(returning: nil); return }
                 self.photoContinuation = cont
+                if let conn = self.photoOutput.connection(with: .video) {
+                    let angle = self.captureAngle
+                    if conn.isVideoRotationAngleSupported(angle) { conn.videoRotationAngle = angle }
+                }
                 let settings = AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.jpeg])
                 settings.photoQualityPrioritization = .balanced
                 if let d = self.device, d.hasFlash { settings.flashMode = .off }
@@ -168,7 +193,7 @@ extension CameraModel: AVCaptureVideoDataOutputSampleBufferDelegate {
         request.recognitionLevel = .fast
         request.usesLanguageCorrection = false
         request.minimumTextHeight = 0.02
-        let handler = VNImageRequestHandler(cvPixelBuffer: pixels, orientation: .right)
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixels, orientation: .init(bufferAngle: captureAngle))
         try? handler.perform([request])
 
         let observations = TextReader.observations(from: request.results ?? [])
@@ -239,6 +264,16 @@ enum TextReader {
 }
 
 extension CGImagePropertyOrientation {
+    /// Orientation of a raw (landscape) camera buffer, given the capture rotation angle.
+    init(bufferAngle: CGFloat) {
+        switch Int(bufferAngle.rounded()) {
+        case 0: self = .up
+        case 180: self = .down
+        case 270: self = .left
+        default: self = .right
+        }
+    }
+
     init(_ o: UIImage.Orientation) {
         switch o {
         case .up: self = .up

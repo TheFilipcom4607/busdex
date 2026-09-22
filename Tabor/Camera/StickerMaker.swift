@@ -17,14 +17,8 @@ enum StickerMaker {
     private static let context = CIContext(options: [.cacheIntermediates: false])
 
     static func sticker(from data: Data, options: Options = Options()) -> CGImage? {
-        guard let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
         // Downsample + apply EXIF orientation in one go.
-        let thumbOpts: [CFString: Any] = [
-            kCGImageSourceCreateThumbnailFromImageAlways: true,
-            kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceThumbnailMaxPixelSize: options.maxSide,
-        ]
-        guard let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, thumbOpts as CFDictionary) else { return nil }
+        guard let cg = PhotoStore.downsample(data, maxPixel: Int(options.maxSide)) else { return nil }
         return sticker(from: cg, options: options)
     }
 

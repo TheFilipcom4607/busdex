@@ -1,6 +1,7 @@
 import ImageIO
 import Photos
 import UIKit
+import UniformTypeIdentifiers
 
 /// Catch photos live in Application Support; stickers load downsampled thumbnails.
 enum PhotoStore {
@@ -24,6 +25,28 @@ enum PhotoStore {
     }
 
     static func url(_ file: String) -> URL { dir.appendingPathComponent(file) }
+
+    /// "heic" for library imports shot on an iPhone, "jpg" for camera catches — so shared
+    /// files open everywhere with the right type.
+    static func fileExtension(of data: Data) -> String {
+        guard let src = CGImageSourceCreateWithData(data as CFData, nil),
+              let id = CGImageSourceGetType(src),
+              let ext = UTType(id as String)?.preferredFilenameExtension
+        else { return "jpg" }
+        return ext == "jpeg" ? "jpg" : ext
+    }
+
+    /// Decodes a downsampled, upright copy of an image without touching the full-res pixels.
+    static func downsample(_ data: Data, maxPixel: Int) -> CGImage? {
+        guard let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        let opts: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary)
+    }
 
     static func thumbnail(_ file: String, maxPixel: Int) -> UIImage? {
         let key = "\(file)@\(maxPixel)" as NSString
