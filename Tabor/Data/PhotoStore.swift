@@ -26,6 +26,15 @@ enum PhotoStore {
 
     static func url(_ file: String) -> URL { dir.appendingPathComponent(file) }
 
+    /// Removes every stored photo and sticker (the folder itself stays).
+    static func deleteAll() {
+        let fm = FileManager.default
+        for f in (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [] {
+            try? fm.removeItem(at: f)
+        }
+        cache.removeAllObjects()
+    }
+
     /// "heic" for library imports shot on an iPhone, "jpg" for camera catches — so shared
     /// files open everywhere with the right type.
     static func fileExtension(of data: Data) -> String {

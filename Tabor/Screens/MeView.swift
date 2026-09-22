@@ -279,6 +279,9 @@ struct SettingsSheet: View {
     @State private var exportURL: URL?
     @State private var exporting = false
     @State private var confirmDelete = false
+    @State private var confirmWipe = false
+    @Query private var allSightings: [Sighting]
+    @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -308,6 +311,10 @@ struct SettingsSheet: View {
                         Button("Delete debug data", role: .destructive) { confirmDelete = true }
                             .disabled(debugCount == 0)
                     }
+                    if debugMode {
+                        Button("Delete all catches", role: .destructive) { confirmWipe = true }
+                            .disabled(allSightings.isEmpty)
+                    }
                 } header: {
                     Text("Debug")
                 } footer: {
@@ -331,6 +338,11 @@ struct SettingsSheet: View {
         .presentationDetents([.medium, .large])
         .onAppear { debugCount = DebugRecord.count }
         .sheet(item: $exportURL) { url in ShareSheet(items: [url]) }
+        .confirmationDialog("Delete all \(allSightings.count) catches?", isPresented: $confirmWipe, titleVisibility: .visible) {
+            Button("Delete everything in the book", role: .destructive) { wipeBook() }
+        } message: {
+            Text("Every sighting, photo, sticker and hand-picked model goes. Shots already saved to your Photos stay. This can't be undone.")
+        }
         .confirmationDialog("Delete all debug data?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete \(debugCount) shots", role: .destructive) {
                 DebugRecord.deleteAll()
@@ -354,6 +366,17 @@ struct HapticsLab: View {
         }
         .navigationTitle("Haptics lab")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+extension SettingsSheet {
+    /// Debug: start the book from scratch.
+    func wipeBook() {
+        try? context.delete(model: Sighting.self)
+        try? context.delete(model: ManualAssignment.self)
+        try? context.save()
+        PhotoStore.deleteAll()
+        Haptics.shared.nope()
     }
 }
 
