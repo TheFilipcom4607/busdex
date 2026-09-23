@@ -44,10 +44,14 @@ struct CatchView: View {
     /// Sticking a catch jumps to the Book tab while the reveal is still up; the cover's
     /// dismissal must not wake the camera behind a screen that's gone.
     @State private var visible = false
-    /// The viewfinder's size and the brackets inside it: shots are cropped to the brackets,
-    /// so what you framed is what gets saved.
-    @State private var finderSize: CGSize = .zero
-    @State private var bracketFrame: CGRect = .zero
+    /// The viewfinder and the brackets inside it (screen coordinates): shots are cropped to
+    /// the brackets, so what you framed is what gets saved.
+    @State private var finderFrame: CGRect = .zero
+    @State private var bracketGlobal: CGRect = .zero
+    /// Brief confirmation in the hint pill ("GEOTAG OFF").
+    @State private var toast: String?
+    @State private var toastTask: Task<Void, Never>?
+    @Namespace private var modePill
     /// Zoom when the current pinch started.
     @State private var pinchStart: CGFloat?
     @Environment(\.scenePhase) private var scenePhase
@@ -58,94 +62,68 @@ struct CatchView: View {
         let stats = sightings.stats
         let match = camera.reading.map { catalog.match(number: $0, preferring: mode.kind, manual: manual.map) }
 
-        VStack(spacing: 0) {
-            ZStack {
-                viewfinder
-                LinearGradient(stops: [
-                    .init(color: Color(hex: 0x060709, opacity: 0.78), location: 0),
-                    .init(color: Color(hex: 0x060709, opacity: 0.05), location: 0.22),
-                    .init(color: .clear, location: 0.45),
-                    .init(color: Color(hex: 0x060709, opacity: 0.6), location: 1),
-                ], startPoint: .top, endPoint: .bottom)
-                .allowsHitTesting(false)
-
-                VStack(spacing: 0) {
-                    HStack {
-                        Mono("SPOTTING", size: 12, spacing: 0.16, color: .white.opacity(0.75))
-                        if debugMode {
-                            Mono("DEBUG", size: 9.5, weight: 700, spacing: 0.1, color: .white)
-                                .padding(.vertical, 3)
-                                .padding(.horizontal, 6)
-                                .background(Palette.red, in: RoundedRectangle(cornerRadius: 4))
-                        }
-                        Spacer()
-                        HStack(spacing: 6) {
-                            ForEach(CatchMode.allCases, id: \.self) { m in
-                                Button {
-                                    guard m != mode else { return }
-                                    Haptics.shared.tick()
-                                    withAnimation(.snappy) { mode = m }
-                                    camera.mode = m
-                                } label: {
-                                    Mono(m.rawValue, size: 12, weight: m == mode ? 600 : 400, spacing: 0.1,
-                                         color: m == mode ? Palette.bg : .white.opacity(0.8))
-                                        .padding(.vertical, 6)
-                                        .padding(.horizontal, 11)
-                                        .background {
-                                            if m == mode { Capsule().fill(Palette.yellow) }
-                                            else { Capsule().fill(.ultraThinMaterial).overlay(Capsule().fill(Color(hex: 0x0A0C0E, opacity: 0.4))) }
-                                        }
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
+        ZStack {
+            // Full bleed: the camera runs up under the Dynamic Island, like the Camera app.
+            viewfinder
+                .overlay {
+                    if let p = focusPoint {
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Palette.yellow, lineWidth: 1.5)
+                            .frame(width: 64, height: 64)
+                            .position(p)
+                            .transition(.scale(scale: 1.4).combined(with: .opacity))
+                            .allowsHitTesting(false)
                     }
-                    .padding(.top, 10)
-                    .padding(.horizontal, 22)
-
-                    Mono(hint(match), size: 11, spacing: 0.12, color: .white.opacity(0.7))
-                        .padding(.vertical, 5)
-                        .padding(.horizontal, 10)
-                        .background(.ultraThinMaterial.opacity(0.6), in: Capsule())
-                        .padding(.top, 12)
-                        .contentTransition(.opacity)
-                        .animation(.easeInOut, value: hint(match))
-
-                    // A 3:2 landscape frame, like a photo: the shot is cropped to it.
-                    ViewfinderBrackets(locked: camera.reading != nil)
-                        .opacity(camera.status == .running ? 1 : 0)
-                        .aspectRatio(3 / 2, contentMode: .fit)
-                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("finder")) } action: { bracketFrame = $0 }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 44)
-                        .allowsHitTesting(false)
-
-                    Spacer()
-
-                    readChip(match: match, stats: stats)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 18)
                 }
+                .clipped()
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { finderFrame = $0 }
+                .ignoresSafeArea(edges: .top)
 
-                if let p = focusPoint {
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Palette.yellow, lineWidth: 1.5)
-                        .frame(width: 64, height: 64)
-                        .position(p)
-                        .transition(.scale(scale: 1.4).combined(with: .opacity))
-                        .allowsHitTesting(false)
-                }
+            LinearGradient(stops: [
+                .init(color: Color(hex: 0x060709, opacity: 0.8), location: 0),
+                .init(color: Color(hex: 0x060709, opacity: 0.05), location: 0.24),
+                .init(color: .clear, location: 0.5),
+                .init(color: Color(hex: 0x060709, opacity: 0.35), location: 0.72),
+                .init(color: Color(hex: 0x060709, opacity: 0.88), location: 1),
+            ], startPoint: .top, endPoint: .bottom)
+            .ignoresSafeArea(edges: .top)
+            .allowsHitTesting(false)
 
-                Color.white.opacity(flash ? 0.85 : 0).allowsHitTesting(false)
+            VStack(spacing: 0) {
+                topBar
+                    .padding(.top, 6)
+                    .padding(.horizontal, 20)
+
+                hintPill(match)
+                    .padding(.top, 14)
+
+                Spacer(minLength: 12)
+
+                // A 3:2 landscape frame, like a photo: the shot is cropped to it.
+                ViewfinderBrackets(locked: camera.reading != nil)
+                    .opacity(camera.status == .running ? 1 : 0)
+                    .aspectRatio(3 / 2, contentMode: .fit)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { bracketGlobal = $0 }
+                    .padding(.horizontal, 20)
+                    .allowsHitTesting(false)
+
+                Spacer(minLength: 12)
+
+                // Fixed slot, so the brackets don't jump when a number locks.
+                readChip(match: match, stats: stats)
+                    .frame(maxWidth: .infinity, maxHeight: 78, alignment: .bottomLeading)
+                    .padding(.horizontal, 20)
+
+                controls
+                    .padding(.top, 16)
+                    .padding(.bottom, 16)
             }
-            .coordinateSpace(.named("finder"))
-            .onGeometryChange(for: CGSize.self) { $0.size } action: { finderSize = $0 }
-            .clipped()
 
-            controls(stats: stats)
+            Color.white.opacity(flash ? 0.85 : 0)
+                .ignoresSafeArea(edges: .top)
+                .allowsHitTesting(false)
         }
-        .background(Palette.bg)
+        .background(Color.black.ignoresSafeArea())
         .onAppear { visible = true }
         .task {
             camera.mode = mode
@@ -286,32 +264,85 @@ struct CatchView: View {
         }
     }
 
-    private func controls(stats: CollectionStats) -> some View {
-        VStack(spacing: 0) {
-            if camera.status == .running, camera.zoomStops.count > 1 {
-                zoomBar.padding(.top, 12)
+    private var topBar: some View {
+        HStack(spacing: 8) {
+            Mono("SPOTTING", size: 12, spacing: 0.16, color: .white.opacity(0.8))
+            if debugMode {
+                Mono("DEBUG", size: 9.5, weight: 700, spacing: 0.1, color: .white)
+                    .padding(.vertical, 3)
+                    .padding(.horizontal, 6)
+                    .background(Palette.red, in: RoundedRectangle(cornerRadius: 4))
             }
-            HStack(spacing: 16) {
-                toggleChip("SAVE TO GALLERY", on: $saveToGallery)
-                toggleChip("GEOTAG", on: $geotag)
+            Spacer()
+            // One segmented control with a highlight that slides between modes.
+            HStack(spacing: 0) {
+                ForEach(CatchMode.allCases, id: \.self) { m in
+                    let on = m == mode
+                    Button {
+                        guard !on else { return }
+                        Haptics.shared.tick()
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) { mode = m }
+                        camera.mode = m
+                    } label: {
+                        Mono(m.rawValue, size: 11.5, weight: 600, spacing: 0.1,
+                             color: on ? Palette.bg : .white.opacity(0.72))
+                            .padding(.vertical, 7)
+                            .padding(.horizontal, 12)
+                            .background {
+                                if on { Capsule().fill(Palette.yellow).matchedGeometryEffect(id: "mode", in: modePill) }
+                            }
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(on ? .isSelected : [])
+                }
             }
-            .padding(.top, 12)
+            .padding(3)
+            .glass(Capsule())
+        }
+    }
+
+    private func hintPill(_ match: ModelMatch?) -> some View {
+        let locked = camera.reading != nil && toast == nil
+        let text = toast ?? hint(match)
+        return HStack(spacing: 7) {
+            Circle()
+                .fill(locked ? Palette.yellow : .white)
+                .frame(width: 5, height: 5)
+                .shadow(color: locked ? Palette.yellow : .clear, radius: 4)
+                .phaseAnimator([0.35, 1]) { v, p in v.opacity(locked ? 1 : p) } animation: { _ in .easeInOut(duration: 0.8) }
+            Text(text)
+                .font(TaborFont.mono(10.5, 500))
+                .em(0.12, size: 10.5)
+                .foregroundStyle(.white.opacity(0.85))
+                .contentTransition(.opacity)
+        }
+        .padding(.vertical, 6)
+        .padding(.leading, 10)
+        .padding(.trailing, 12)
+        .glass(Capsule())
+        .animation(.easeInOut(duration: 0.2), value: text)
+    }
+
+    private var controls: some View {
+        VStack(spacing: 16) {
+            HStack {
+                settingToggle($geotag, name: "GEOTAG", on: "location.fill", off: "location.slash.fill")
+                Spacer()
+                if camera.status == .running, camera.zoomStops.count > 1 { zoomBar }
+                Spacer()
+                settingToggle($saveToGallery, name: "SAVE TO PHOTOS", on: "photo.badge.arrow.down.fill", off: "photo.badge.arrow.down")
+            }
 
             HStack {
                 PhotosPicker(selection: $pickerItem, matching: .images) {
-                    VStack(spacing: 1) {
-                        Text(stats.caught.grouped)
-                            .font(TaborFont.mono(11, 700))
-                            .foregroundStyle(Palette.ink)
-                            .contentTransition(.numericText())
-                        Image(systemName: "photo.on.rectangle")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(Palette.faint)
-                    }
-                    .frame(width: 46, height: 46)
-                    .background(Palette.thumb, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).stroke(Color.white.opacity(0.18)))
+                    Image(systemName: "photo.on.rectangle.angled")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.85))
+                        .frame(width: 50, height: 50)
+                        .glass(Circle())
                 }
+                .buttonStyle(StickerPressStyle())
                 .disabled(capturing)
                 .accessibilityLabel("Import a photo")
 
@@ -321,18 +352,21 @@ struct CatchView: View {
                 Button {
                     Task { await shoot() }
                 } label: {
+                    let locked = camera.reading != nil
                     ZStack {
-                        Circle().stroke(camera.reading != nil ? Palette.yellow : .white.opacity(0.92), lineWidth: 4)
-                            .frame(width: 74, height: 74)
+                        Circle().stroke(locked ? Palette.yellow : .white.opacity(0.92), lineWidth: 4)
+                            .frame(width: 76, height: 76)
+                            .shadow(color: Palette.yellow.opacity(locked ? 0.55 : 0), radius: 12)
                         Circle().fill(Palette.red)
-                            .frame(width: 56, height: 56)
+                            .frame(width: 60, height: 60)
                             .scaleEffect(shutterDown ? 0.86 : 1)
                     }
                     .animation(.spring(response: 0.25, dampingFraction: 0.5), value: shutterDown)
-                    .animation(.easeInOut(duration: 0.25), value: camera.reading != nil)
+                    .animation(.easeInOut(duration: 0.25), value: locked)
                 }
                 .buttonStyle(ShutterStyle(pressed: $shutterDown))
                 .disabled(capturing || camera.status != .running)
+                .opacity(camera.status == .running ? 1 : 0.4)
                 .accessibilityLabel("Catch")
 
                 Spacer()
@@ -342,22 +376,20 @@ struct CatchView: View {
                     camera.toggleTorch()
                 } label: {
                     Image(systemName: camera.torchOn ? "flashlight.on.fill" : "flashlight.off.fill")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(camera.torchOn ? Palette.yellow : .white.opacity(0.65))
-                        .frame(width: 46, height: 46)
-                        .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(camera.torchOn ? Palette.bg : .white.opacity(0.85))
                         .contentTransition(.symbolEffect(.replace))
+                        .frame(width: 50, height: 50)
+                        .background(Palette.yellow.opacity(camera.torchOn ? 1 : 0), in: Circle())
+                        .glass(Circle())
                 }
                 .buttonStyle(.plain)
                 .opacity(camera.hasTorch ? 1 : 0.35)
                 .disabled(!camera.hasTorch)
                 .accessibilityLabel("Torch")
             }
-            .padding(.horizontal, 34)
-            .padding(.top, 14)
-            .padding(.bottom, 10)
         }
-        .background(Palette.bg)
+        .padding(.horizontal, 28)
     }
 
     /// One button per lens, like the Camera app: the active one shows the exact zoom.
@@ -377,15 +409,15 @@ struct CatchView: View {
                         .foregroundStyle(on ? Palette.bg : .white.opacity(0.8))
                         .frame(minWidth: on ? 44 : 34, minHeight: on ? 34 : 30)
                         .padding(.horizontal, on ? 4 : 0)
-                        .background(on ? Palette.yellow : Color.white.opacity(0.1), in: Capsule())
+                        .background(on ? Palette.yellow : Color.clear, in: Capsule())
                         .contentTransition(.numericText())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Zoom \(Self.zoomLabel(s)) times")
             }
         }
-        .padding(4)
-        .background(Color.white.opacity(0.05), in: Capsule())
+        .padding(3)
+        .glass(Capsule())
         .animation(.snappy(duration: 0.2), value: active)
     }
 
@@ -395,26 +427,36 @@ struct CatchView: View {
         return r == r.rounded() ? String(Int(r)) : String(format: "%.1f", r)
     }
 
-    private func toggleChip(_ label: String, on: Binding<Bool>) -> some View {
-        Button {
+    /// Icon toggle for a capture setting; the hint pill confirms which way it went.
+    private func settingToggle(_ value: Binding<Bool>, name: String, on: String, off: String) -> some View {
+        let isOn = value.wrappedValue
+        return Button {
             Haptics.shared.tick()
-            withAnimation(.snappy) { on.wrappedValue.toggle() }
+            value.wrappedValue.toggle()
+            showToast("\(name) \(value.wrappedValue ? "ON" : "OFF")")
         } label: {
-            HStack(spacing: 5) {
-                if on.wrappedValue {
-                    Image(systemName: "checkmark").font(.system(size: 9, weight: .heavy))
-                        .transition(.scale.combined(with: .opacity))
-                }
-                Mono(label, size: 10.5, weight: on.wrappedValue ? 600 : 400,
-                     color: on.wrappedValue ? Palette.green : Palette.dim)
-            }
-            .foregroundStyle(Palette.green)
-                .padding(.vertical, 5)
-                .padding(.horizontal, 10)
-                .background(on.wrappedValue ? Palette.green.opacity(0.12) : .clear, in: Capsule())
-                .overlay(Capsule().stroke(on.wrappedValue ? Palette.green.opacity(0.3) : Color.white.opacity(0.12)))
+            Image(systemName: isOn ? on : off)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(isOn ? Palette.green : .white.opacity(0.5))
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: 36, height: 36)
+                .glass(Circle())
+                .overlay(Circle().stroke(Palette.green.opacity(isOn ? 0.35 : 0)))
+                .frame(width: 50)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(name.capitalized)
+        .accessibilityValue(isOn ? "On" : "Off")
+    }
+
+    private func showToast(_ text: String) {
+        toastTask?.cancel()
+        toast = text
+        toastTask = Task {
+            try? await Task.sleep(for: .seconds(1.4))
+            guard !Task.isCancelled else { return }
+            toast = nil
+        }
     }
 
     private func hint(_ match: ModelMatch?) -> String {
@@ -469,8 +511,10 @@ struct CatchView: View {
         }
         // Held upright: keep only what's inside the brackets (plus a little breathing room).
         // Held sideways the whole landscape frame is already what you meant.
-        if angle == 90, bracketFrame.width > 0 {
-            let size = finderSize, frame = bracketFrame.insetBy(dx: -bracketFrame.width * 0.04, dy: -bracketFrame.height * 0.04)
+        if angle == 90, bracketGlobal.width > 0, finderFrame.width > 0 {
+            let size = finderFrame.size
+            let brackets = bracketGlobal.offsetBy(dx: -finderFrame.minX, dy: -finderFrame.minY)
+            let frame = brackets.insetBy(dx: -brackets.width * 0.04, dy: -brackets.height * 0.04)
             let full = data
             if let cropped = await Task.detached(priority: .userInitiated, operation: {
                 PhotoStore.crop(full, viewSize: size, frame: frame)
@@ -540,6 +584,16 @@ struct CatchView: View {
         }
         camera.stop()
         draft = d
+    }
+}
+
+extension View {
+    /// Frosted dark glass for controls floating over the live camera.
+    func glass<S: Shape>(_ shape: S) -> some View {
+        background(.ultraThinMaterial, in: shape)
+            .background(Color(hex: 0x0A0C0E, opacity: 0.35), in: shape)
+            .overlay(shape.stroke(Color.white.opacity(0.1), lineWidth: 1))
+            .environment(\.colorScheme, .dark)
     }
 }
 

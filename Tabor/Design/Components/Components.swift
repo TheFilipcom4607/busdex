@@ -172,6 +172,17 @@ struct KindTag: View {
 }
 
 /// Top row of every inner screen: grey mono label on the left, action on the right.
+extension View {
+    /// Rows slide out from under a pinned header instead of being cut off at a hard line.
+    func softTopEdge(_ height: CGFloat = 16) -> some View {
+        overlay(alignment: .top) {
+            LinearGradient(colors: [Palette.bg, Palette.bg.opacity(0)], startPoint: .top, endPoint: .bottom)
+                .frame(height: height)
+                .allowsHitTesting(false)
+        }
+    }
+}
+
 struct TopBar<Leading: View, Trailing: View>: View {
     @ViewBuilder var leading: () -> Leading
     @ViewBuilder var trailing: () -> Trailing

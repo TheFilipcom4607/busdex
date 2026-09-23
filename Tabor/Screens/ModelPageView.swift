@@ -125,6 +125,7 @@ struct ModelPageView: View {
                 .padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)
+            .softTopEdge()
         }
         .taborScreen()
     }

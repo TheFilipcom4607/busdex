@@ -38,17 +38,16 @@ struct RootView: View {
     @State private var router = Router()
 
     var body: some View {
-        VStack(spacing: 0) {
-            ZStack {
-                switch router.tab {
-                case .catchTab: CatchView()
-                case .book: BookTab()
-                case .me: MeView()
-                }
+        ZStack {
+            switch router.tab {
+            case .catchTab: CatchView()
+            case .book: BookTab()
+            case .me: MeView()
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            TabBar(selection: $router.tab)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // An inset rather than a stacked row: lists scroll on under the frosted bar.
+        .safeAreaInset(edge: .bottom, spacing: 0) { TabBar(selection: $router.tab) }
         .background(Palette.bg.ignoresSafeArea())
         .environment(router)
         // The Lock Screen / Control Center control lands here.
@@ -79,9 +78,28 @@ extension View {
     /// Custom headers replace the system navigation bar everywhere.
     func taborScreen() -> some View {
         frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            // Scrolled content runs up under the Dynamic Island; fade it out behind the clock.
+            .overlay { StatusBarScrim() }
             .background(Palette.bg.ignoresSafeArea())
             .foregroundStyle(Palette.ink)
             .toolbar(.hidden, for: .navigationBar)
+    }
+}
+
+/// Solid behind the status bar, fading out just below it.
+struct StatusBarScrim: View {
+    var body: some View {
+        GeometryReader { g in
+            let top = g.safeAreaInsets.top, fade: CGFloat = 10
+            LinearGradient(stops: [
+                .init(color: Palette.bg.opacity(0.96), location: 0),
+                .init(color: Palette.bg.opacity(0.85), location: top / (top + fade)),
+                .init(color: Palette.bg.opacity(0), location: 1),
+            ], startPoint: .top, endPoint: .bottom)
+            .frame(height: top + fade)
+        }
+        .ignoresSafeArea(edges: .top)
+        .allowsHitTesting(false)
     }
 }
 

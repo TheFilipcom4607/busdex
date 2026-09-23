@@ -85,6 +85,7 @@ struct BookIndexView: View {
                 .padding(.horizontal, 22)
             }
             .scrollIndicators(.hidden)
+            .softTopEdge()
         }
         .taborScreen()
     }

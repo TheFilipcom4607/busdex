@@ -66,7 +66,12 @@ struct TabBar: View {
         .padding(.horizontal, 10)
         .padding(.top, 4)
         .padding(.bottom, 2)
-        .background(Palette.bg.ignoresSafeArea(edges: .bottom))
+        // Frosted, so whatever scrolls underneath still reads as being there.
+        .background {
+            Rectangle().fill(.ultraThinMaterial)
+                .overlay(Palette.bg.opacity(0.72))
+                .ignoresSafeArea(edges: .bottom)
+        }
         .overlay(alignment: .top) { Rectangle().fill(Palette.hairline).frame(height: 1) }
     }
 }
