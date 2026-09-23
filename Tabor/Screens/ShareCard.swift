@@ -126,8 +126,9 @@ struct ShareCard: View {
                     .shadow(color: .black.opacity(0.6), radius: 14, y: 12)
                     .padding(.bottom, 16)
             }
+            // Tucked up onto the art, like a label slapped over the sticker's edge.
             NumberTag(number: number, size: 24) { EmptyView() }
-                .offset(x: -6)
+                .offset(x: -6, y: -12)
         }
     }
 
