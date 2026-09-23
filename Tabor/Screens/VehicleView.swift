@@ -6,6 +6,7 @@ struct VehicleView: View {
     let number: Int
     @Query(sort: \Sighting.date, order: .reverse) private var sightings: [Sighting]
     @Environment(\.dismiss) private var dismiss
+    @State private var share: CatchShare?
 
     var body: some View {
         let model = Fleet.catalog.model(id: modelId)
@@ -22,8 +23,11 @@ struct VehicleView: View {
                     }
                     .buttonStyle(.plain)
                 } trailing: {
-                    if let file = mine.first(where: { $0.photoFile != nil })?.photoFile {
-                        ShareLink(item: PhotoStore.url(file)) { Mono("SHARE", size: 12) }
+                    if let share {
+                        ShareLink(item: Image(uiImage: share.image), subject: Text(share.title), message: Text(share.message),
+                                  preview: SharePreview(share.title, image: Image(uiImage: share.image))) {
+                            Mono("SHARE", size: 12)
+                        }
                     }
                 }
 
@@ -135,6 +139,14 @@ struct VehicleView: View {
         }
         .scrollIndicators(.hidden)
         .taborScreen()
+        // Render the share card up front so SHARE opens instantly.
+        .task(id: mine.first?.id) {
+            guard let latest = mine.first else { return share = nil }
+            share = CatchShare.make(number: number, model: model, sighting: latest,
+                                    sticker: sightings.sticker(number: number, modelId: modelId),
+                                    photo: sightings.photo(number: number, modelId: modelId),
+                                    owned: sightings.stats.ownedCount(modelId: modelId))
+        }
     }
 
     private func age(_ year: Int?) -> String {
