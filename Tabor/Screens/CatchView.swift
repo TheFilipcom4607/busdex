@@ -10,6 +10,8 @@ struct CatchDraft: Identifiable {
     var number: Int?
     var modelId: String?
     var line: String?
+    /// The line the live feed filled in; re-filled after a correction unless you changed it.
+    var autoLine: String?
     /// True when the user picked the model themselves — saved as a manual assignment.
     var modelPickedByHand = false
     /// Now for camera shots; the photo's own EXIF date for imports.
@@ -34,6 +36,7 @@ struct CatchView: View {
     @AppStorage(DebugRecord.enabledKey) private var debugMode = false
 
     private let camera = CameraModel.shared
+    private let live = LiveFleetService.shared
     @State private var mode: CatchMode = .auto
     @State private var draft: CatchDraft?
     @State private var flash = false
@@ -60,7 +63,7 @@ struct CatchView: View {
 
     var body: some View {
         let stats = sightings.stats
-        let match = camera.reading.map { catalog.match(number: $0, preferring: mode.kind, manual: manual.map) }
+        let match = camera.reading.map { lookup($0, nearby: live.nearby) }
 
         ZStack {
             // Full bleed: the camera runs up under the Dynamic Island, like the Camera app.
@@ -127,6 +130,7 @@ struct CatchView: View {
         .onAppear { visible = true }
         .task {
             camera.mode = mode
+            live.start("camera")
             await camera.start()
             // Ask for location now, while spotting — never in the middle of a reveal.
             if geotag { LocationService.shared.requestPermission() }
@@ -134,14 +138,22 @@ struct CatchView: View {
         .onDisappear {
             visible = false
             camera.stop()
+            live.stop("camera")
         }
         .onChange(of: scenePhase) { _, phase in
+            if phase == .active, visible { live.start("camera") }
             if phase == .active, draft == nil, visible { Task { await camera.start() } }
-            if phase == .background { camera.stop() }
+            if phase == .background {
+                camera.stop()
+                live.stop("camera")
+            }
         }
+        // Live OCR leans towards what's physically around you.
+        .onChange(of: live.nearby, initial: true) { _, nearby in camera.nearby = nearby }
+        .onChange(of: LocationService.shared.latest) { live.locationMoved() }
         .onChange(of: camera.reading) { _, n in
             guard let n else { return }
-            let m = catalog.match(number: n, preferring: mode.kind, manual: manual.map)
+            let m = lookup(n, nearby: live.nearby)
             let isNew = m.suggested.map { stats.vehicle(number: n, modelId: $0.id) == nil } ?? false
             Haptics.shared.numberLocked(isNew: isNew)
         }
@@ -478,9 +490,23 @@ struct CatchView: View {
         case .certain(let m) where mode.kind != nil && m.kind != mode.kind:
             "A \(m.kind.rawValue) NUMBER · YOU'RE IN \(mode.rawValue) MODE"
         case .certain(let m):
-            [m.vintage ? "VINTAGE" : nil, m.kind.rawValue, m.batch(containing: camera.reading ?? 0)?.year.map { "BUILT \($0)" }, "TAP TO CATCH"]
+            [m.vintage ? "VINTAGE" : nil, m.kind.rawValue, liveLine(camera.reading, kind: m.kind).map { "LINE \($0)" },
+             m.batch(containing: camera.reading ?? 0)?.year.map { "BUILT \($0)" }, "TAP TO CATCH"]
                 .compactMap { $0 }.joined(separator: " · ")
         }
+    }
+
+    /// The database match, settled by the live feed when only one kind with that number is
+    /// running nearby. A model you picked by hand for this number always wins.
+    private func lookup(_ n: Int, nearby: [NearbyVehicle]) -> ModelMatch {
+        let m = catalog.match(number: n, preferring: mode.kind, manual: manual.map)
+        guard manual.map[n] == nil else { return m }
+        return LiveHints.resolve(m, number: n, nearby: nearby, catalog: catalog)
+    }
+
+    /// The line a vehicle right in front of you is running on.
+    private func liveLine(_ n: Int?, kind: VehicleKind) -> String? {
+        live.nearby.first { $0.vehicle.number == n && $0.vehicle.kind == kind }?.vehicle.line.nonEmpty
     }
 
     // MARK: - Actions
@@ -546,17 +572,28 @@ struct CatchView: View {
             }
             return png
         }
+        // An imported photo could be from anywhere, any day: only fresh shots use the feed.
+        let nearby = fromCamera && self.live.fresh() != nil ? self.live.nearby : []
+        var liveInfo = DebugRecord.Live(status: "\(self.live.status)",
+                                        snapshotAge: self.live.snapshot.map { Int(Date().timeIntervalSince($0.fetched)) },
+                                        nearby: nearby.map { "\($0.vehicle.kind.rawValue) \($0.vehicle.number) · line \($0.vehicle.line) · \(Int($0.distance)) m" })
         var number = live
         if number == nil {
-            let report = await TextReader.read(data, mode: mode)
+            let report = await TextReader.read(data, mode: mode, nearby: nearby)
             number = report.number
+            liveInfo.boosted = report.live.boosted
+            liveInfo.rescued = report.live.rescued
             record?.update { $0.ocr = DebugRecord.ocr(report) }
-        } else if let record {
-            // Live lock skipped the still read; run it anyway in the background to compare.
-            let mode = mode
-            Task.detached(priority: .utility) {
-                let report = await TextReader.read(data, mode: mode)
-                record.update { $0.stillCheck = DebugRecord.ocr(report) }
+        } else {
+            // The live lock already leaned on the feed frame by frame.
+            if let n = number, nearby.contains(where: { $0.vehicle.number == n }) { liveInfo.boosted = [n] }
+            if let record {
+                // Live lock skipped the still read; run it anyway in the background to compare.
+                let mode = mode
+                Task.detached(priority: .utility) {
+                    let report = await TextReader.read(data, mode: mode, nearby: nearby)
+                    record.update { $0.stillCheck = DebugRecord.ocr(report) }
+                }
             }
         }
         let preview = await Task.detached(priority: .userInitiated) {
@@ -565,8 +602,15 @@ struct CatchView: View {
         var d = CatchDraft(photo: data, number: number, fromCamera: fromCamera, sticker: sticker, preview: preview,
                            debug: record)
         if let n = number {
-            let match = catalog.match(number: n, preferring: mode.kind, manual: manual.map)
+            let plain = catalog.match(number: n, preferring: mode.kind, manual: manual.map)
+            let match = lookup(n, nearby: nearby)
+            if match != plain { liveInfo.resolved = "\(DebugRecord.describe(plain)) → \(DebugRecord.describe(match))" }
             d.modelId = match.suggested?.id
+            if fromCamera, let kind = match.suggested?.kind {
+                d.line = LiveHints.line(for: n, kind: kind, snapshot: self.live.snapshot, at: d.date)
+                d.autoLine = d.line
+                liveInfo.lineSource = d.line == nil ? "none" : "live"
+            }
             let described = DebugRecord.describe(match), suggested = d.modelId
             record?.update {
                 $0.match = described
@@ -574,6 +618,8 @@ struct CatchView: View {
             }
         }
         if fromCamera {
+            let info = liveInfo
+            record?.update { $0.live = info }
             if geotag { d.geotag = Task { await LocationService.shared.geotag() } }
         } else {
             let meta = PhotoStore.metadata(data)

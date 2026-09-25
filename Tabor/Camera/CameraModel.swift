@@ -48,12 +48,18 @@ final class CameraModel: NSObject, @unchecked Sendable {
     @ObservationIgnored private var _captureAngle: CGFloat = 90
 
     @ObservationIgnored private var _lastFrame: [TextObservation] = []
+    @ObservationIgnored private var _nearby: [NearbyVehicle] = []
     @ObservationIgnored private var _lastCaptureError: String?
 
     /// Horizon-level rotation for captured frames, in degrees. Guarded by `lock`.
     var captureAngle: CGFloat { lock.withLock { _captureAngle } }
     /// What live OCR saw in the most recent frame it read (for debug mode).
     var lastFrame: [TextObservation] { lock.withLock { _lastFrame } }
+    /// Live vehicles around you, from `LiveFleetService`; live OCR leans towards them.
+    var nearby: [NearbyVehicle] {
+        get { lock.withLock { _nearby } }
+        set { lock.withLock { _nearby = newValue } }
+    }
     /// Why the last `capture()` came back empty, if it did.
     var lastCaptureError: String? { lock.withLock { _lastCaptureError } }
 
@@ -251,7 +257,8 @@ extension CameraModel: AVCaptureVideoDataOutputSampleBufferDelegate {
 
         let observations = TextReader.observations(from: request.results ?? [])
         lock.withLock { _lastFrame = observations }
-        let best = NumberExtractor.best(in: observations, mode: mode, catalog: Fleet.catalog)
+        let candidates = NumberExtractor.candidates(in: observations, mode: mode, catalog: Fleet.catalog)
+        let best = LiveHints.adjust(candidates, nearby: nearby).candidates.max { $0.score < $1.score }?.number
         let stable = voter.push(best)
         Task { @MainActor in
             if let stable, stable != self.reading { self.reading = stable }
@@ -291,17 +298,20 @@ enum TextReader {
         var full: [TextObservation] = []
         var tiles: [TextObservation] = []
         var candidates: [(number: Int, score: Double)] = []
+        /// What the live feed changed about the candidates.
+        var live = LiveHints.Adjustment()
         var duration: TimeInterval = 0
     }
 
     /// Accurate OCR over a captured or imported photo. Returns the best fleet number.
     static func bestNumber(in data: Data, mode: CatchMode) async -> Int? {
-        await read(data, mode: mode).number
+        await read(data, mode: mode, nearby: []).number
     }
 
     /// Full frame first; if nothing is found, re-read overlapping 3×3 tiles so small
     /// numbers on a whole-vehicle shot get enough pixels (e.g. yellow-on-black "4425").
-    static func read(_ data: Data, mode: CatchMode) async -> Report {
+    /// `nearby` (live vehicles around you) boosts and rescues candidates, see `LiveHints`.
+    static func read(_ data: Data, mode: CatchMode, nearby: [NearbyVehicle]) async -> Report {
         await Task.detached(priority: .userInitiated) {
             let start = Date()
             guard let image = UIImage(data: data), let cg = image.cgImage else { return Report(pass: "decode-failed") }
@@ -318,6 +328,7 @@ enum TextReader {
                 }
                 report.candidates = NumberExtractor.candidates(in: report.tiles, mode: mode, catalog: Fleet.catalog)
             }
+            (report.candidates, report.live) = LiveHints.adjust(report.candidates, nearby: nearby)
             report.number = report.candidates.max { $0.score < $1.score }?.number
             if report.number == nil { report.pass = "none" }
             report.duration = Date().timeIntervalSince(start)

@@ -86,6 +86,9 @@ struct RevealView: View {
                         .em(-0.03, size: 30)
                         .lineLimit(2)
                         .minimumScaleFactor(0.7)
+                    if let line = draft.line?.nonEmpty {
+                        Mono("LINE \(line.uppercased())", size: 11, weight: 600, spacing: 0.12, color: Palette.sub)
+                    }
                 }
                 .padding(.top, 20)
                 .padding(.horizontal, 26)
@@ -392,6 +395,12 @@ struct RevealView: View {
     }
 
     private func edited() {
+        // A line the feed filled in follows a corrected number, unless you typed your own.
+        if draft.fromCamera, (draft.line ?? "") == (draft.autoLine ?? ""),
+           let number = draft.number, let kind = model?.kind {
+            draft.line = LiveHints.line(for: number, kind: kind, snapshot: LiveFleetService.shared.snapshot, at: draft.date)
+            draft.autoLine = draft.line
+        }
         draft.debug?.log("edited", number: draft.number, modelId: draft.modelId, line: draft.line)
         replayReveal()
     }

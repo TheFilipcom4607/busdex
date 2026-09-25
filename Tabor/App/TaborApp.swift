@@ -44,6 +44,7 @@ struct RootView: View {
         ZStack {
             switch router.tab {
             case .catchTab: CatchView()
+            case .hunt: HuntView()
             case .book: BookTab()
             case .me: MeView()
             }

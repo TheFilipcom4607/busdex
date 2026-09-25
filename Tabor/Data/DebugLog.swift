@@ -47,6 +47,21 @@ final class DebugRecord: @unchecked Sendable {
         var line: String?
     }
 
+    /// What the live GPS feed knew at the shutter, and what it changed.
+    struct Live: Codable {
+        var status: String
+        /// Seconds between the feed's last refresh and the shot.
+        var snapshotAge: Int?
+        /// "TRAM 4235 · line 33 · 60 m", nearest first.
+        var nearby: [String] = []
+        var boosted: [Int] = []
+        var rescued: [LiveHints.Rescue] = []
+        /// "ambiguous: a, b → certain: b" when a nearby vehicle settled the model.
+        var resolved: String?
+        /// "live" when the line came from the feed, "none" when it couldn't.
+        var lineSource: String?
+    }
+
     struct Info: Codable {
         var id: String
         var date: Date
@@ -73,6 +88,7 @@ final class DebugRecord: @unchecked Sendable {
         var suggestedModel: String?
         var sticker: Sticker?
         var geotag: String?
+        var live: Live?
         var events: [Event] = []
     }
 

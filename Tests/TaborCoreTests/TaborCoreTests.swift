@@ -471,3 +471,169 @@ private func any(_ modelId: String? = nil, number: Int? = nil, date: Date = day(
     #expect(OpenMeteo.reading(from: Data("{}".utf8), at: catchTime) == nil)
     #expect(Weather.isSnow(73) && Weather.isRain(61) && Weather.isStorm(95) && !Weather.isRain(3))
 }
+
+// MARK: - Live fleet
+
+private func fixture(_ name: String) -> Data {
+    let url = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent()
+        .appendingPathComponent("Fixtures/\(name)")
+    return try! Data(contentsOf: url)
+}
+
+/// A minute after the fixtures were fetched from api.um.warszawa.pl.
+private let fixtureNow = LiveFeed.warsawTime("2026-09-25 19:24:00")!
+
+/// Plac Defilad, and a point `metres` due north of it.
+private let here = (lat: 52.2319, lon: 21.0067)
+private func north(_ metres: Double) -> (lat: Double, lon: Double) { (here.lat + metres / 111_195, here.lon) }
+
+private func live(_ number: Int, _ kind: VehicleKind = .bus, line: String = "523", metres: Double = 50,
+                  at time: Date = fixtureNow) -> LiveVehicle {
+    let p = north(metres)
+    return LiveVehicle(number: number, kind: kind, line: line, latitude: p.lat, longitude: p.lon, time: time)
+}
+
+private func nearby(_ vehicles: [LiveVehicle]) -> [NearbyVehicle] {
+    LiveSnapshot(vehicles: vehicles, fetched: fixtureNow).nearby(lat: here.lat, lon: here.lon, within: 1000)
+}
+
+@Test func liveFeedParsesTheRealReply() throws {
+    let buses = try LiveFeed.parse(fixture("live-buses.json"), kind: .bus, now: fixtureNow)
+    let trams = try LiveFeed.parse(fixture("live-trams.json"), kind: .tram, now: fixtureNow)
+    // 40 fresh rows each file; the stale ones and "d. 35154" are dropped.
+    #expect(buses.count == 40)
+    #expect(trams.count == 30)
+    let first = try #require(buses.first)
+    #expect(first.number == 1000 && first.line == "219" && first.brigade == "1")
+    #expect(abs(first.latitude - 52.183973) < 1e-9)
+    // "19:23:28" is Warsaw time (CEST, UTC+2).
+    #expect(first.time == Date(timeIntervalSince1970: 1_790_357_008))
+    #expect(trams.allSatisfy { $0.kind == .tram })
+    // Nearly every live number is in the ZTM database.
+    let known = (buses + trams).filter { catalog.isKnown(number: $0.number, kind: $0.kind) }
+    #expect(known.count >= 60)
+}
+
+@Test func liveFeedErrorsAndStaleRows() {
+    let error = Data(#"{"result": "Błędna metoda lub parametry wywołania"}"#.utf8)
+    #expect(throws: LiveFeed.Failure.message("Błędna metoda lub parametry wywołania")) {
+        try LiveFeed.parse(error, kind: .bus)
+    }
+    #expect(throws: LiveFeed.Failure.malformed) { try LiveFeed.parse(Data("nope".utf8), kind: .bus) }
+    let rows = Data(#"""
+    {"result":[
+    {"Lines":"9","Lon":21.0,"VehicleNumber":"1294","Time":"2026-09-25 19:23:30","Lat":52.2,"Brigade":"1"},
+    {"Lines":"9","Lon":21.0,"VehicleNumber":"1296","Time":"2026-09-25 19:20:30","Lat":52.2,"Brigade":"2"},
+    {"Lines":"L-8","Lon":"21.0","VehicleNumber":"d. 35154","Time":"2026-09-25 19:23:30","Lat":"52.2","Brigade":"1"}
+    ]}
+    """#.utf8)
+    let parsed = try? LiveFeed.parse(rows, kind: .tram, now: fixtureNow)
+    #expect(parsed?.map(\.number) == [1294])
+}
+
+@Test func distanceAndNearby() {
+    // Plac Defilad → Rondo ONZ is about 700 m.
+    let d = Geo.km((52.2319, 21.0067), (52.2330, 20.9965)) * 1000
+    #expect(d > 650 && d < 750)
+    let snap = LiveSnapshot(vehicles: [live(1, metres: 400), live(2, metres: 100), live(3, metres: 2000)], fetched: fixtureNow)
+    #expect(snap.nearby(lat: here.lat, lon: here.lon, within: 500).map(\.vehicle.number) == [2, 1])
+    #expect(snap.vehicle(number: 3, kind: .bus)?.number == 3)
+    #expect(snap.vehicle(number: 3, kind: .tram) == nil)
+}
+
+@Test func nearbyReadGetsBoosted() {
+    let (out, adj) = LiveHints.adjust([(8592, 3.0), (4235, 2.5)], nearby: nearby([live(4235)]))
+    #expect(adj.boosted == [4235])
+    #expect(out.max { $0.score < $1.score }?.number == 4235)
+}
+
+@Test func oneDigitRescueFixesTheCoachLogs() {
+    // The camera read 1235 and 9215; the vehicles right there were 4235 and 4215.
+    for (read, real) in [(1235, 4235), (9215, 4215)] {
+        let (out, adj) = LiveHints.adjust([(read, 1.2)], nearby: nearby([live(real, .tram, metres: 60), live(8592, metres: 90)]))
+        #expect(adj.rescued == [LiveHints.Rescue(from: read, to: real)])
+        #expect(out.max { $0.score < $1.score }?.number == real)
+    }
+    #expect(LiveHints.oneDigitOff(1235, 4235))
+    #expect(!LiveHints.oneDigitOff(1235, 4236))
+    #expect(!LiveHints.oneDigitOff(123, 1234))
+}
+
+@Test func noRescueWithoutAVehicleRightThere() {
+    let (out, adj) = LiveHints.adjust([(1235, 1.2)], nearby: nearby([live(4235, metres: 400)]))
+    #expect(adj.rescued.isEmpty && adj.boosted.isEmpty)
+    #expect(out.map(\.number) == [1235])
+    // Two one-digit neighbours: can't tell which, so no guess.
+    let two = LiveHints.adjust([(1235, 1.2)], nearby: nearby([live(4235, metres: 40), live(1285, metres: 60)]))
+    #expect(two.adjustment.rescued.isEmpty)
+    #expect(LiveHints.adjust([(1235, 1.2)], nearby: []).candidates.count == 1)
+}
+
+@Test func nearbyTramSettlesTheAmbiguousNumber() {
+    let match = catalog.match(number: 4245)
+    guard case .ambiguous = match else { Issue.record("4245 should be a bus and a tram"); return }
+    let resolved = LiveHints.resolve(match, number: 4245, nearby: nearby([live(4245, .tram)]), catalog: catalog)
+    #expect(resolved == .certain(catalog.model(id: "tram-hrc-140n")!))
+    // BUS mode read the tram's number: the tram running past wins.
+    let busMode = catalog.match(number: 4245, preferring: .bus)
+    #expect(LiveHints.resolve(busMode, number: 4245, nearby: nearby([live(4245, .tram)]), catalog: catalog)
+            == .certain(catalog.model(id: "tram-hrc-140n")!))
+    // Both kinds nearby, or neither: no change.
+    #expect(LiveHints.resolve(match, number: 4245, nearby: nearby([live(4245, .tram), live(4245, .bus)]), catalog: catalog) == match)
+    #expect(LiveHints.resolve(match, number: 4245, nearby: [], catalog: catalog) == match)
+}
+
+@Test func lineComesFromAFreshReport() {
+    let snap = LiveSnapshot(vehicles: [live(4235, .tram, line: "33"), live(8592, line: "523", at: fixtureNow - 600)],
+                            fetched: fixtureNow)
+    #expect(LiveHints.line(for: 4235, kind: .tram, snapshot: snap, at: fixtureNow + 60) == "33")
+    #expect(LiveHints.line(for: 4235, kind: .bus, snapshot: snap, at: fixtureNow) == nil)
+    // Last seen ten minutes before the catch: too old to trust.
+    #expect(LiveHints.line(for: 8592, kind: .bus, snapshot: snap, at: fixtureNow) == nil)
+    #expect(LiveHints.line(for: 4235, kind: .tram, snapshot: snap, at: fixtureNow + 600) == nil)
+    #expect(LiveHints.line(for: 4235, kind: .tram, snapshot: nil, at: fixtureNow) == nil)
+}
+
+@Test func wantedPinsPutMissingModelsFirst() {
+    let urbino18 = catalog.match(number: 8592, kind: .bus).suggested!
+    let otherUrbino18 = urbino18.numbers.first { $0 != 8592 }!
+    let legendary = catalog.models.first { $0.tier == .legendary && $0.kind == .tram }!
+    let hrc = catalog.model(id: "tram-hrc-140n")!
+    let caught = CollectionStats(sightings: [SightingRecord(number: 8592, modelId: urbino18.id, date: .now)])
+    let snap = LiveSnapshot(vehicles: [
+        live(8592, metres: 100),                                     // already caught
+        live(otherUrbino18, metres: 200),                            // new vehicle, model owned
+        live(hrc.numbers[0], .tram, metres: 900),                    // new common model
+        live(legendary.numbers[0], .tram, metres: 1500),             // new legendary model
+        live(hrc.numbers[1], .tram, metres: 300),                    // nearer HRC
+        live(99_999, metres: 50),                                    // not in the database
+        live(hrc.numbers[2], .tram, metres: 5000),                   // too far
+    ], fetched: fixtureNow)
+    let pins = Wanted.pins(snapshot: snap, catalog: catalog, caught: caught, lat: here.lat, lon: here.lon)
+    #expect(pins.map(\.vehicle.number) == [legendary.numbers[0], hrc.numbers[1], hrc.numbers[0], otherUrbino18])
+    #expect(pins.map(\.kind) == [.newModel, .newModel, .newModel, .newVehicle])
+    #expect(Wanted.pins(snapshot: snap, catalog: catalog, caught: caught, lat: here.lat, lon: here.lon, limit: 2).count == 2)
+}
+
+@Test func crowdedPinsBecomeOneBubbleLedByTheRarest() {
+    let hrc = catalog.model(id: "tram-hrc-140n")!
+    let legendary = catalog.models.first { $0.tier == .legendary && $0.kind == .tram }!
+    let snap = LiveSnapshot(vehicles: [
+        live(hrc.numbers[0], .tram, metres: 100),
+        live(hrc.numbers[1], .tram, metres: 120),
+        live(legendary.numbers[0], .tram, metres: 110),
+        live(hrc.numbers[2], .tram, metres: 2500),
+    ], fetched: fixtureNow)
+    let pins = Wanted.pins(snapshot: snap, catalog: catalog, caught: CollectionStats(sightings: []),
+                           lat: here.lat, lon: here.lon)
+    // Cells ~200 m wide: the three at the stop merge, the far one stays alone.
+    let groups = Wanted.group(pins, cellLon: 0.003, latitude: here.lat)
+    #expect(groups.map(\.pins.count).sorted() == [1, 3])
+    let crowd = groups.first { $0.pins.count == 3 }!
+    #expect(crowd.lead.model.id == legendary.id)
+    #expect(crowd.id.hasPrefix("group:"))
+    #expect(groups.first { $0.pins.count == 1 }!.id == pins.last!.id)
+    // Zoomed right in, nothing overlaps.
+    #expect(Wanted.group(pins, cellLon: 0.0001, latitude: here.lat).count == 4)
+}

@@ -287,6 +287,7 @@ struct SettingsSheet: View {
     @State private var confirmWipe = false
     @AppStorage(FleetUpdater.enabledKey) private var fleetUpdates = true
     @AppStorage(WeatherService.enabledKey) private var weatherLookup = true
+    @AppStorage(LiveFleetService.keyOverrideKey) private var umKey = ""
     @State private var fleetStatus: String?
     @State private var checkingFleet = false
     @State private var backingUp = false
@@ -335,6 +336,19 @@ struct SettingsSheet: View {
                     Text("Debug")
                 } footer: {
                     Text("Saves every shot — failed reads and retakes included — with what the OCR and sticker cutter saw. Also in Files › On My iPhone › TABOR › Debug.")
+                }
+                Section {
+                    LabeledContent("Status", value: liveStatus)
+                    TextField("API key (optional)", text: $umKey)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .font(.system(.body, design: .monospaced))
+                        .onSubmit { LiveFleetService.shared.keyChanged() }
+                        .onChange(of: umKey) { LiveFleetService.shared.keyChanged() }
+                } header: {
+                    Text("Live data")
+                } footer: {
+                    Text("HUNT and the camera use Warsaw's open-data feed of live bus and tram positions (api.um.warszawa.pl) — only while they're on screen. Leave the key empty to use the one built into the app; get your own free key at api.um.warszawa.pl.")
                 }
                 Section {
                     LabeledContent("iCloud sync", value: FileManager.default.ubiquityIdentityToken == nil ? "Off" : "On")
@@ -413,6 +427,18 @@ struct HapticsLab: View {
         }
         .navigationTitle("Haptics lab")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+extension SettingsSheet {
+    var liveStatus: String {
+        switch LiveFleetService.shared.status {
+        case .noKey: "Add key"
+        case .idle: "Ready"
+        case .loading: "Connecting…"
+        case .live: "Live · \(LiveFleetService.shared.snapshot?.vehicles.count ?? 0) vehicles"
+        case .error(let why): why
+        }
     }
 }
 

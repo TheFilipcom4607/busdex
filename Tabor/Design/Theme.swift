@@ -23,6 +23,8 @@ enum Palette {
     static let red = Color(hex: 0xE4002B)
     static let green = Color(hex: 0x23E5A0)
     static let greenInk = Color(hex: 0xB9F5DE)
+    /// The HUNT tab: a radar sweep.
+    static let radar = Color(hex: 0x5CC8FF)
     /// Vintage tier: old brass fittings.
     static let brass = Color(hex: 0xD2A064)
 

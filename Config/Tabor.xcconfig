@@ -1,0 +1,6 @@
+// Build settings for the Tabor app target.
+// The api.um.warszawa.pl key for live vehicle positions lives in the gitignored
+// Secrets.xcconfig next to this file:  TABOR_UM_KEY = <your key>
+// Without it the app builds fine; live features stay off (or take a key from Settings).
+TABOR_UM_KEY =
+#include? "Secrets.xcconfig"

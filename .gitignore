@@ -10,3 +10,6 @@ xcuserdata/
 /*.jpeg
 /*.png
 /*.webp
+
+# API keys (see Config/Tabor.xcconfig)
+Config/Secrets.xcconfig

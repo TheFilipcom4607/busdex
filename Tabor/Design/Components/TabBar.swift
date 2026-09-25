@@ -2,12 +2,14 @@ import SwiftUI
 
 enum AppTab: String, CaseIterable {
     case catchTab = "CATCH"
+    case hunt = "HUNT"
     case book = "BOOK"
     case me = "ME"
 
     var accent: Color {
         switch self {
         case .catchTab: Palette.yellow
+        case .hunt: Palette.radar
         case .book: Palette.red
         case .me: Palette.green
         }
@@ -16,6 +18,7 @@ enum AppTab: String, CaseIterable {
     var symbol: String {
         switch self {
         case .catchTab: "viewfinder"
+        case .hunt: "dot.radiowaves.left.and.right"
         case .book: "square.grid.3x3.fill"
         case .me: "trophy.fill"
         }
