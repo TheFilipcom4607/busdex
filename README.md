@@ -16,7 +16,13 @@
   <img src="https://img.shields.io/badge/fleet-2%20673%20vehicles-1d1d1f?style=flat-square" alt="2 673 vehicles">
 </p>
 
-<img src="docs/hunt.png" width="330" alt="The HUNT tab over central Warsaw: the map crowded with tier-coloured tags showing line numbers and direction arrows, and bubbles counting vehicles too close to tell apart. Below, a list of uncaught vehicles nearby, led by the Irizar ie tram 12 #959 on test, on line 106, 1.3 km away and coming.">
+<img src="docs/reveal.png" width="330" alt="The reveal after catching Yutong U12 #1971: NEW BUS · YOUR 2nd, the bus cut out of its photo as a die-cut sticker with a thick white border, a 1971 number tag, R-1 WORONICZA · 2024, GOLD · 48, and the line: 16 left in the 2024 batch, 46 Yutong U12 to find overall. Below it, Hold to stick it in the book.">
+
+<p>
+  <sub>Yutong U12 #1971, the bus on the app icon. Photo by
+  <a href="https://commons.wikimedia.org/wiki/File:Yutong_Osiedle_Kabaty.jpg">J2 kolej</a>,
+  <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>, cut into a sticker by TABOR.</sub>
+</p>
 
 </div>
 
@@ -94,7 +100,7 @@ paste a key into Settings › Live data.
 
 ### The reveal
 
-The photo develops while the vehicle is lifted off the background. That's the
+This is the screenshot at the top. The photo develops while the vehicle is lifted off the background. That's the
 same subject-lifting model as the Photos app, running on the phone. It gets a thick white
 border that follows its outline, and the sticker slams down with a haptic
 pattern that gets longer the rarer the model is. A COMMON lands with one thunk. A
@@ -112,13 +118,15 @@ Hold the sticker to peel it off the backing and stick it in the book.
 ## HUNT
 
 <div align="center">
-  <img src="docs/hunt-card.png" width="300" alt="A Solbus Solcity 12 selected on the map, its tag outlined in white. The card below reads BUS, RARE · 64, #1069 · LINE 107 · 1.1 KM, GOING PAST, You have 1 of 64. This one isn't among them, with BOOK and CATCH IT buttons.">
-  <img src="docs/hunt-filter.png" width="300" alt="HUNT filtered to the Yutong U12: one GOLD tag on the map, and a list of four Yutongs out now with their numbers, lines and distances, one of them marked STOPPED.">
+  <img src="docs/hunt.png" width="260" alt="The HUNT tab over central Warsaw: the map crowded with tier-coloured tags showing line numbers and direction arrows, and bubbles counting vehicles too close to tell apart. Below, a list of uncaught vehicles nearby, led by the Irizar ie tram 12 #959 on test, on line 106, 1.3 km away and coming.">
+  <img src="docs/hunt-card.png" width="260" alt="A Solbus Solcity 12 selected on the map, its tag outlined in white. The card below reads BUS, RARE · 64, #1069 · LINE 107 · 1.1 KM, GOING PAST, You have 1 of 64. This one isn't among them, with BOOK and CATCH IT buttons.">
+  <img src="docs/hunt-filter.png" width="260" alt="HUNT filtered to the Yutong U12: one GOLD tag on the map, and a list of four Yutongs out now with their numbers, lines and distances, one of them marked STOPPED.">
 </div>
 
 <p align="center">
-  <sub>One vehicle, and whether it's coming your way. On the right, filtered down to one model:<br>
-  every Yutong U12 out in the city right now, nearest first.</sub>
+  <sub>Everything uncaught within 3 km, rarest first: the Irizar on trial is 1.3 km off and coming.<br>
+  One vehicle, and whether it's coming your way. And filtered down to one model: every<br>
+  Yutong U12 out in the city right now, nearest first.</sub>
 </p>
 
 Every bus and tram you haven't caught, from Warsaw's live GPS feed, refreshed
@@ -178,6 +186,10 @@ it was on. Swipe a sighting to fix its number, model or line, or delete it.
 ---
 
 ## ME
+
+<div align="center">
+  <img src="docs/me-badges.png" width="400" alt="The ME tab: a stats row reading 21 caught, 0.8% of fleet, 1 day streak, 4/18 depots; then BADGES, 5 OF 52, with gold coins for Veteran, Twins and Déjà vu, bronze coins with level pips for Photographer 26/50 and Collector 21/100, and a locked Tram day with a progress ring at 9/10.">
+</div>
 
 - **The trophy shelf:** your three rarest stickers. Then **caught**, the
   **fleet share** (to one decimal place under 10%, so the first few hundred
