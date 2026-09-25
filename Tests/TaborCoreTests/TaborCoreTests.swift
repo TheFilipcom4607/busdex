@@ -645,3 +645,34 @@ private func nearby(_ vehicles: [LiveVehicle]) -> [NearbyVehicle] {
     // Zoomed right in, nothing shares a square.
     #expect(Wanted.group(pins, cellLon: 0.00005, latitude: here.lat).count == 4)
 }
+
+@Test func trailsGiveDirectionAndMotion() {
+    var trails = LiveTrails()
+    let key = LiveTrails.key(.bus, 8592)
+    func at(_ metres: Double, _ seconds: Double) -> LiveVehicle {
+        live(8592, metres: metres, at: fixtureNow + seconds)
+    }
+    // First sighting: nothing to go on yet.
+    trails.record([at(600, 0)], now: fixtureNow)
+    #expect(trails.heading(key) == nil)
+    #expect(trails.motion(key, lat: here.lat, lon: here.lon) == nil)
+    // GPS jitter at a stop isn't travel.
+    trails.record([at(605, 10)], now: fixtureNow + 10)
+    #expect(trails.trail(key).count == 1)
+    // Driving south, towards Plac Defilad.
+    trails.record([at(450, 25)], now: fixtureNow + 25)
+    trails.record([at(300, 40)], now: fixtureNow + 40)
+    let h = trails.heading(key)!
+    #expect(abs(h - 180) < 1)
+    #expect(trails.motion(key, lat: here.lat, lon: here.lon) == .approaching)
+    // Standing still (still reporting) for a minute: stopped.
+    trails.record([at(302, 70)], now: fixtureNow + 70)
+    trails.record([at(301, 100)], now: fixtureNow + 100)
+    #expect(trails.motion(key, lat: here.lat, lon: here.lon) == .stopped)
+    // Bearings run clockwise from north.
+    #expect(Geo.bearing((52.0, 21.0), (52.1, 21.0)) < 1)
+    #expect(abs(Geo.bearing((52.0, 21.0), (52.0, 21.1)) - 90) < 1)
+    // Gone from the feed for over five minutes: forgotten.
+    trails.record([], now: fixtureNow + 500)
+    #expect(trails.trail(key).isEmpty)
+}

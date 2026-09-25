@@ -268,3 +268,103 @@ extension Wanted {
         return order.map { PinGroup(lead: members[$0]![0], pins: members[$0]!, cell: $0) }
     }
 }
+
+extension Geo {
+    /// Compass bearing from one point to another, degrees clockwise from north.
+    public static func bearing(_ a: (Double, Double), _ b: (Double, Double)) -> Double {
+        let rad = Double.pi / 180
+        let dLon = (b.1 - a.1) * rad
+        let y = sin(dLon) * cos(b.0 * rad)
+        let x = cos(a.0 * rad) * sin(b.0 * rad) - sin(a.0 * rad) * cos(b.0 * rad) * cos(dLon)
+        return (atan2(y, x) / rad + 360).truncatingRemainder(dividingBy: 360)
+    }
+}
+
+/// Which way a vehicle is going, relative to you.
+public enum Motion: Sendable, Equatable {
+    case approaching, leaving, passing, stopped
+}
+
+/// Where each vehicle has been over the last few minutes, built up from successive feed
+/// snapshots: the feed only says where a vehicle is, so its direction comes from watching
+/// it move.
+public struct LiveTrails: Sendable {
+    public struct Point: Sendable, Equatable {
+        public let latitude: Double
+        public let longitude: Double
+        /// When the vehicle reported this position.
+        public let time: Date
+    }
+
+    /// Moves smaller than this are GPS jitter at a stop, not travel.
+    public static let minStep = 15.0
+    /// A heading needs this much travel, so one jittery fix can't flip the arrow.
+    public static let headingBase = 30.0
+    public static let maxAge: TimeInterval = 300
+    public static let maxPoints = 12
+    /// Reporting in, but no travel for this long: standing at a stop or a light.
+    public static let stoppedAfter: TimeInterval = 45
+
+    private var points: [String: [Point]] = [:]
+    /// Latest report time per vehicle, moving or not.
+    private var lastSeen: [String: Date] = [:]
+
+    public init() {}
+
+    public static func key(_ kind: VehicleKind, _ number: Int) -> String { "\(kind.rawValue)#\(number)" }
+
+    public mutating func record(_ vehicles: [LiveVehicle], now: Date = Date()) {
+        for v in vehicles {
+            let key = Self.key(v.kind, v.number)
+            if let seen = lastSeen[key], v.time <= seen { continue }
+            lastSeen[key] = v.time
+            var trail = points[key] ?? []
+            if let last = trail.last,
+               Geo.km((last.latitude, last.longitude), (v.latitude, v.longitude)) * 1000 < Self.minStep {
+                continue
+            }
+            trail.append(Point(latitude: v.latitude, longitude: v.longitude, time: v.time))
+            trail.removeAll { v.time.timeIntervalSince($0.time) > Self.maxAge }
+            points[key] = Array(trail.suffix(Self.maxPoints))
+        }
+        // Vehicles that left the feed (depot, end of shift) are forgotten.
+        for (key, seen) in lastSeen where now.timeIntervalSince(seen) > Self.maxAge {
+            lastSeen[key] = nil
+            points[key] = nil
+        }
+    }
+
+    /// Oldest first.
+    public func trail(_ key: String) -> [Point] { points[key] ?? [] }
+
+    /// Degrees clockwise from north, from the latest position back to the last one at
+    /// least `headingBase` away. Nil until the vehicle has travelled that far.
+    public func heading(_ key: String) -> Double? {
+        guard let (from, to) = base(key) else { return nil }
+        return Geo.bearing((from.latitude, from.longitude), (to.latitude, to.longitude))
+    }
+
+    /// Relative to someone standing at `lat`/`lon`. Nil while there's too little to go on.
+    public func motion(_ key: String, lat: Double, lon: Double) -> Motion? {
+        if let last = points[key]?.last, let seen = lastSeen[key],
+           seen.timeIntervalSince(last.time) >= Self.stoppedAfter {
+            return .stopped
+        }
+        guard let (from, to) = base(key) else { return nil }
+        let before = Geo.km((lat, lon), (from.latitude, from.longitude)) * 1000
+        let after = Geo.km((lat, lon), (to.latitude, to.longitude)) * 1000
+        let travelled = Geo.km((from.latitude, from.longitude), (to.latitude, to.longitude)) * 1000
+        // Mostly towards or away from you; otherwise it's going past.
+        if before - after > travelled * 0.5 { return .approaching }
+        if after - before > travelled * 0.5 { return .leaving }
+        return .passing
+    }
+
+    private func base(_ key: String) -> (Point, Point)? {
+        guard let trail = points[key], let last = trail.last else { return nil }
+        let from = trail.dropLast().last { p in
+            Geo.km((p.latitude, p.longitude), (last.latitude, last.longitude)) * 1000 >= Self.headingBase
+        }
+        return from.map { ($0, last) }
+    }
+}

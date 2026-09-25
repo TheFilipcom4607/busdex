@@ -21,6 +21,8 @@ final class LiveFleetService {
     private(set) var status: Status
     /// Vehicles around you at the last refresh or location change, nearest first.
     private(set) var nearby: [NearbyVehicle] = []
+    /// Where vehicles have been over the last few minutes, for their direction.
+    private(set) var trails = LiveTrails()
 
     @ObservationIgnored private var clients: Set<String> = []
     @ObservationIgnored private var poller: Task<Void, Never>?
@@ -113,6 +115,7 @@ final class LiveFleetService {
             return
         }
         snapshot = LiveSnapshot(vehicles: vehicles, fetched: Date())
+        trails.record(vehicles)
         status = .live
         locationMoved()
     }

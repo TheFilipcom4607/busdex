@@ -31,6 +31,8 @@ struct HuntView: View {
     @State private var openGroup: [String]?
     /// What the map is showing: pins cover it, however far you zoom out.
     @State private var mapRegion: MKCoordinateRegion?
+    /// The map's rotation, so direction arrows keep pointing the right way on the ground.
+    @State private var mapHeading: Double = 0
     private var mapCenter: CLLocationCoordinate2D? { mapRegion?.center }
 
     private static let warsaw = MKCoordinateRegion(
@@ -83,12 +85,24 @@ struct HuntView: View {
 
     private func map(_ shown: [WantedPin]) -> some View {
         Map(position: $position, interactionModes: .all, selection: $selectedId) {
+            // The selected vehicle's recent path, fading out behind it.
+            if let pin = shown.first(where: { $0.id == selectedId }) {
+                let trail = live.trails.trail(pin.id).map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+                // MapKit won't draw a gradient along a line: fade it one segment at a time.
+                let path = trail + [pin.coordinate]
+                ForEach(0..<max(0, path.count - 1), id: \.self) { i in
+                    MapPolyline(coordinates: [path[i], path[i + 1]])
+                        .stroke(pin.accent.opacity(0.25 + 0.75 * Double(i + 1) / Double(path.count - 1)),
+                                style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                }
+            }
             UserAnnotation()
             // Rarest on top: SwiftUI draws later annotations above earlier ones.
             ForEach(groups(shown).reversed()) { g in
                 if g.pins.count == 1 {
                     Annotation(g.lead.model.name, coordinate: g.lead.coordinate, anchor: .bottom) {
-                        WantedPinView(pin: g.lead, selected: g.id == selectedId)
+                        WantedPinView(pin: g.lead, selected: g.id == selectedId,
+                                      heading: live.trails.heading(g.lead.id).map { $0 - mapHeading })
                     }
                     .tag(g.id)
                     .annotationTitles(.hidden)
@@ -105,6 +119,7 @@ struct HuntView: View {
         .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
         .mapControls {}
         .environment(\.colorScheme, .dark)
+        .onMapCameraChange(frequency: .continuous) { ctx in mapHeading = ctx.camera.heading }
         .onMapCameraChange(frequency: .onEnd) { ctx in
             mapRegion = ctx.region
             recompute(animated: false)
@@ -250,7 +265,7 @@ struct HuntView: View {
         Group {
             if let selected {
                 PinCard(pin: selected, owned: sightings.stats.ownedCount(modelId: selected.model.id),
-                        showDistance: hasFix) {
+                        showDistance: hasFix, motion: motion(of: selected)) {
                     router.openModel(selected.model.id)
                 } onClose: {
                     withAnimation(.snappy) { selectedId = nil }
@@ -439,6 +454,19 @@ struct HuntView: View {
             pins = next
         }
         if let selectedId, !next.contains(where: { $0.id == selectedId }) { self.selectedId = nil }
+        // The selected vehicle drove off the edge: follow it, keeping the zoom.
+        if let selectedId, let pin = next.first(where: { $0.id == selectedId }), let region = mapRegion,
+           abs(pin.vehicle.latitude - region.center.latitude) > region.span.latitudeDelta * 0.3
+            || abs(pin.vehicle.longitude - region.center.longitude) > region.span.longitudeDelta * 0.4 {
+            withAnimation(.easeInOut(duration: 1.2)) {
+                position = .region(MKCoordinateRegion(center: pin.coordinate, span: region.span))
+            }
+        }
+    }
+
+    private func motion(of pin: WantedPin) -> Motion? {
+        guard let here = location.recent(maxAge: 300)?.coordinate else { return nil }
+        return live.trails.motion(pin.id, lat: here.latitude, lon: here.longitude)
     }
 
     /// From the list: select the pin and fly to it.
@@ -477,7 +505,17 @@ enum HuntDistance {
 private struct WantedPinView: View {
     let pin: WantedPin
     let selected: Bool
+    /// Screen direction of travel (0 = up), once the vehicle has been seen moving.
+    var heading: Double? = nil
     private var filled: Bool { pin.kind == .newModel }
+
+    /// Screen angle (0 = up, clockwise) to the nearest of eight arrows.
+    static func arrow(_ degrees: Double) -> String {
+        let names = ["arrow.up", "arrow.up.right", "arrow.right", "arrow.down.right",
+                     "arrow.down", "arrow.down.left", "arrow.left", "arrow.up.left"]
+        let d = (degrees.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360)
+        return names[Int((d / 45).rounded()) % 8]
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -488,6 +526,13 @@ private struct WantedPinView: View {
                     .font(TaborFont.mono(12.5, 700))
                     .lineLimit(1)
                     .fixedSize()
+                if let heading {
+                    // One of eight arrows rather than a rotated one: MapKit doesn't re-apply
+                    // transforms inside an annotation, so a rotation sticks at its first angle.
+                    Image(systemName: Self.arrow(heading))
+                        .font(.system(size: 10, weight: .heavy))
+                        .accessibilityHidden(true)
+                }
             }
             .foregroundStyle(filled ? (pin.model.tier == .legendary ? Palette.ink : Palette.bg) : pin.accent)
             .padding(.vertical, 4)
@@ -558,8 +603,20 @@ private struct PinCard: View {
     let pin: WantedPin
     let owned: Int
     let showDistance: Bool
+    /// Which way it's going relative to you; nil until it's been seen moving.
+    let motion: Motion?
     let onOpen: () -> Void
     let onClose: () -> Void
+
+    private var motionLine: (text: String, color: Color) {
+        switch motion {
+        case .approaching: ("COMING YOUR WAY", Palette.green)
+        case .passing: ("GOING PAST", Palette.yellow)
+        case .leaving: ("MOVING AWAY", Palette.sub)
+        case .stopped: ("STOPPED", Palette.yellow)
+        case nil: ("WATCHING WHICH WAY IT GOES…", Palette.faint)
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -583,6 +640,14 @@ private struct PinCard: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Mono(pin.subtitle(showDistance: showDistance), size: 11, weight: 600, color: Palette.routeInk)
+            if showDistance {
+                HStack(spacing: 6) {
+                    Circle().fill(motionLine.color).frame(width: 6, height: 6)
+                    Mono(motionLine.text, size: 11, weight: 600, color: motionLine.color)
+                        .contentTransition(.opacity)
+                }
+                .animation(.easeInOut(duration: 0.3), value: motionLine.text)
+            }
             Text(pin.kind == .newModel ? "Not in your book yet — catching it opens a new page."
                     : "You have \(owned) of \(pin.model.fleet). This one isn't among them.")
                 .font(TaborFont.grotesk(13))

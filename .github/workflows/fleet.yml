@@ -3,9 +3,11 @@ name: Refresh fleet data
 # Re-scrapes the ZTM vehicle database and commits fleet.json when the fleet changed.
 # The app downloads the committed file from raw.githubusercontent.com, so new deliveries
 # reach phones without an App Store release.
+#
+# Manual only: ztm.waw.pl answers GitHub's runners with an AWS WAF bot challenge instead
+# of the database (seen 2026-09-25), so a schedule here would just fail every week. Run
+# `python3 scripts/fetch_fleet.py` from a home connection and commit instead.
 on:
-  schedule:
-    - cron: "23 4 * * 1" # Mondays, early morning in Warsaw
   workflow_dispatch:
 
 permissions:
