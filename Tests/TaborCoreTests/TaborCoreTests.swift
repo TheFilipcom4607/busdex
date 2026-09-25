@@ -380,8 +380,9 @@ private func any(_ modelId: String? = nil, number: Int? = nil, date: Date = day(
     let rainbow = [Tier.legendary, .gold, .rare, .common].map { t in any(catalog.models.first { $0.tier == t }!.id) }
     #expect(eval(rainbow)["rainbow-day"]!.earned)
     #expect(eval(Array(rainbow.prefix(3)))["rainbow-day"]!.progress == 3)
-    let pair = catalog.models.first { !$0.vintage && $0.fleet == 2 }!
-    #expect(eval(pair.numbers.map { any(pair.id, number: $0) })["model-complete"]!.earned)
+    // The smallest regular model with more than one vehicle, whatever the fleet data holds.
+    let small = catalog.models.filter { !$0.vintage && $0.fleet >= 2 }.min { $0.fleet < $1.fleet }!
+    #expect(eval(small.numbers.map { any(small.id, number: $0) })["model-complete"]!.earned)
 }
 
 @Test func calendarBadges() {

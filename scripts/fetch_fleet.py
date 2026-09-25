@@ -152,6 +152,13 @@ DISPLAY_NAMES = {
     ("Otokar", "Kent C LF Mild Hybrid"): "Otokar Kent C Hybrid",
     ("Güleryüz", "GD272"): "Güleryüz Cobra GD272",
     ("Yutong", "U12-B"): "Yutong U12",
+    ("Isuzu", "B120"): "Isuzu Citiport 12",
+    # ZTM puts the whole name in the make column.
+    ("Procity 12 M", ""): "BMC Procity 12LF",
+    # Minibuses Mercus builds on a Mercedes-Benz Sprinter chassis (phototrans.eu).
+    ("Mercus", "906BB62"): "Mercus MB Sprinter City",
+    # The same Mercus City body on a MAN TGE 6.180 (phototrans.eu).
+    ("Mercus", "SYN2Z"): "Mercus MAN TGE City",
     ("Ursus", "CS2"): "Ursus City Smile",
     ("HRC", "140N"): "Hyundai Rotem 140N",
     ("HRC", "141N"): "Hyundai Rotem 141N",
@@ -161,6 +168,8 @@ DISPLAY_NAMES = {
     ("Alstom Konstal", "105N"): "Konstal 105N2k",
     ("Alstom Konstal", "116N"): "Alstom 116Na",
     ("Pesa", "120N"): "Pesa 120N / 120Na Swing",
+    ("Pesa", "128N"): "Pesa 128N Jazz Duo",
+    ("Pesa", "134N"): "Pesa 134N Jazz",
     ("Linke-Hoffmann", "Lw"): "Linke-Hofmann Lw",
     ("Gdańska Fabryka Wagonów / WIwK", "K"): "Gdańsk type K",
     ("Credé/Düwag", "4EGTw"): "Credé/Düwag 4EGTw",
@@ -228,6 +237,7 @@ EXTRA_VINTAGE_BUSES = [
 MERGE = {
     ("TRAM", "Alstom Konstal", ""): ("Alstom Konstal", "105N"),  # #2011, #2013: 105N2k
     ("TRAM", "Konstal", "116N"): ("Alstom Konstal", "116N"),     # #3002-3004: 116Na
+    ("BUS", "Iveco", "CBLE4/00"): ("Iveco", "Crossway LE"),       # #39533: CBLE is the Crossway LE's factory code
 }
 
 
