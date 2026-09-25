@@ -41,7 +41,7 @@ score.
 
 ## Install
 
-There's no App Store build. Open the project in Xcode 27 and run it on
+There's no App Store build (yet 👀). Open the project in Xcode 27 and run it on
 your phone:
 
 ```bash
