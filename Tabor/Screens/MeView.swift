@@ -338,13 +338,25 @@ struct SettingsSheet: View {
                     Text("Saves every shot — failed reads and retakes included — with what the OCR and sticker cutter saw. Also in Files › On My iPhone › TABOR › Debug.")
                 }
                 Section {
-                    LabeledContent("Status", value: liveStatus)
-                    TextField("API key (optional)", text: $umKey)
+                    LabeledContent("Key", value: keySource)
+                    LabeledContent("Status") {
+                        HStack(spacing: 6) {
+                            if case .loading = LiveFleetService.shared.status { ProgressView().controlSize(.small) }
+                            Text(liveStatus.text).foregroundStyle(liveStatus.color)
+                        }
+                    }
+                    TextField(LiveFleetService.builtInKey == nil ? "Paste your key" : "Use your own key instead", text: $umKey)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .font(.system(.body, design: .monospaced))
-                        .onSubmit { LiveFleetService.shared.keyChanged() }
-                        .onChange(of: umKey) { LiveFleetService.shared.keyChanged() }
+                        // Checks the key on open, and again once you stop typing.
+                        .task(id: umKey) {
+                            try? await Task.sleep(for: .milliseconds(600))
+                            guard !Task.isCancelled else { return }
+                            let live = LiveFleetService.shared
+                            live.keyChanged()
+                            if live.fresh() == nil, LiveFleetService.key != nil { await live.refresh() }
+                        }
                 } header: {
                     Text("Live data")
                 } footer: {
@@ -431,14 +443,21 @@ struct HapticsLab: View {
 }
 
 extension SettingsSheet {
-    var liveStatus: String {
-        switch LiveFleetService.shared.status {
-        case .noKey: "Add key"
-        case .idle: "Ready"
-        case .loading: "Connecting…"
-        case .live: "Live · \(LiveFleetService.shared.snapshot?.vehicles.count ?? 0) vehicles"
-        case .error(let why): why
+    var liveStatus: (text: String, color: Color) {
+        let live = LiveFleetService.shared
+        switch live.status {
+        case .noKey: return ("No key", Palette.red)
+        case .idle, .loading: return ("Checking…", Palette.sub)
+        case .live: return ("Working · \((live.snapshot?.vehicles.count ?? 0).grouped) vehicles", Palette.green)
+        case .error(let why): return (live.fresh(maxAge: 120) != nil ? "Working (last call failed)" : why, Palette.red)
         }
+    }
+
+    /// Which key is in use, without showing all of it.
+    var keySource: String {
+        if let own = LiveFleetService.overrideKey { return "Your own · …\(own.suffix(4))" }
+        if let baked = LiveFleetService.builtInKey { return "Built in · …\(baked.suffix(4))" }
+        return "None"
     }
 }
 

@@ -24,14 +24,23 @@ final class LiveFleetService {
 
     @ObservationIgnored private var clients: Set<String> = []
     @ObservationIgnored private var poller: Task<Void, Never>?
+    /// The key the current snapshot was fetched with.
+    @ObservationIgnored private var usedKey: String?
 
     private init() {
         status = Self.key == nil ? .noKey : .idle
     }
 
-    static var key: String? {
+    static var key: String? { overrideKey ?? builtInKey }
+
+    /// A key typed into Settings.
+    static var overrideKey: String? {
         let override = UserDefaults.standard.string(forKey: keyOverrideKey)?.trimmingCharacters(in: .whitespaces)
-        if let override, !override.isEmpty { return override }
+        return override?.isEmpty == false ? override : nil
+    }
+
+    /// The key from Config/Secrets.xcconfig, baked in at build time.
+    static var builtInKey: String? {
         let baked = (Bundle.main.object(forInfoDictionaryKey: "TaborUMKey") as? String)?.trimmingCharacters(in: .whitespaces)
         // An unset build setting comes through empty (or as the literal "$(…)" in odd setups).
         guard let baked, !baked.isEmpty, !baked.hasPrefix("$(") else { return nil }
@@ -66,8 +75,9 @@ final class LiveFleetService {
         poller = nil
     }
 
-    /// The key changed in Settings.
+    /// The key may have changed in Settings; starts over only if it really did.
     func keyChanged() {
+        guard Self.key != usedKey else { return }
         snapshot = nil
         nearby = []
         status = Self.key == nil ? .noKey : .idle
@@ -82,6 +92,7 @@ final class LiveFleetService {
             return
         }
         if snapshot == nil { status = .loading }
+        usedKey = key
         async let buses = Self.fetch(.bus, key: key)
         async let trams = Self.fetch(.tram, key: key)
         let results: [(VehicleKind, Result<[LiveVehicle], Error>)] = [(.bus, await buses), (.tram, await trams)]
