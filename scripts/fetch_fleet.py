@@ -245,7 +245,11 @@ def with_vintage_extras(vehicles):
         v = {**v, "make": make, "model": model}
         split = VINTAGE_NUMBERS.get((v["kind"], v["make"], v["model"]), set())
         out.append({**v, "vintage": v["number"].isdigit() and int(v["number"]) in split})
+    # Once ZTM catches up and lists one of these itself, its own row wins.
+    listed = {(v["kind"], v["number"]) for v in vehicles}
     for make, model, number, owner, year in EXTRA_BUSES:
+        if ("BUS", str(number)) in listed:
+            continue
         out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
                     "carrier": owner, "depot": "Ursus", "kind": "BUS", "year": year, "vintage": False})
     for make, model, number, owner in EXTRA_VINTAGE_BUSES:
