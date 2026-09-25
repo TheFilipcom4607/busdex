@@ -96,13 +96,31 @@ struct ShareCard: View {
         .padding(24)
         .frame(width: 360, height: 450)
         .background {
+            let glow = Self.glow(tier)
             ZStack {
                 Palette.bg
-                RadialGradient(colors: [accent.opacity(0.28), .clear],
-                               center: .init(x: 0.5, y: 0.42), startRadius: 8, endRadius: 260)
+                // Bright right behind the sticker, falling off fast, so it reads as light rather
+                // than a tinted wash. Fades to the same colour, not to black.
+                RadialGradient(stops: [
+                    .init(color: glow.color.opacity(glow.peak), location: 0),
+                    .init(color: glow.color.opacity(glow.peak * 0.3), location: 0.45),
+                    .init(color: glow.color.opacity(0), location: 1),
+                ], center: .init(x: 0.5, y: 0.42), startRadius: 8, endRadius: 260)
             }
         }
         .environment(\.colorScheme, .dark)
+    }
+
+    /// The light behind the sticker. A faint yellow on near-black turns olive, so COMMON gets a
+    /// plain white spotlight and GOLD a warmer amber; the other tiers keep their own colour.
+    private static func glow(_ tier: Tier) -> (color: Color, peak: Double) {
+        switch tier {
+        case .common: (.white, 0.13)
+        case .gold: (Color(hex: 0xFFA800), 0.30)
+        case .legendary: (tier.color, 0.34)
+        case .rare: (tier.color, 0.30)
+        case .vintage: (tier.color, 0.32)
+        }
     }
 
     /// The die-cut sticker when there is one; otherwise the photo on white card stock.
