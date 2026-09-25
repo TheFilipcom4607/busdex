@@ -4,6 +4,7 @@ import SwiftUI
 /// Fix the number, pick the model (database matches first) and note the line.
 struct CorrectionSheet: View {
     @Binding var draft: CatchDraft
+    var title = "Fix the catch"
     @Query private var manual: [ManualAssignment]
     @Environment(\.dismiss) private var dismiss
 
@@ -89,7 +90,7 @@ struct CorrectionSheet: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Palette.bg)
-            .navigationTitle("Fix the catch")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }

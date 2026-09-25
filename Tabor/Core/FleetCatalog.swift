@@ -29,6 +29,8 @@ public struct FleetCatalog: Sendable {
     public let models: [VehicleModel]
     public let depots: [Depot]
     public let source: String
+    /// ISO date of the ZTM snapshot, e.g. "2026-09-22".
+    public let fetched: String?
     private let byId: [String: VehicleModel]
     private let byNumber: [Int: [VehicleModel]]
 
@@ -36,6 +38,7 @@ public struct FleetCatalog: Sendable {
         models = data.models
         depots = data.depots
         source = data.source
+        fetched = data.fetched
         byId = Dictionary(uniqueKeysWithValues: data.models.map { ($0.id, $0) })
         var index: [Int: [VehicleModel]] = [:]
         for m in data.models {
@@ -46,6 +49,31 @@ public struct FleetCatalog: Sendable {
 
     public init(json: Data) throws {
         self.init(data: try JSONDecoder().decode(FleetData.self, from: json))
+    }
+
+    /// No fleet data at all: the app still opens, with an empty book.
+    public static let empty = FleetCatalog(data: FleetData(source: "", fetched: nil, models: [], depots: []))
+
+    /// Decodes a fleet.json and rejects ones that parse but can't be a real snapshot.
+    public static func validated(json: Data) -> FleetCatalog? {
+        guard let c = try? FleetCatalog(json: json), !c.models.isEmpty, c.fetched != nil,
+              c.models.allSatisfy({ $0.fleet == $0.numbers.count })
+        else { return nil }
+        return c
+    }
+
+    /// Whether this snapshot is strictly newer than `other` (ISO dates compare as strings).
+    public func isNewer(than other: FleetCatalog?) -> Bool {
+        guard let mine = fetched else { return false }
+        guard let theirs = other?.fetched else { return true }
+        return mine > theirs
+    }
+
+    /// A downloaded snapshot wins only while it's newer than the one shipped in the app,
+    /// so an app update with fresher bundled data isn't shadowed by an old download.
+    public static func preferred(bundled: FleetCatalog?, downloaded: FleetCatalog?) -> FleetCatalog? {
+        if let downloaded, downloaded.isNewer(than: bundled) { return downloaded }
+        return bundled ?? downloaded
     }
 
     public func model(id: String) -> VehicleModel? { byId[id] }

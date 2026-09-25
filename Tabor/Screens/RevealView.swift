@@ -441,8 +441,7 @@ struct RevealView: View {
         context.insert(s)
         draft.debug?.log("stuck", number: number, modelId: model.id, line: s.line)
         if draft.modelPickedByHand {
-            if let m = manual.first(where: { $0.number == number }) { m.modelId = model.id }
-            else { context.insert(ManualAssignment(number: number, modelId: model.id)) }
+            context.assign(number: number, to: model.id, existing: manual)
         }
         try? context.save()
         // After the reveal, never during it: the Photos permission prompt may appear here.

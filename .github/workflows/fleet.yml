@@ -1,0 +1,50 @@
+name: Refresh fleet data
+
+# Re-scrapes the ZTM vehicle database and commits fleet.json when the fleet changed.
+# The app downloads the committed file from raw.githubusercontent.com, so new deliveries
+# reach phones without an App Store release.
+on:
+  schedule:
+    - cron: "23 4 * * 1" # Mondays, early morning in Warsaw
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fleet-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Scrape ZTM and rebuild fleet.json
+        run: python3 scripts/fetch_fleet.py
+
+      - name: Commit if the fleet changed
+        run: |
+          set +e
+          python3 scripts/fleet_changed.py
+          status=$?
+          set -e
+          if [ "$status" = 1 ]; then
+            echo "Only the snapshot date moved; nothing to commit."
+            exit 0
+          elif [ "$status" != 0 ]; then
+            exit "$status"
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Tabor/Resources/fleet.json data/ztm-vehicles.json
+          git commit -m "Refresh fleet data from ZTM ($(date -u +%F))"
+          git push origin HEAD:main

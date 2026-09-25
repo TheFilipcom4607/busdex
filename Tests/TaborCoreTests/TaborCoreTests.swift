@@ -175,3 +175,152 @@ private func sampleModel() -> VehicleModel {
     #expect(Ordinal.string(12) == "12th")
     #expect(Ordinal.string(23) == "23rd")
 }
+
+// MARK: - Achievements
+
+private func badge(_ id: String, _ sightings: [SightingRecord]) -> Achievement {
+    Achievements.evaluate(sightings, catalog: catalog).first { $0.id == id }!
+}
+
+@Test func fullBatchBadge() {
+    let m = catalog.models.first { !$0.vintage && $0.batches.contains { $0.numbers.count == 2 } }!
+    let b = m.batches.first { $0.numbers.count == 2 }!
+    let half = badge("full-batch", [SightingRecord(number: b.numbers[0], modelId: m.id, date: .now)])
+    #expect(!half.earned && half.progress >= 1)
+    let full = badge("full-batch", b.numbers.map { SightingRecord(number: $0, modelId: m.id, date: .now) })
+    #expect(full.earned)
+    #expect(badge("full-batch", []).progress == 0)
+}
+
+@Test func legendaryBadgeNeedsOneOfEach() {
+    let legendary = catalog.models.filter { $0.tier == .legendary }
+    #expect(legendary.count >= 5)
+    let all = legendary.map { SightingRecord(number: $0.numbers[0], modelId: $0.id, date: .now) }
+    #expect(badge("legendary-all", all).earned)
+    #expect(badge("legendary-all", all.dropLast()).progress == legendary.count - 1)
+    #expect(badge("legendary-all", all).title == "All \(legendary.count) legendary")
+}
+
+@Test func districtNamesFromTheGeocoder() {
+    #expect(Achievements.district(of: "Mokotów") == "Mokotów")
+    #expect(Achievements.district(of: "Stary Mokotów") == "Mokotów")
+    #expect(Achievements.district(of: "Praga Południe") == "Praga-Południe")
+    #expect(Achievements.district(of: "Śródmieście Północne") == "Śródmieście")
+    #expect(Achievements.district(of: "Ursynów") == "Ursynów")
+    #expect(Achievements.district(of: "Muranów") == nil)
+    let all = Achievements.districts.enumerated().map { i, d in
+        SightingRecord(number: i, modelId: "x", date: .now, district: d)
+    }
+    #expect(badge("every-district", all).earned)
+    #expect(badge("every-district", all + all).progress == 18)
+    #expect(badge("every-district", Array(all.prefix(3))).progress == 3)
+}
+
+@Test func tramDayCountsDistinctTramsOnOneDay() {
+    var cal = Calendar(identifier: .gregorian)
+    cal.timeZone = TimeZone(identifier: "Europe/Warsaw")!
+    let noon = cal.date(from: DateComponents(year: 2026, month: 9, day: 22, hour: 12))!
+    let tram = catalog.models.filter { $0.kind == .tram }.max { $0.fleet < $1.fleet }!
+    let bus = catalog.models.first { $0.kind == .bus }!
+    var day = tram.numbers.prefix(9).map { SightingRecord(number: $0, modelId: tram.id, date: noon) }
+    day.append(SightingRecord(number: tram.numbers[0], modelId: tram.id, date: noon.addingTimeInterval(60)))
+    day.append(SightingRecord(number: bus.numbers[0], modelId: bus.id, date: noon))
+    day.append(SightingRecord(number: tram.numbers[9], modelId: tram.id, date: noon.addingTimeInterval(86_400)))
+    let nine = Achievements.evaluate(day, catalog: catalog, calendar: cal).first { $0.id == "trams-day" }!
+    #expect(nine.progress == 9 && !nine.earned)
+    day.append(SightingRecord(number: tram.numbers[10], modelId: tram.id, date: noon.addingTimeInterval(3600)))
+    #expect(Achievements.evaluate(day, catalog: catalog, calendar: cal).first { $0.id == "trams-day" }!.earned)
+}
+
+@Test func linesBadgeCountsDistinctLines() {
+    let s = (1...50).map { SightingRecord(number: $0, modelId: "x", date: .now, line: String($0)) }
+    #expect(badge("lines-50", s).earned)
+    let dupes = [SightingRecord(number: 1, modelId: "x", date: .now, line: "n14"),
+                 SightingRecord(number: 2, modelId: "x", date: .now, line: " N14 "),
+                 SightingRecord(number: 3, modelId: "x", date: .now, line: "")]
+    #expect(badge("lines-50", dupes).progress == 1)
+}
+
+@Test func depotBadgeNeedsEveryModelFromThatDepot() {
+    let depots = Achievements.evaluate([], catalog: catalog).filter { $0.kind == .depot }
+    #expect(!depots.isEmpty)
+    let r4 = depots.first { $0.id == "depot-BUS-R-4-Stalowa" }!
+    #expect(r4.title == "R-4 Stalowa" && r4.goal > 1 && r4.progress == 0)
+    let atR4 = catalog.models.compactMap { m -> SightingRecord? in
+        guard !m.vintage, m.kind == .bus,
+              let b = m.batches.first(where: { $0.depotCode == "R-4" && $0.depotName == "Stalowa" }) else { return nil }
+        return SightingRecord(number: b.numbers[0], modelId: m.id, date: .now)
+    }
+    #expect(badge("depot-BUS-R-4-Stalowa", atR4).earned)
+    // The same models caught from another depot don't count.
+    #expect(badge("depot-TRAM-R-4-Żoliborz", atR4).progress == 0)
+}
+
+// MARK: - Fleet updates
+
+private func fleet(_ fetched: String?) -> FleetCatalog {
+    FleetCatalog(data: FleetData(source: "", fetched: fetched, models: [sampleModel()], depots: []))
+}
+
+@Test func downloadedFleetOnlyWinsWhileNewer() {
+    let bundled = fleet("2026-09-22")
+    #expect(FleetCatalog.preferred(bundled: bundled, downloaded: fleet("2026-09-29"))?.fetched == "2026-09-29")
+    #expect(FleetCatalog.preferred(bundled: bundled, downloaded: fleet("2026-09-01"))?.fetched == "2026-09-22")
+    #expect(FleetCatalog.preferred(bundled: bundled, downloaded: nil)?.fetched == "2026-09-22")
+    #expect(FleetCatalog.preferred(bundled: nil, downloaded: fleet("2026-09-01"))?.fetched == "2026-09-01")
+    #expect(FleetCatalog.preferred(bundled: nil, downloaded: nil) == nil)
+    #expect(!fleet(nil).isNewer(than: bundled))
+}
+
+@Test func validationRejectsBrokenFleetFiles() throws {
+    let url = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        .appendingPathComponent("Tabor/Resources/fleet.json")
+    #expect(FleetCatalog.validated(json: try Data(contentsOf: url)) != nil)
+    #expect(FleetCatalog.validated(json: Data("<html>404</html>".utf8)) == nil)
+    #expect(FleetCatalog.validated(json: Data(#"{"source":"","fetched":"2026-01-01","models":[],"depots":[]}"#.utf8)) == nil)
+    #expect(FleetCatalog.empty.models.isEmpty && FleetCatalog.empty.totalFleet == 0)
+}
+
+// MARK: - Backup
+
+@Test func backupRoundTripsThroughZip() throws {
+    let s = BackupManifest.Sighting(id: UUID(), number: 1974, modelId: "test",
+                                    date: Date(timeIntervalSince1970: 1_790_000_000), latitude: 52.2,
+                                    longitude: 21.0, street: "Rakowiecka", district: "Mokotów", line: "N14",
+                                    photoFile: "a.jpg", stickerFile: "a.png")
+    let manifest = BackupManifest(sightings: [s], manual: [.init(number: 1974, modelId: "test")])
+    let photo = Data((0..<5000).map { UInt8($0 % 251) })
+    let url = FileManager.default.temporaryDirectory.appendingPathComponent("tabor-test-\(UUID()).zip")
+    defer { try? FileManager.default.removeItem(at: url) }
+    let zip = try ZipWriter(url: url)
+    try zip.add(path: BackupManifest.fileName, data: manifest.encoded())
+    try zip.add(path: BackupManifest.photosFolder + "a.jpg", data: photo)
+    try zip.add(path: BackupManifest.photosFolder + "empty.png", data: Data())
+    try zip.finish()
+
+    let reader = try ZipReader(url: url)
+    #expect(reader.entries.count == 3)
+    let back = try BackupManifest.decode(reader.read(try #require(reader.path(endingWith: BackupManifest.fileName))))
+    #expect(back.sightings == [s] && back.manual == manifest.manual)
+    #expect(try reader.read("photos/a.jpg") == photo)
+    #expect(try reader.read("photos/empty.png").isEmpty)
+    #expect(manifest.files == ["a.jpg", "a.png"])
+}
+
+@Test func zipReaderRejectsGarbage() {
+    #expect(throws: ZipError.notAZip) { try ZipReader(data: Data("not a zip at all, sorry".utf8)) }
+}
+
+@Test func crcMatchesZlib() {
+    #expect(CRC32.checksum(Data("123456789".utf8)) == 0xCBF4_3926)
+}
+
+@Test func importMergeSkipsWhatsAlreadyThere() {
+    let a = BackupManifest.Sighting(id: UUID(), number: 1, modelId: "m", date: .now)
+    let b = BackupManifest.Sighting(id: UUID(), number: 2, modelId: "m", date: .now)
+    let manifest = BackupManifest(sightings: [a, b, a], manual: [.init(number: 1, modelId: "m"), .init(number: 2, modelId: "m")])
+    let merged = manifest.merge(existingIds: [a.id], existingManual: [2])
+    #expect(merged.sightings == [b])
+    #expect(merged.manual == [.init(number: 1, modelId: "m")])
+}

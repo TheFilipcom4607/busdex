@@ -6,7 +6,11 @@ struct VehicleView: View {
     let number: Int
     @Query(sort: \Sighting.date, order: .reverse) private var sightings: [Sighting]
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
+    @Environment(Router.self) private var router
     @State private var share: CatchShare?
+    @State private var editing: Sighting?
+    @State private var deleting: Sighting?
 
     var body: some View {
         let model = Fleet.catalog.model(id: modelId)
@@ -14,7 +18,8 @@ struct VehicleView: View {
         let first = mine.last
         let batch = model?.batch(containing: number)
 
-        return ScrollView {
+        // A plain List rather than a ScrollView so sightings can be swiped to edit or delete.
+        return List {
             VStack(alignment: .leading, spacing: 0) {
                 TopBar {
                     Button { dismiss() } label: {
@@ -28,6 +33,8 @@ struct VehicleView: View {
                                   preview: SharePreview(share.title, image: Image(uiImage: share.image))) {
                             Mono("SHARE", size: 12)
                         }
+                        // Plain, or a List row fires every button in it on any tap.
+                        .buttonStyle(.plain)
                     }
                 }
 
@@ -107,38 +114,80 @@ struct VehicleView: View {
                     .padding(.horizontal, 22)
                 }
 
-                SectionLabel(text: "YOUR SIGHTINGS")
-                    .padding(.top, 18)
+                HStack(alignment: .firstTextBaseline) {
+                    SectionLabel(text: "YOUR SIGHTINGS")
+                    Spacer()
+                    if !mine.isEmpty { Mono("SWIPE TO EDIT", size: 9.5, color: Palette.faint) }
+                }
+                .padding(.top, 18)
+                .padding(.bottom, 10)
+                .padding(.horizontal, 22)
+            }
+            .plainRow()
+
+            ForEach(Array(mine.enumerated()), id: \.element.id) { i, s in
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(spacing: 3) {
+                        Circle().fill(i == 0 ? Palette.yellow : Palette.dim).frame(width: 9, height: 9)
+                        Rectangle().fill(Color.white.opacity(0.12)).frame(width: 1, height: 26)
+                    }
+                    .padding(.top, 4)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(Self.stamp.string(from: s.date))
+                            .font(TaborFont.grotesk(13.5, 600))
+                        Mono(logLine(s, isFirst: i == mine.count - 1), size: 11, spacing: 0.05, color: Palette.sub)
+                    }
                     .padding(.bottom, 10)
-                    .padding(.horizontal, 22)
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(mine.enumerated()), id: \.element.id) { i, s in
-                        HStack(alignment: .top, spacing: 12) {
-                            VStack(spacing: 3) {
-                                Circle().fill(i == 0 ? Palette.yellow : Palette.dim).frame(width: 9, height: 9)
-                                Rectangle().fill(Color.white.opacity(0.12)).frame(width: 1, height: 26)
-                            }
-                            .padding(.top, 4)
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text(Self.stamp.string(from: s.date))
-                                    .font(TaborFont.grotesk(13.5, 600))
-                                Mono(logLine(s, isFirst: i == mine.count - 1), size: 11, spacing: 0.05, color: Palette.sub)
-                            }
-                            .padding(.bottom, 10)
-                        }
-                    }
-                    HStack(alignment: .top, spacing: 12) {
-                        Circle().stroke(Color.white.opacity(0.25)).frame(width: 9, height: 9).padding(.top, 4)
-                        Mono(mine.isEmpty ? "NOT CAUGHT YET — GO FIND IT" : "NOTHING ELSE YET — GO FIND IT AGAIN",
-                             size: 11.5, spacing: 0.05, color: Palette.faint)
-                    }
+                    Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 22)
-                .padding(.bottom, 30)
+                .contentShape(Rectangle())
+                .plainRow()
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button(role: .destructive) { deleting = s } label: { Label("Delete", systemImage: "trash") }
+                    Button { editing = s } label: { Label("Edit", systemImage: "pencil") }
+                        .tint(Palette.dim)
+                }
+                .contextMenu {
+                    Button { editing = s } label: { Label("Fix number, model or line", systemImage: "pencil") }
+                    Button(role: .destructive) { deleting = s } label: { Label("Delete sighting", systemImage: "trash") }
+                }
             }
+
+            HStack(alignment: .top, spacing: 12) {
+                Circle().stroke(Color.white.opacity(0.25)).frame(width: 9, height: 9).padding(.top, 4)
+                Mono(mine.isEmpty ? "NOT CAUGHT YET — GO FIND IT" : "NOTHING ELSE YET — GO FIND IT AGAIN",
+                     size: 11.5, spacing: 0.05, color: Palette.faint)
+            }
+            .padding(.horizontal, 22)
+            .padding(.bottom, 30)
+            .plainRow()
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .environment(\.defaultMinListRowHeight, 0)
         .scrollIndicators(.hidden)
         .taborScreen()
+        .sheet(item: $editing) { s in
+            EditSightingSheet(sighting: s) { moved in
+                // The sighting now belongs to another vehicle: follow it there.
+                if moved { router.openVehicle(modelId: s.modelId, number: s.number) }
+            }
+        }
+        .confirmationDialog("Delete this sighting?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+                            titleVisibility: .visible, presenting: deleting) { s in
+            Button("Delete sighting", role: .destructive) {
+                let wasLast = mine.count == 1
+                context.deleteSighting(s)
+                try? context.save()
+                Haptics.shared.nope()
+                if wasLast { dismiss() }
+            }
+        } message: { s in
+            Text(mine.count == 1
+                 ? "It's your only sighting of \(String(s.number)), so it leaves your book. Its photo and sticker go too."
+                 : "Its photo and sticker go too. Shots already saved to your Photos stay.")
+        }
         // Render the share card up front so SHARE opens instantly.
         .task(id: mine.first?.id) {
             guard let latest = mine.first else { return share = nil }
@@ -188,6 +237,51 @@ struct VehicleView: View {
 
 extension String {
     var nonEmpty: String? { isEmpty ? nil : self }
+}
+
+private extension View {
+    /// A List row that looks like plain stacked content: no insets, separators or fill.
+    func plainRow() -> some View {
+        listRowInsets(EdgeInsets())
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+    }
+}
+
+/// Fix a saved sighting's number, model or line, reusing the catch correction sheet.
+struct EditSightingSheet: View {
+    let sighting: Sighting
+    /// Called after saving; true when the sighting moved to another vehicle.
+    let onSave: (Bool) -> Void
+    @State private var draft: CatchDraft
+    @Query private var manual: [ManualAssignment]
+    @Environment(\.modelContext) private var context
+
+    init(sighting: Sighting, onSave: @escaping (Bool) -> Void) {
+        self.sighting = sighting
+        self.onSave = onSave
+        _draft = State(initialValue: CatchDraft(photo: Data(), number: sighting.number, modelId: sighting.modelId,
+                                                line: sighting.line, date: sighting.date, fromCamera: false))
+    }
+
+    var body: some View {
+        // The sheet only writes the draft back when Done is tapped.
+        CorrectionSheet(draft: $draft, title: "Edit sighting")
+            .onDisappear(perform: apply)
+    }
+
+    private func apply() {
+        guard let number = draft.number, let modelId = draft.modelId else { return }
+        let line = draft.line?.trimmingCharacters(in: .whitespaces).nonEmpty
+        let moved = number != sighting.number || modelId != sighting.modelId
+        guard moved || line != sighting.line else { return }
+        sighting.number = number
+        sighting.modelId = modelId
+        sighting.line = line
+        if draft.modelPickedByHand { context.assign(number: number, to: modelId, existing: manual) }
+        try? context.save()
+        onSave(moved)
+    }
 }
 
 /// Wrapping row of chips.

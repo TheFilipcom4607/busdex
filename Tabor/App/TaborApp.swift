@@ -8,7 +8,7 @@ struct TaborApp: App {
             RootView()
                 .preferredColorScheme(.dark)
         }
-        .modelContainer(for: [Sighting.self, ManualAssignment.self])
+        .modelContainer(TaborStore.container)
     }
 }
 
@@ -36,6 +36,7 @@ final class Router {
 
 struct RootView: View {
     @State private var router = Router()
+    @Query private var sightings: [Sighting]
 
     var body: some View {
         ZStack {
@@ -54,6 +55,16 @@ struct RootView: View {
         .onReceive(NotificationCenter.default.publisher(for: .taborOpenCatch)) { _ in
             router.tab = .catchTab
         }
+        .task { await FleetUpdater.checkIfDue() }
+        // Refresh the Home / Lock Screen widget whenever what it shows could have changed.
+        .task(id: widgetKey) { WidgetBridge.publish(sightings) }
+    }
+
+    private var widgetKey: String {
+        let latest = sightings.max { $0.date < $1.date }
+        let vehicles = Set(sightings.map { "\($0.modelId)#\($0.number)" }).count
+        return [String(sightings.count), String(vehicles), latest?.id.uuidString, latest?.modelId, latest.map { String($0.number) },
+                latest?.stickerFile, latest?.photoFile].map { $0 ?? "-" }.joined(separator: "|")
     }
 }
 

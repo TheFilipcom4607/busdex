@@ -107,6 +107,12 @@ public struct Depot: Codable, Hashable, Sendable {
     public let code: String
     public let name: String
     public let kind: VehicleKind
+
+    public init(code: String, name: String, kind: VehicleKind) {
+        self.code = code
+        self.name = name
+        self.kind = kind
+    }
 }
 
 public enum NumberSpan {
@@ -149,4 +155,11 @@ public struct FleetData: Codable, Sendable {
     public let fetched: String?
     public let models: [VehicleModel]
     public let depots: [Depot]
+
+    public init(source: String, fetched: String?, models: [VehicleModel], depots: [Depot]) {
+        self.source = source
+        self.fetched = fetched
+        self.models = models
+        self.depots = depots
+    }
 }

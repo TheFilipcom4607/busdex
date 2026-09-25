@@ -6,6 +6,7 @@ import WidgetKit
 struct TaborControlsBundle: WidgetBundle {
     var body: some Widget {
         CatchControl()
+        ProgressWidget()
     }
 }
 

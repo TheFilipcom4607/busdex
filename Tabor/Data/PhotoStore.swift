@@ -26,6 +26,18 @@ enum PhotoStore {
 
     static func url(_ file: String) -> URL { dir.appendingPathComponent(file) }
 
+    static func exists(_ file: String) -> Bool { FileManager.default.fileExists(atPath: url(file).path) }
+
+    /// Writes a file under a given name (restoring a backup keeps the original names).
+    static func write(_ data: Data, name: String) throws {
+        try data.write(to: url(name), options: .atomic)
+    }
+
+    static func delete(_ file: String) {
+        try? FileManager.default.removeItem(at: url(file))
+        cache.removeAllObjects()
+    }
+
     /// Removes every stored photo and sticker (the folder itself stays).
     static func deleteAll() {
         let fm = FileManager.default

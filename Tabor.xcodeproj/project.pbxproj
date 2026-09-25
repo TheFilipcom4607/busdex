@@ -44,6 +44,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
+				Tabor.entitlements,
 			);
 			target = A10000000000000000000010 /* Tabor */;
 		};
@@ -51,6 +52,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
+				TaborControls.entitlements,
 			);
 			target = A10000000000000000000050 /* TaborControls */;
 		};
@@ -298,6 +300,7 @@
 				DEVELOPMENT_TEAM = 4FGGTM5838;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				CODE_SIGN_ENTITLEMENTS = Tabor/Tabor.entitlements;
 				INFOPLIST_FILE = Tabor/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TABOR;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
@@ -333,6 +336,7 @@
 				DEVELOPMENT_TEAM = 4FGGTM5838;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				CODE_SIGN_ENTITLEMENTS = Tabor/Tabor.entitlements;
 				INFOPLIST_FILE = Tabor/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TABOR;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
@@ -367,6 +371,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4FGGTM5838;
 				GENERATE_INFOPLIST_FILE = YES;
+				CODE_SIGN_ENTITLEMENTS = TaborControls/TaborControls.entitlements;
 				INFOPLIST_FILE = TaborControls/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TABOR;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -392,6 +397,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4FGGTM5838;
 				GENERATE_INFOPLIST_FILE = YES;
+				CODE_SIGN_ENTITLEMENTS = TaborControls/TaborControls.entitlements;
 				INFOPLIST_FILE = TaborControls/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TABOR;
 				LD_RUNPATH_SEARCH_PATHS = (

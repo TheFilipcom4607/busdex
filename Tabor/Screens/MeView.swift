@@ -1,6 +1,7 @@
 import MapKit
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct MeView: View {
     @Query(sort: \Sighting.date, order: .reverse) private var sightings: [Sighting]
@@ -45,6 +46,10 @@ struct MeView: View {
                 ])
                 .padding(.top, 18)
                 .padding(.horizontal, 22)
+
+                BadgeShelf(badges: Achievements.evaluate(sightings.map(\.record), catalog: catalog))
+                    .padding(.top, 18)
+                    .padding(.horizontal, 22)
 
                 HStack(alignment: .firstTextBaseline) {
                     SectionLabel(text: "WHERE YOU SPOT")
@@ -204,6 +209,95 @@ struct StickerPressStyle: ButtonStyle {
     }
 }
 
+// MARK: - Badges
+
+private struct BadgeShelf: View {
+    let badges: [Achievement]
+    @State private var showAll = false
+    private static let collapsed = 6
+
+    var body: some View {
+        // Earned first, then whatever's closest to done.
+        let sorted = badges.enumerated().sorted { a, b in
+            if a.element.earned != b.element.earned { return a.element.earned }
+            if a.element.fraction != b.element.fraction { return a.element.fraction > b.element.fraction }
+            return a.offset < b.offset
+        }.map(\.element)
+        let shown = showAll ? sorted : Array(sorted.prefix(Self.collapsed))
+
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(alignment: .firstTextBaseline) {
+                SectionLabel(text: "BADGES")
+                Spacer()
+                Mono("\(badges.filter(\.earned).count) OF \(badges.count) EARNED", size: 10.5, color: Palette.faint)
+            }
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 9), GridItem(.flexible())], spacing: 9) {
+                ForEach(shown) { BadgeTile(badge: $0) }
+            }
+            if badges.count > Self.collapsed {
+                Button {
+                    Haptics.shared.tick()
+                    withAnimation(.snappy) { showAll.toggle() }
+                } label: {
+                    Mono(showAll ? "SHOW FEWER" : "SHOW ALL \(badges.count)", size: 10.5, color: Palette.yellow)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+private struct BadgeTile: View {
+    let badge: Achievement
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top) {
+                Image(systemName: symbol)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(badge.earned ? Palette.yellow : Palette.dim)
+                Spacer()
+                if badge.earned {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Palette.yellow)
+                } else {
+                    Mono("\(badge.progress)/\(badge.goal)", size: 10, weight: 700, spacing: 0, color: Palette.sub)
+                }
+            }
+            Text(badge.title)
+                .font(TaborFont.grotesk(13.5, 600))
+                .foregroundStyle(badge.earned ? Palette.ink : Palette.routeInk)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Text(badge.detail)
+                .font(TaborFont.grotesk(11))
+                .foregroundStyle(Palette.sub)
+                .lineLimit(2, reservesSpace: true)
+            ProgressBar(fraction: badge.fraction, color: badge.earned ? Palette.yellow : Palette.dim, height: 3)
+        }
+        .padding(12)
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .stroke(badge.earned ? Palette.yellow.opacity(0.45) : Color.white.opacity(0.06)))
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(badge.earned ? "Earned" : "\(badge.progress) of \(badge.goal)")
+    }
+
+    private var symbol: String {
+        switch badge.kind {
+        case .batch: "square.stack.3d.up.fill"
+        case .legendary: "crown.fill"
+        case .districts: "map.fill"
+        case .tramDay: "tram.fill"
+        case .lines: "signpost.right.and.left.fill"
+        case .depot: "building.2.fill"
+        }
+    }
+}
+
 // MARK: - Stats strip
 
 private struct StatsStrip: View {
@@ -280,7 +374,14 @@ struct SettingsSheet: View {
     @State private var exporting = false
     @State private var confirmDelete = false
     @State private var confirmWipe = false
+    @AppStorage(FleetUpdater.enabledKey) private var fleetUpdates = true
+    @State private var fleetStatus: String?
+    @State private var checkingFleet = false
+    @State private var backingUp = false
+    @State private var importing = false
+    @State private var backupMessage: String?
     @Query private var allSightings: [Sighting]
+    @Query private var manual: [ManualAssignment]
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
@@ -320,12 +421,35 @@ struct SettingsSheet: View {
                 } footer: {
                     Text("Saves every shot — failed reads and retakes included — with what the OCR and sticker cutter saw. Also in Files › On My iPhone › TABOR › Debug.")
                 }
-                Section("Fleet data") {
+                Section {
+                    LabeledContent("iCloud sync", value: FileManager.default.ubiquityIdentityToken == nil ? "Off" : "On")
+                    Button(backingUp ? "Packing…" : "Export catches") { exportBackup() }
+                        .disabled(allSightings.isEmpty || backingUp)
+                    Button("Import a backup…") { importing = true }
+                        .disabled(backingUp)
+                } header: {
+                    Text("Backup")
+                } footer: {
+                    Text("Signed in to iCloud, your sightings sync to your other devices and come back after a reinstall. Photos and stickers stay on this phone — export a ZIP to keep those too. Importing only adds what's missing.")
+                }
+                Section {
+                    if Fleet.catalog.models.isEmpty {
+                        Text("Fleet data couldn't be loaded. Check for an update, or reinstall TABOR.")
+                            .foregroundStyle(Palette.red)
+                    }
                     LabeledContent("Vehicles", value: Fleet.catalog.totalFleet.grouped)
                     LabeledContent("Models", value: "\(Fleet.catalog.models.count)")
-                    Text(Fleet.catalog.source)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    Toggle("Download fleet updates", isOn: $fleetUpdates)
+                    Button(checkingFleet ? "Checking…" : "Check now") { checkFleet() }
+                        .disabled(checkingFleet)
+                } header: {
+                    Text("Fleet data")
+                } footer: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        if let fleetStatus { Text(fleetStatus).foregroundStyle(Palette.yellow) }
+                        Text(Fleet.catalog.source)
+                        Text("New deliveries show up without an app update: TABOR checks GitHub for a fresher ZTM snapshot once a day.")
+                    }
                 }
             }
             .navigationTitle("Settings")
@@ -338,6 +462,14 @@ struct SettingsSheet: View {
         .presentationDetents([.medium, .large])
         .onAppear { debugCount = DebugRecord.count }
         .sheet(item: $exportURL) { url in ShareSheet(items: [url]) }
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.zip]) { result in
+            if case .success(let url) = result { importBackup(url) }
+        }
+        .alert("Backup", isPresented: Binding(get: { backupMessage != nil }, set: { if !$0 { backupMessage = nil } })) {
+            Button("OK") {}
+        } message: {
+            Text(backupMessage ?? "")
+        }
         .confirmationDialog("Delete all \(allSightings.count) catches?", isPresented: $confirmWipe, titleVisibility: .visible) {
             Button("Delete everything in the book", role: .destructive) { wipeBook() }
         } message: {
@@ -377,6 +509,51 @@ extension SettingsSheet {
         try? context.save()
         PhotoStore.deleteAll()
         Haptics.shared.nope()
+    }
+}
+
+extension SettingsSheet {
+    func exportBackup() {
+        backingUp = true
+        let manifest = BackupService.manifest(sightings: allSightings, manual: manual)
+        Task {
+            let result = await Task.detached { Result { try BackupService.export(manifest) } }.value
+            backingUp = false
+            switch result {
+            case .success(let url): exportURL = url
+            case .failure(let error): backupMessage = "Couldn't export: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    func importBackup(_ url: URL) {
+        backingUp = true
+        Task {
+            // Unzipping and writing photos happens off the main thread; inserting records on it.
+            let result = await Task.detached { Result { try BackupService.read(url) } }.value
+            backingUp = false
+            do {
+                let added = try context.restore(try result.get(), into: allSightings, manual: manual)
+                Haptics.shared.completed()
+                backupMessage = added == 0 ? "Everything in that backup is already in your book."
+                    : "Added \(added) sighting\(added == 1 ? "" : "s") to your book."
+            } catch {
+                backupMessage = "Couldn't import: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    func checkFleet() {
+        checkingFleet = true
+        Task {
+            let outcome = await FleetUpdater.check()
+            checkingFleet = false
+            switch outcome {
+            case .downloaded(let fetched): fleetStatus = "Snapshot from \(fetched) downloaded — it's used next time you open TABOR."
+            case .upToDate: fleetStatus = "You have the latest fleet data."
+            case .failed(let why): fleetStatus = "Couldn't check: \(why)"
+            }
+        }
     }
 }
 
