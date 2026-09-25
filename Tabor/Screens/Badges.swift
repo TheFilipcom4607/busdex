@@ -19,8 +19,9 @@ extension Medal {
     var name: String { rawValue.uppercased() }
 }
 
-/// A coin-like medal: reeded rim, embossed symbol, a sheen that sweeps across when earned,
-/// and a progress ring while it's still locked.
+/// A struck coin: bright metal rim, a recessed face and an embossed symbol, with a sheen
+/// that sweeps across when earned. Locked ones are a dark disc with a progress ring.
+/// Wrap it in `SpinningCoin` to give it thickness.
 struct Medallion: View {
     let badge: Achievement
     var size: CGFloat = 64
@@ -29,48 +30,61 @@ struct Medallion: View {
     private var revealed: Bool { !badge.secret || badge.earned }
 
     var body: some View {
-        let medal = badge.medal
+        Group {
+            if badge.earned { earned } else { locked }
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+
+    private var earned: some View {
+        let colors = badge.medal.colors
+        let light = colors[0], dark = colors[colors.count - 1]
+        let rim = size * 0.1
+        return ZStack {
+            // Rim: light catches the top-left, falls off to the bottom-right.
+            Circle().fill(LinearGradient(colors: [light, dark], startPoint: .topLeading, endPoint: .bottomTrailing))
+            // Face sits below the rim, so it's lit the other way round.
+            Circle()
+                .fill(LinearGradient(colors: [dark, light], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .padding(rim)
+            Circle()
+                .fill(LinearGradient(colors: colors, startPoint: .top, endPoint: .bottom).opacity(0.85))
+                .padding(rim + size * 0.02)
+            glyph(color: dark.mix(with: .black, by: 0.55))
+                .shadow(color: light.opacity(0.9), radius: 0, x: -0.6, y: -0.6)
+                .shadow(color: .black.opacity(0.35), radius: 0, x: 0.8, y: 0.8)
+            MedalSheen(seed: badge.id).blendMode(.overlay)
+        }
+        .mask(Circle())
+    }
+
+    private var locked: some View {
         ZStack {
-            Circle().fill(badge.earned
-                          ? AnyShapeStyle(AngularGradient(colors: medal.colors + [medal.colors[0]], center: .center, angle: .degrees(-60)))
-                          : AnyShapeStyle(Palette.thumb))
-            // The coin's reeded edge.
-            Circle()
-                .inset(by: size * 0.055)
-                .stroke(style: StrokeStyle(lineWidth: size * 0.035, dash: [1.2, size * 0.035]))
-                .foregroundStyle(Color.black.opacity(badge.earned ? 0.2 : 0.35))
-            Circle()
-                .inset(by: size * 0.12)
-                .fill(badge.earned
-                      ? AnyShapeStyle(LinearGradient(colors: medal.colors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                      : AnyShapeStyle(Palette.card))
-                .overlay(Circle().inset(by: size * 0.12).stroke(Color.black.opacity(0.18), lineWidth: 1))
-            Image(systemName: revealed ? badge.symbol : "questionmark")
-                .font(.system(size: size * (revealed ? 0.34 : 0.4), weight: .heavy))
-                .foregroundStyle(badge.earned ? Color.black.opacity(0.68) : (revealed ? Palette.dim : Palette.ghost))
-                // Embossed: a light edge under a dark stamp.
-                .shadow(color: .white.opacity(badge.earned ? 0.45 : 0), radius: 0, x: 0, y: 1)
-            if badge.secret && !badge.earned {
+            Circle().fill(Palette.card)
+            if badge.secret {
                 Circle()
                     .inset(by: size * 0.03)
                     .stroke(style: StrokeStyle(lineWidth: 1.2, dash: [3, 4]))
                     .foregroundStyle(Palette.ghost)
-            } else if !badge.earned, showsProgress, badge.fraction > 0 {
+            } else if showsProgress {
                 Circle()
-                    .inset(by: size * 0.025)
+                    .inset(by: size * 0.035)
+                    .stroke(Palette.track, lineWidth: size * 0.05)
+                Circle()
+                    .inset(by: size * 0.035)
                     .trim(from: 0, to: badge.fraction)
                     .stroke(Palette.yellow, style: StrokeStyle(lineWidth: size * 0.05, lineCap: .round))
                     .rotationEffect(.degrees(-90))
             }
-            if badge.earned {
-                MedalSheen(seed: badge.id)
-                    .clipShape(Circle())
-                    .blendMode(.screen)
-            }
+            glyph(color: revealed ? Palette.dim : Palette.ghost)
         }
-        .frame(width: size, height: size)
-        .shadow(color: badge.earned ? medal.glow.opacity(0.45) : .clear, radius: size * 0.16)
-        .accessibilityHidden(true)
+    }
+
+    private func glyph(color: Color) -> some View {
+        Image(systemName: revealed ? badge.symbol : "questionmark")
+            .font(.system(size: size * (revealed ? 0.36 : 0.4), weight: .bold))
+            .foregroundStyle(color)
     }
 }
 
@@ -176,8 +190,8 @@ private struct BadgeCell: View {
             Text(revealed ? badge.title : "Secret")
                 .font(TaborFont.grotesk(12, 600))
                 .foregroundStyle(badge.earned ? Palette.ink : Palette.sub)
-                .multilineTextAlignment(.center)
-                .lineLimit(2, reservesSpace: true)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
             Mono(caption, size: 9, weight: 600, spacing: 0.06, color: badge.earned ? badge.medal.glow : Palette.faint)
                 .lineLimit(1)
         }
@@ -304,22 +318,21 @@ struct BadgeDetailSheet: View {
 
     /// Front shows the symbol; turned past 90° you see the engraved back.
     private var spinningMedal: some View {
-        let turned = abs((angle.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360) - 180) < 90
-        return ZStack {
+        let edge = badge.earned ? badge.medal.colors.last ?? Palette.track : Palette.track
+        return SpinningCoin(angle: angle, size: 170, edge: edge) {
             Medallion(badge: badge, size: 170, showsProgress: true)
-                .opacity(turned ? 0 : 1)
+        } back: {
             medalBack
-                .opacity(turned ? 1 : 0)
-                .scaleEffect(x: -1) // un-mirror the text on the far side
         }
-        .rotation3DEffect(.degrees(angle), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
     }
 
     private var medalBack: some View {
         let colors = badge.earned ? badge.medal.colors : Medal.none.colors
         return ZStack {
+            Circle().fill(badge.earned ? Palette.paper : Palette.card)
             Circle().fill(LinearGradient(colors: colors.reversed(), startPoint: .topLeading, endPoint: .bottomTrailing))
-            Circle().inset(by: 12).stroke(Color.black.opacity(0.2), lineWidth: 1.5)
+                .padding(badge.earned ? 11 : 0)
+            Circle().inset(by: 22).stroke(Color.white.opacity(0.3), lineWidth: 1.5)
             VStack(spacing: 4) {
                 Mono("TABOR", size: 13, weight: 700, spacing: 0.3, color: .black.opacity(0.55))
                 Text(revealed ? badge.title.uppercased() : "???")
@@ -472,5 +485,54 @@ struct BadgeToast: View {
         if b.secret { return "SECRET BADGE FOUND" }
         if b.tiered && b.level > 1 { return "LEVEL UP · \(b.medal.name)" }
         return b.tiered ? "BADGE UNLOCKED · \(b.medal.name)" : "BADGE UNLOCKED"
+    }
+}
+
+/// A coin with real thickness: faces sit on either side of a stack of edge slices that fan
+/// out as it turns, so a spin shows the rim instead of a flat card vanishing edge-on.
+struct SpinningCoin<Front: View, Back: View>: View, Animatable {
+    var angle: Double
+    let size: CGFloat
+    let edge: Color
+    @ViewBuilder let front: Front
+    @ViewBuilder let back: Back
+
+    var animatableData: Double {
+        get { angle }
+        set { angle = newValue }
+    }
+
+    private static var slices: Int { 14 }
+
+    var body: some View {
+        let rad = angle * .pi / 180
+        let s = CGFloat(sin(rad)), c = cos(rad)
+        let depth = size * 0.09
+        let n = Self.slices
+        // Nearest slices last, so the rim overlaps correctly whichever face is up.
+        let order = c >= 0 ? Array(0..<n) : Array((0..<n).reversed())
+        ZStack {
+            ForEach(order, id: \.self) { i in
+                let t = CGFloat(i) / CGFloat(n - 1) - 0.5
+                // Alternate shades read as the coin's reeding.
+                Circle()
+                    .fill(edge)
+                    .overlay(Circle().fill(Color.black.opacity(i.isMultiple(of: 2) ? 0.28 : 0.12)))
+                    .frame(width: size * 0.97, height: size * 0.97)
+                    .rotation3DEffect(.radians(rad), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
+                    .offset(x: t * depth * s)
+            }
+            if c >= 0 {
+                front
+                    .rotation3DEffect(.radians(rad), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
+                    .offset(x: 0.5 * depth * s)
+            } else {
+                back
+                    .scaleEffect(x: -1) // un-mirror the text on the far side
+                    .rotation3DEffect(.radians(rad), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
+                    .offset(x: -0.5 * depth * s)
+            }
+        }
+        .frame(width: size + depth, height: size)
     }
 }
