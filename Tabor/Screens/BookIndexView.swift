@@ -37,7 +37,8 @@ struct BookIndexView: View {
             TopBar {
                 Mono("YOUR BOOK", size: 12, spacing: 0.16)
             } trailing: {
-                Mono("\(stats.caught) / \(catalog.totalFleet.grouped)", size: 12)
+                // Same count as the widget: the total leaves vintage stock out, so the count must too.
+                Mono("\(stats.fleetCaught(catalog: catalog).grouped) / \(catalog.totalFleet.grouped)", size: 12)
             }
             ScreenTitle(text: "Warsaw rolling stock")
                 .padding(.top, 14)
@@ -116,6 +117,7 @@ struct DexRow: View {
                     .font(TaborFont.grotesk(15, 600))
                     .em(-0.015, size: 15)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 OwnedCount(owned: owned, fleet: model.fleet, size: 13)

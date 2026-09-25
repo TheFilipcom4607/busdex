@@ -112,8 +112,11 @@ struct MeView: View {
         .padding(.horizontal, 4)
     }
 
+    /// One decimal under 10%, so the first few hundred catches visibly move it.
     private func percent(_ v: Double) -> String {
-        if v > 0, v < 0.01 { return "<1%" }
+        if v <= 0 { return "0%" }
+        if v < 0.001 { return "<0.1%" }
+        if v < 0.1 { return String(format: "%.1f%%", v * 100) }
         return "\(Int((v * 100).rounded()))%"
     }
 
@@ -253,11 +256,11 @@ struct SpotMap: View {
         Map(initialPosition: pins.isEmpty ? .region(Self.warsaw) : .automatic,
             interactionModes: interactive ? .all : []) {
             ForEach(pins) { s in
-                let tier = Fleet.catalog.model(id: s.modelId)?.tier ?? .common
+                let color = (Fleet.catalog.model(id: s.modelId)?.tier ?? .common).mapColor
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: s.latitude!, longitude: s.longitude!)) {
                     ZStack {
-                        Circle().fill(pinColor(tier).opacity(0.28)).frame(width: 22, height: 22).blur(radius: 4)
-                        Circle().fill(pinColor(tier)).frame(width: 7, height: 7)
+                        Circle().fill(color.opacity(0.28)).frame(width: 22, height: 22).blur(radius: 4)
+                        Circle().fill(color).frame(width: 7, height: 7)
                             .overlay(Circle().stroke(Palette.bg.opacity(0.8), lineWidth: 2))
                     }
                 }
@@ -266,10 +269,6 @@ struct SpotMap: View {
         }
         .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
         .environment(\.colorScheme, .dark)
-    }
-
-    private func pinColor(_ t: Tier) -> Color {
-        t == .legendary || t == .rare || t == .vintage ? t.color : Palette.yellow
     }
 }
 
@@ -363,7 +362,6 @@ struct SettingsSheet: View {
                     Text("HUNT and the camera use Warsaw's open-data feed of live bus and tram positions (api.um.warszawa.pl) — only while they're on screen. Leave the key empty to use the one built into the app; get your own free key at api.um.warszawa.pl.")
                 }
                 Section {
-                    LabeledContent("iCloud sync", value: FileManager.default.ubiquityIdentityToken == nil ? "Off" : "On")
                     Button(backingUp ? "Packing…" : "Export catches") { exportBackup() }
                         .disabled(allSightings.isEmpty || backingUp)
                     Button("Import a backup…") { importing = true }
@@ -371,7 +369,9 @@ struct SettingsSheet: View {
                 } header: {
                     Text("Backup")
                 } footer: {
-                    Text("Signed in to iCloud, your sightings sync to your other devices and come back after a reinstall. Photos and stickers stay on this phone — export a ZIP to keep those too. Importing only adds what's missing.")
+                    // No iCloud entitlement in this build (personal teams can't sign it), so the
+                    // book only lives on this phone: don't promise sync or a restore on reinstall.
+                    Text("Your book lives on this phone — deleting TABOR deletes it. Export a ZIP now and then: it keeps every sighting, photo and sticker. Importing only adds what's missing.")
                 }
                 Section {
                     if Fleet.catalog.models.isEmpty {

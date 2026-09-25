@@ -72,7 +72,7 @@ struct RevealView: View {
                         draft.geotag?.cancel()
                         draft.debug?.log("retake", number: draft.number, modelId: draft.modelId)
                         dismiss()
-                    } label: { Mono("RETAKE", size: 12) }
+                    } label: { Mono(draft.fromCamera ? "RETAKE" : "CANCEL", size: 12) }
                     .buttonStyle(.plain)
                 }
                 .padding(.top, 10)

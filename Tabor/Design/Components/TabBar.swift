@@ -26,17 +26,21 @@ enum AppTab: String, CaseIterable {
 }
 
 /// Bottom bar: icon over a mono label, lit in the tab's accent, with a soft glow
-/// under the active icon and a bounce + click on switch.
+/// under the active icon and a bounce on switch.
 struct TabBar: View {
     @Binding var selection: AppTab
+    /// Tapping the tab you're already on (e.g. BOOK pops back to the index).
+    var onReselect: (AppTab) -> Void = { _ in }
     @Namespace private var glow
+    /// Bumped when a tab becomes active, so only that icon bounces (not the one left behind).
+    @State private var bounces: [AppTab: Int] = [:]
 
     var body: some View {
         HStack(spacing: 0) {
             ForEach(AppTab.allCases, id: \.self) { tab in
                 let on = tab == selection
                 Button {
-                    guard tab != selection else { return }
+                    guard tab != selection else { return onReselect(tab) }
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { selection = tab }
                 } label: {
                     VStack(spacing: 5) {
@@ -51,7 +55,7 @@ struct TabBar: View {
                             Image(systemName: tab.symbol)
                                 .font(.system(size: 19, weight: .semibold))
                                 .foregroundStyle(on ? tab.accent : Color.white.opacity(0.3))
-                                .symbolEffect(.bounce.down, value: on)
+                                .symbolEffect(.bounce.down, value: bounces[tab, default: 0])
                         }
                         .frame(height: 24)
                         Mono(tab.rawValue, size: 10, weight: on ? 600 : 400, spacing: 0.1,
@@ -76,5 +80,7 @@ struct TabBar: View {
                 .ignoresSafeArea(edges: .bottom)
         }
         .overlay(alignment: .top) { Rectangle().fill(Palette.hairline).frame(height: 1) }
+        // Also when the app switches tabs itself (a catch jumping to the book).
+        .onChange(of: selection) { _, new in bounces[new, default: 0] += 1 }
     }
 }

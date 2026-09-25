@@ -22,8 +22,28 @@ struct ModelPageView: View {
         if let model = Fleet.catalog.model(id: modelId) {
             content(model)
         } else {
-            Mono("UNKNOWN MODEL").taborScreen()
+            missingModel
         }
+    }
+
+    /// A catch whose model a fleet update dropped (retired, or renamed by ZTM): a way back,
+    /// not a dead end.
+    private var missingModel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            TopBar {
+                Button { dismiss() } label: { Mono("← BACK", size: 12, spacing: 0.16) }
+                    .buttonStyle(.plain)
+            } trailing: { EmptyView() }
+            ScreenTitle(text: "Model not in the fleet data")
+                .padding(.top, 16)
+                .padding(.horizontal, 22)
+            Text("ZTM no longer lists this model, so it has no page in the book. Your catches of it are still saved.")
+                .font(TaborFont.grotesk(14))
+                .foregroundStyle(Palette.sub)
+                .padding(.top, 8)
+                .padding(.horizontal, 22)
+        }
+        .taborScreen()
     }
 
     private func content(_ model: VehicleModel) -> some View {
@@ -45,22 +65,26 @@ struct ModelPageView: View {
                 .buttonStyle(.plain)
             }
 
-            HStack(alignment: .bottom, spacing: 12) {
-                VStack(alignment: .leading, spacing: 0) {
-                    // One line if it fits at a slightly smaller size; otherwise wrap on spaces.
-                    ViewThatFits(in: .horizontal) {
-                        Text(model.name).lineLimit(1)
-                        Text(model.name).lineLimit(2).minimumScaleFactor(0.8)
-                    }
-                    .font(TaborFont.grotesk(27, 700))
-                    .em(-0.03, size: 27)
-                    Mono(subtitle(model), size: 11, spacing: 0.1, color: Palette.sub)
-                        .lineLimit(1)
-                        .padding(.top, 4)
+            // Tags above the name (as on the share card), so the name and the subtitle get
+            // the full width instead of wrapping and truncating next to the pill.
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 7) {
+                    KindTag(kind: model.kind)
+                    TierPill(tier: model.tier, fleet: model.fleet)
                 }
-                Spacer(minLength: 0)
-                TierPill(tier: model.tier, fleet: model.fleet)
+                // One line at full size, else one line a little smaller, else wrap on spaces.
+                ViewThatFits(in: .horizontal) {
+                    title(model.name, size: 27).lineLimit(1)
+                    title(model.name, size: 23).lineLimit(1)
+                    title(model.name, size: 25).lineLimit(2)
+                }
+                .padding(.top, 10)
+                Mono(subtitle(model), size: 11, spacing: 0.1, color: Palette.sub)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 4)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 16)
             .padding(.horizontal, 22)
             .padding(.bottom, 14)
@@ -84,7 +108,7 @@ struct ModelPageView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(model.batches.enumerated()), id: \.offset) { i, batch in
-                        batchHeader(batch)
+                        batchHeader(batch, have: batch.numbers.filter { ownedByNumber[$0] != nil }.count)
                             .padding(.top, i == 0 ? 6 : 18)
                             .padding(.bottom, 10)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -180,11 +204,31 @@ struct ModelPageView: View {
         return parts.joined(separator: " · ")
     }
 
-    private func batchHeader(_ b: Batch) -> some View {
+    private func title(_ name: String, size: CGFloat) -> some View {
+        Text(name)
+            .font(TaborFont.grotesk(size, 700))
+            .em(-0.03, size: size)
+    }
+
+    /// "2022 BATCH · R-3 MOKOTÓW · 4209—4282" with how much of it you have; green once complete.
+    private func batchHeader(_ b: Batch, have: Int) -> some View {
         let year = b.year.map { "\($0) BATCH" } ?? "YEAR UNKNOWN"
-        return Mono([year, b.depotDisplay, b.rangeDisplay].filter { !$0.isEmpty }.joined(separator: " · "),
-                    size: 10, spacing: 0.14, color: Palette.faint)
-            .lineLimit(1)
+        let done = have == b.numbers.count
+        return HStack(spacing: 8) {
+            Mono([year, b.depotDisplay, b.rangeDisplay].filter { !$0.isEmpty }.joined(separator: " · "),
+                 size: 10, spacing: 0.14, color: Palette.dim)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+            Spacer(minLength: 0)
+            if done {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 9, weight: .heavy))
+                    .foregroundStyle(Palette.green)
+            }
+            Mono("\(have)/\(b.numbers.count)", size: 10, weight: done ? 700 : 400, spacing: 0.06,
+                 color: done ? Palette.green : have > 0 ? Palette.sub : Palette.faint)
+                .fixedSize()
+        }
     }
 
     /// Owned first (as the design shows), then the rest, by number or catch date.

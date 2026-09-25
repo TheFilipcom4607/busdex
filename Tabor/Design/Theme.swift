@@ -61,15 +61,20 @@ extension Tier {
         }
     }
 
+    /// Progress fill. Common gets a light grey: its label grey barely shows against the track.
     var bar: Color {
         switch self {
         case .legendary: Palette.red
         case .gold: Palette.yellow
         case .rare: Palette.green
-        case .common: Color(hex: 0x4A5158)
+        case .common: Palette.sub
         case .vintage: Palette.brass
         }
     }
+
+    /// On the live map. Common can't borrow the app's yellow there: that's GOLD's colour,
+    /// and a dim grey tag would read as "nothing here".
+    var mapColor: Color { self == .common ? Palette.routeInk : color }
 }
 
 // MARK: - Type

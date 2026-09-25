@@ -99,7 +99,11 @@ struct CorrectionSheet: View {
                         draft.number = number
                         draft.modelId = modelId
                         draft.line = line.nonEmpty
-                        draft.modelPickedByHand = pickedByHand
+                        // Decided here rather than when the row was tapped: the number may have
+                        // changed since, leaving a model picked for another number that ZTM
+                        // doesn't list under this one.
+                        let listed = number.flatMap { n in modelId.flatMap(catalog.model(id:)).map { $0.numbers.contains(n) } }
+                        draft.modelPickedByHand = pickedByHand || listed == false
                         dismiss()
                     }
                     .fontWeight(.bold)

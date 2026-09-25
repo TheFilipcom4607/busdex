@@ -51,7 +51,12 @@ struct RootView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // An inset rather than a stacked row: lists scroll on under the frosted bar.
-        .safeAreaInset(edge: .bottom, spacing: 0) { TabBar(selection: $router.tab) }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            TabBar(selection: $router.tab) { tab in
+                // Like any tab bar: tapping BOOK again goes back to the index.
+                if tab == .book, !router.bookPath.isEmpty { router.bookPath.removeAll() }
+            }
+        }
         .background(Palette.bg.ignoresSafeArea())
         .environment(router)
         // The Lock Screen / Control Center control lands here.

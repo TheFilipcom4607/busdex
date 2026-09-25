@@ -305,21 +305,25 @@ struct HuntView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Close")
             }
-            ScrollView {
-                VStack(spacing: 0) {
-                    ForEach(members) { pin in
-                        pinRow(pin) { withAnimation(.snappy) { selectedId = pin.id } }
-                    }
-                }
-            }
-            .scrollBounceBehavior(.basedOnSize)
-            // Fits its rows; past four and a half it scrolls, with the half row hinting so.
-            .frame(height: min(CGFloat(members.count), 4.5) * 55)
+            pinList(members, visibleRows: 4.5) { pin in withAnimation(.snappy) { selectedId = pin.id } }
         }
         .padding(14)
-        .background(Palette.card.opacity(0.94), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Palette.hairline))
-        .shadow(color: .black.opacity(0.4), radius: 16, y: 8)
+        .huntCard()
+    }
+
+    private static let rowHeight: CGFloat = 50
+
+    /// Rows that fit their content; past `visibleRows` the list scrolls, with the half row
+    /// peeking out to say so.
+    private func pinList(_ pins: [WantedPin], visibleRows: CGFloat, action: @escaping (WantedPin) -> Void) -> some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(pins) { pin in pinRow(pin) { action(pin) } }
+            }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .scrollIndicators(.hidden)
+        .frame(height: min(CGFloat(pins.count), visibleRows) * Self.rowHeight)
     }
 
     private func pinRow(_ pin: WantedPin, action: @escaping () -> Void) -> some View {
@@ -330,17 +334,22 @@ struct HuntView: View {
                     .strokeBorder(pin.accent, lineWidth: 1.5)
                     .frame(width: 5, height: 30)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(pin.model.tier.rawValue) · \(pin.model.name)")
-                        .font(TaborFont.grotesk(14.5, 600))
-                        .lineLimit(1)
+                    HStack(alignment: .firstTextBaseline, spacing: 7) {
+                        Mono(pin.model.tier.rawValue, size: 9.5, weight: 700, spacing: 0.12, color: pin.accent)
+                            .fixedSize()
+                        Text(pin.model.name)
+                            .font(TaborFont.grotesk(14.5, 600))
+                            .lineLimit(1)
+                    }
                     Mono(pin.subtitle(showDistance: hasFix), size: 10.5, color: Palette.sub)
+                        .lineLimit(1)
                 }
                 Spacer(minLength: 4)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Palette.faint)
             }
-            .padding(.vertical, 7)
+            .frame(height: Self.rowHeight)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -366,15 +375,11 @@ struct HuntView: View {
                 }
                 .padding(.top, 2)
             }
-            Spacer().frame(height: 8)
-            ForEach(near.prefix(3)) { pin in
-                pinRow(pin) { select(pin) }
-            }
+            Spacer().frame(height: 6)
+            pinList(near, visibleRows: 3.5) { select($0) }
         }
         .padding(14)
-        .background(Palette.card.opacity(0.94), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Palette.hairline))
-        .shadow(color: .black.opacity(0.4), radius: 16, y: 8)
+        .huntCard()
     }
 
     /// Why there's nothing to hunt, when there isn't.
@@ -483,8 +488,7 @@ struct HuntView: View {
 private extension WantedPin {
     var coordinate: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: vehicle.latitude, longitude: vehicle.longitude) }
 
-    /// Common models get the app's yellow; a grey pin would read as "nothing here".
-    var accent: Color { model.tier == .common ? Palette.yellow : model.tier.color }
+    var accent: Color { model.tier.mapColor }
 
     func subtitle(showDistance: Bool) -> String {
         [vehicle.kind.rawValue, "#\(vehicle.number)", vehicle.line.isEmpty ? nil : "LINE \(vehicle.line)",
@@ -580,8 +584,8 @@ private struct LegendSwatch: View {
     var body: some View {
         HStack(spacing: 5) {
             RoundedRectangle(cornerRadius: 3)
-                .fill(filled ? Palette.yellow : .clear)
-                .strokeBorder(Palette.yellow, lineWidth: 1.5)
+                .fill(filled ? Palette.routeInk : .clear)
+                .strokeBorder(Palette.routeInk, lineWidth: 1.5)
                 .frame(width: 12, height: 9)
             Mono(text, size: 9.5, color: Palette.faint)
         }
@@ -662,9 +666,7 @@ private struct PinCard: View {
             .padding(.top, 2)
         }
         .padding(16)
-        .background(Palette.card.opacity(0.96), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(pin.accent.opacity(0.35)))
-        .shadow(color: .black.opacity(0.45), radius: 18, y: 8)
+        .huntCard(radius: 20, stroke: pin.accent.opacity(0.35))
     }
 }
 
@@ -695,7 +697,16 @@ private struct MessageCard: View {
             Spacer(minLength: 0)
         }
         .padding(15)
-        .background(Palette.card.opacity(0.94), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Palette.hairline))
+        .huntCard()
+    }
+}
+
+private extension View {
+    /// A card floating over the map. Solid: pins and street names showing through the
+    /// text made it hard to read.
+    func huntCard(radius: CGFloat = 18, stroke: Color = Palette.hairline) -> some View {
+        background(Palette.card, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).stroke(stroke))
+            .shadow(color: .black.opacity(0.45), radius: 16, y: 8)
     }
 }

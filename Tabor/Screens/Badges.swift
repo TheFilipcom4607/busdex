@@ -16,6 +16,9 @@ extension Medal {
 
     var glow: Color { colors.count > 1 ? colors[1] : .clear }
 
+    /// For text on the dark background: the glow alone is too dark for bronze (brown on black).
+    var ink: Color { colors.count > 1 ? colors[0].mix(with: colors[1], by: 0.55) : Palette.dim }
+
     var name: String { rawValue.uppercased() }
 }
 
@@ -192,7 +195,7 @@ private struct BadgeCell: View {
                 .foregroundStyle(badge.earned ? Palette.ink : Palette.sub)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-            Mono(caption, size: 9, weight: 600, spacing: 0.06, color: badge.earned ? badge.medal.glow : Palette.faint)
+            Mono(caption, size: 9, weight: 600, spacing: 0.06, color: badge.earned ? badge.medal.ink : Palette.faint)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
@@ -281,7 +284,7 @@ struct BadgeDetailSheet: View {
                 }
             }
 
-            Mono(kicker, size: 11, weight: 600, spacing: 0.16, color: badge.earned ? badge.medal.glow : Palette.dim)
+            Mono(kicker, size: 11, weight: 600, spacing: 0.16, color: badge.earned ? badge.medal.ink : Palette.dim)
                 .padding(.top, 12)
             Text(revealed ? badge.title : "Secret badge")
                 .font(TaborFont.grotesk(26, 700))
@@ -312,14 +315,14 @@ struct BadgeDetailSheet: View {
                             Circle().fill(LinearGradient(colors: medal.colors, startPoint: .topLeading, endPoint: .bottomTrailing))
                                 .frame(width: 14, height: 14)
                                 .opacity(i < badge.level ? 1 : 0.3)
-                            Mono(medal.name, size: 10, weight: 700, color: i < badge.level ? medal.glow : Palette.faint)
+                            Mono(medal.name, size: 10, weight: 700, color: i < badge.level ? medal.ink : Palette.faint)
                                 .frame(width: 70, alignment: .leading)
                             Text(step)
                                 .font(TaborFont.grotesk(13))
                                 .foregroundStyle(i < badge.level ? Palette.ink : Palette.dim)
                             Spacer()
                             if i < badge.level {
-                                Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)).foregroundStyle(medal.glow)
+                                Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)).foregroundStyle(medal.ink)
                             }
                         }
                     }
@@ -463,7 +466,7 @@ struct BadgeToast: View {
             }
             .frame(width: 62, height: 62)
             VStack(alignment: .leading, spacing: 3) {
-                Mono(kicker, size: 10, weight: 700, spacing: 0.14, color: b.medal.glow)
+                Mono(kicker, size: 10, weight: 700, spacing: 0.14, color: b.medal.ink)
                 Text(b.title)
                     .font(TaborFont.grotesk(17, 700))
                     .foregroundStyle(Palette.ink)
