@@ -227,6 +227,45 @@ public enum Wanted {
     }
 }
 
+/// What you're after on the HUNT map, like a wanted list: rarities and models, any one of
+/// which counts. Empty means everything.
+public struct HuntTargets: Equatable, Sendable, RawRepresentable {
+    public var tiers: Set<Tier>
+    /// Model ids.
+    public var models: Set<String>
+
+    public init(tiers: Set<Tier> = [], models: Set<String> = []) {
+        self.tiers = tiers
+        self.models = models
+    }
+
+    public var isEmpty: Bool { tiers.isEmpty && models.isEmpty }
+    public var count: Int { tiers.count + models.count }
+
+    public func matches(_ model: VehicleModel) -> Bool {
+        isEmpty || tiers.contains(model.tier) || models.contains(model.id)
+    }
+
+    /// "tier:GOLD,model:bus-mercus-syn2z", so it can live in UserDefaults.
+    public var rawValue: String {
+        (tiers.map { "tier:\($0.rawValue)" }.sorted() + models.map { "model:\($0)" }.sorted())
+            .joined(separator: ",")
+    }
+
+    /// Unknown tokens (a tier renamed in a later version) are skipped, never fatal.
+    public init(rawValue: String) {
+        var tiers = Set<Tier>(), models = Set<String>()
+        for token in rawValue.split(separator: ",") {
+            if token.hasPrefix("tier:") {
+                if let tier = Tier(rawValue: String(token.dropFirst(5))) { tiers.insert(tier) }
+            } else if token.hasPrefix("model:"), token.count > 6 {
+                models.insert(String(token.dropFirst(6)))
+            }
+        }
+        self.init(tiers: tiers, models: models)
+    }
+}
+
 /// Vehicles that would sit on top of each other on the map, shown as one count bubble.
 public struct PinGroup: Identifiable, Sendable {
     /// The rarest vehicle in the group; it colours the bubble.

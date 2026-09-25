@@ -24,7 +24,7 @@ struct CorrectionSheet: View {
         let candidates = match.candidates
         let others = catalog.pickerOrder(candidates: candidates, kind: kind)
             .dropFirst(candidates.count)
-            .filter { search.isEmpty || $0.name.localizedCaseInsensitiveContains(search) || ($0.code ?? "").localizedCaseInsensitiveContains(search) }
+            .filter { search.isEmpty || $0.name.localizedStandardContains(search) || ($0.code ?? "").localizedStandardContains(search) }
 
         NavigationStack {
             ScrollView {

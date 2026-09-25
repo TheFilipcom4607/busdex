@@ -12,11 +12,15 @@ enum HuntFilter: String, CaseIterable {
 /// Two rules on the map: a vehicle on its own is a tag with its line, vehicles that would
 /// overlap become one bubble with their count; filled means a model new to you, outlined
 /// a model you already have. Colour is always rarity.
+/// A filter (rarities, models) narrows it to what you're after, anywhere in the city.
 struct HuntView: View {
     @Query private var sightings: [Sighting]
     @Environment(Router.self) private var router
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("huntFilter") private var filter: HuntFilter = .all
+    /// Rarities and models picked in the filter sheet; empty shows everything.
+    @AppStorage("huntTargets") private var targets = HuntTargets()
+    @State private var showFilters = false
 
     private let live = LiveFleetService.shared
     private let location = LocationService.shared
@@ -38,34 +42,57 @@ struct HuntView: View {
     private static let warsaw = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 52.2297, longitude: 21.0122),
         span: MKCoordinateSpan(latitudeDelta: 0.06, longitudeDelta: 0.06))
+    /// A filtered hunt looks this far: all of Warsaw and the suburban lines.
+    private static let cityRadius = 60_000.0
 
     var body: some View {
-        let shown = pins.filter { filter == .all || $0.kind == .newModel }
+        // Read once: the stored filter is decoded from a string on every read.
+        let picked = targets
+        let shown = pins.filter { (filter == .all || $0.kind == .newModel) && picked.matches($0.model) }
         let selected = shown.first { $0.id == selectedId }
 
         ZStack(alignment: .top) {
-            map(shown)
+            map(onMap(shown))
                 .ignoresSafeArea()
 
             LinearGradient(colors: [Palette.bg.opacity(0.85), Palette.bg.opacity(0)], startPoint: .top, endPoint: .bottom)
-                .frame(height: 150)
+                .frame(height: picked.isEmpty ? 150 : 196)
                 .ignoresSafeArea(edges: .top)
                 .allowsHitTesting(false)
 
             VStack(spacing: 12) {
                 header
                 filterBar
+                if !picked.isEmpty {
+                    targetChips
+                        .padding(.top, -4)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
                 Spacer()
+                if offDefaultView {
+                    resetButton
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.horizontal, 14)
+                        .transition(.scale(scale: 0.8, anchor: .trailing).combined(with: .opacity))
+                }
                 bottomCard(shown: shown, selected: selected)
                     .padding(.horizontal, 14)
                     .padding(.bottom, 10)
             }
+            .animation(.snappy, value: offDefaultView)
+            .animation(.snappy, value: picked)
         }
         .background(Palette.bg.ignoresSafeArea())
         .foregroundStyle(Palette.ink)
+        .sheet(isPresented: $showFilters) {
+            HuntFilterSheet(targets: $targets, running: cityWide(), hasFix: hasFix)
+        }
         .onAppear {
             live.start("hunt")
             centerOnceOnYou()
+            // Models a fleet update dropped can't match anything; don't leave them as ghost chips.
+            let known = targets.models.filter { catalog.model(id: $0) != nil }
+            if known != targets.models { targets.models = known }
         }
         .onDisappear { live.stop("hunt") }
         .onChange(of: scenePhase) { _, phase in
@@ -79,6 +106,21 @@ struct HuntView: View {
             recompute(animated: false)
         }
         .onChange(of: sightings.count) { recompute(animated: false) }
+        .onChange(of: picked) {
+            selectedId = nil
+            openGroup = nil
+            recompute(animated: false)
+        }
+    }
+
+    /// A city-wide (filtered) hunt only gets pins around where you're looking, with a screen's
+    /// margin all round, so a broad filter doesn't hand the map a thousand annotations.
+    private func onMap(_ shown: [WantedPin]) -> [WantedPin] {
+        guard !targets.isEmpty, let r = mapRegion else { return shown }
+        return shown.filter { p in
+            p.id == selectedId || (abs(p.vehicle.latitude - r.center.latitude) < r.span.latitudeDelta
+                                   && abs(p.vehicle.longitude - r.center.longitude) < r.span.longitudeDelta)
+        }
     }
 
     // MARK: - Map
@@ -193,8 +235,11 @@ struct HuntView: View {
             Mono("HUNT", size: 12, spacing: 0.16, color: .white.opacity(0.85))
             Spacer()
             HStack(spacing: 6) {
+                let isLive = live.status == .live
                 Circle().fill(statusColor).frame(width: 6, height: 6)
-                    .shadow(color: statusColor, radius: live.status == .live ? 4 : 0)
+                    .shadow(color: statusColor, radius: isLive ? 4 : 0)
+                    // Breathes while the feed is live, like the camera's hint dot.
+                    .phaseAnimator([0.35, 1]) { v, p in v.opacity(isLive ? p : 1) } animation: { _ in .easeInOut(duration: 0.9) }
                 Mono(statusText, size: 10.5, weight: 600, spacing: 0.1, color: .white.opacity(0.85))
             }
             .padding(.vertical, 6)
@@ -227,26 +272,91 @@ struct HuntView: View {
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
-            Spacer()
-            if offDefaultView {
-                Button(action: resetView) {
-                    HStack(spacing: 5) {
-                        Image(systemName: "arrow.counterclockwise")
-                            .font(.system(size: 10.5, weight: .bold))
-                        Mono("3 KM", size: 11, weight: 600, spacing: 0.1, color: Palette.radar)
-                    }
-                    .foregroundStyle(Palette.radar)
-                    .padding(.vertical, 7)
-                    .padding(.horizontal, 11)
-                    .glass(Capsule())
-                }
-                .buttonStyle(.plain)
-                .transition(.scale(scale: 0.8).combined(with: .opacity))
-                .accessibilityLabel("Back to 3 kilometres around you")
-            }
+            Spacer(minLength: 0)
+            filterButton
         }
         .padding(.horizontal, 20)
-        .animation(.snappy, value: offDefaultView)
+    }
+
+    /// Opens the filter sheet; lit, with the number of picks, while a filter is on.
+    private var filterButton: some View {
+        let on = !targets.isEmpty
+        return Button {
+            Haptics.shared.tick()
+            showFilters = true
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "line.3.horizontal.decrease")
+                    .font(.system(size: 11, weight: .bold))
+                Mono(on ? "\(targets.count)" : "FILTER", size: 11, weight: 600, spacing: 0.1,
+                     color: on ? Palette.bg : .white.opacity(0.75))
+                    .contentTransition(.numericText())
+            }
+            .foregroundStyle(on ? Palette.bg : .white.opacity(0.75))
+            .padding(.vertical, 7)
+            .padding(.horizontal, 11)
+            .background(on ? Palette.radar : .clear, in: Capsule())
+            .glass(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(on ? "Filter, \(targets.count) picked" : "Filter")
+    }
+
+    /// What the filter is set to, one removable chip each.
+    private var targetChips: some View {
+        let picked = targets
+        return ScrollView(.horizontal) {
+            HStack(spacing: 6) {
+                ForEach(Tier.allCases.filter { picked.tiers.contains($0) }, id: \.self) { t in
+                    targetChip(t.rawValue, color: t.mapColor) { targets.tiers.subtract([t]) }
+                }
+                ForEach(picked.models.compactMap(catalog.model(id:)).sorted { $0.name < $1.name }) { m in
+                    targetChip(m.name.uppercased(), color: m.tier.mapColor) { targets.models.subtract([m.id]) }
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+        .scrollIndicators(.hidden)
+    }
+
+    private func targetChip(_ text: String, color: Color, remove: @escaping () -> Void) -> some View {
+        Button {
+            Haptics.shared.tick()
+            withAnimation(.snappy) { remove() }
+        } label: {
+            HStack(spacing: 6) {
+                Mono(text, size: 10.5, weight: 600, spacing: 0.08, color: color)
+                    .lineLimit(1)
+                Image(systemName: "xmark")
+                    .font(.system(size: 8.5, weight: .heavy))
+                    .foregroundStyle(color.opacity(0.7))
+            }
+            .padding(.vertical, 6)
+            .padding(.leading, 11)
+            .padding(.trailing, 9)
+            .glass(Capsule())
+            .overlay(Capsule().stroke(color.opacity(0.45)))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Remove \(text.capitalized) from the filter")
+    }
+
+    /// Back to the 3 km around you: shown once you've zoomed or panned away from it.
+    private var resetButton: some View {
+        Button(action: resetView) {
+            HStack(spacing: 5) {
+                Image(systemName: "location.fill")
+                    .font(.system(size: 10.5, weight: .bold))
+                Mono("3 KM", size: 11, weight: 600, spacing: 0.1, color: Palette.radar)
+            }
+            .foregroundStyle(Palette.radar)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .glass(Capsule())
+            .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Back to 3 kilometres around you")
     }
 
     /// The default view: you in the middle, the 3 km the list covers around you.
@@ -283,11 +393,10 @@ struct HuntView: View {
         Group {
             if let selected {
                 PinCard(pin: selected, owned: sightings.stats.ownedCount(modelId: selected.model.id),
-                        showDistance: hasFix, motion: motion(of: selected)) {
-                    router.openModel(selected.model.id)
-                } onClose: {
-                    withAnimation(.snappy) { selectedId = nil }
-                }
+                        showDistance: hasFix, motion: motion(of: selected),
+                        onOpen: { router.openModel(selected.model.id) },
+                        onCatch: { withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { router.tab = .catchTab } },
+                        onClose: { withAnimation(.snappy) { selectedId = nil } })
                 .id(selected.id)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             } else if let ids = openGroup {
@@ -297,7 +406,7 @@ struct HuntView: View {
             } else if let empty = emptyState(shown: shown) {
                 empty
             } else {
-                wantedList(nearYou(shown))
+                wantedList(listed(shown))
             }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: selectedId)
@@ -311,17 +420,7 @@ struct HuntView: View {
             HStack {
                 SectionLabel(text: "\(members.count) HERE")
                 Spacer()
-                Button {
-                    withAnimation(.snappy) { openGroup = nil }
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(Palette.sub)
-                        .frame(width: 28, height: 28)
-                        .background(Palette.chip, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Close")
+                CloseButton { withAnimation(.snappy) { openGroup = nil } }
             }
             pinList(members, visibleRows: 4.5) { pin in
                 withAnimation(.snappy) { selectedId = pin.id }
@@ -362,13 +461,23 @@ struct HuntView: View {
                             .font(TaborFont.grotesk(14.5, 600))
                             .lineLimit(1)
                     }
-                    Mono(pin.subtitle(showDistance: hasFix), size: 10.5, color: Palette.sub)
+                    Mono(pin.subtitle(showDistance: false), size: 10.5, color: Palette.sub)
                         .lineLimit(1)
                 }
                 Spacer(minLength: 4)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Palette.faint)
+                if hasFix {
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Mono(HuntDistance.text(pin.distance), size: 11, weight: 700, spacing: 0.04, color: Palette.ink)
+                        if let m = motion(of: pin) {
+                            Mono(m.short, size: 8.5, weight: 700, spacing: 0.1, color: m.color)
+                        }
+                    }
+                    .fixedSize()
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Palette.faint)
+                }
             }
             .frame(height: Self.rowHeight)
             .contentShape(Rectangle())
@@ -381,12 +490,22 @@ struct HuntView: View {
         hasFix ? shown.filter { $0.distance <= Wanted.radius } : shown
     }
 
+    /// Unfiltered: what's within 3 km, most wanted first. Filtered: every match in the city,
+    /// nearest first (to you, or to the map's centre without a fix) — you're after something
+    /// specific, so how far it is matters most.
+    private func listed(_ shown: [WantedPin]) -> [WantedPin] {
+        guard !targets.isEmpty else { return nearYou(shown) }
+        return shown.sorted { $0.distance < $1.distance }
+    }
+
     private func wantedList(_ near: [WantedPin]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                SectionLabel(text: filter == .newModels ? "NEW MODELS NEARBY" : "UNCAUGHT NEARBY")
+                SectionLabel(text: !targets.isEmpty ? "MATCHING YOUR FILTER"
+                             : filter == .newModels ? "NEW MODELS NEARBY" : "UNCAUGHT NEARBY")
                 Spacer()
-                Mono(hasFix ? "\(near.count) WITHIN 3 KM" : "AROUND THE MAP CENTRE", size: 9.5, color: Palette.faint)
+                Mono(!targets.isEmpty ? "\(near.count) OUT NOW" : hasFix ? "\(near.count) WITHIN 3 KM" : "AROUND THE MAP CENTRE",
+                     size: 9.5, color: Palette.faint)
             }
             if filter == .all {
                 HStack(spacing: 12) {
@@ -425,6 +544,14 @@ struct HuntView: View {
                                    if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                                }))
         }
+        if !targets.isEmpty {
+            guard shown.isEmpty else { return nil }
+            return MessageCard(icon: "line.3.horizontal.decrease.circle", title: "Nothing out that matches",
+                               text: filter == .newModels
+                                   ? "None of it is a new model for you. Switch to ALL UNCAUGHT, or widen the filter."
+                                   : "Nothing on your filter that you haven't caught is running right now. It shows up here the moment one is.",
+                               action: ("Clear the filter", { withAnimation(.snappy) { targets = HuntTargets() } }))
+        }
         if nearYou(shown).isEmpty {
             return MessageCard(icon: "checkmark.seal.fill",
                                title: filter == .newModels ? "No new models within 3 km" : "Nothing uncaught within 3 km",
@@ -455,6 +582,16 @@ struct HuntView: View {
         }
     }
 
+    /// Every uncaught vehicle out right now, anywhere; distances from you when there's a fix.
+    private func cityWide() -> [WantedPin] {
+        guard let snapshot = live.snapshot else { return [] }
+        let user = location.recent(maxAge: 300)?.coordinate
+        let from = user ?? mapCenter ?? Self.warsaw.center
+        return Wanted.pins(snapshot: snapshot, catalog: catalog, caught: sightings.stats,
+                           lat: from.latitude, lon: from.longitude, within: Self.cityRadius,
+                           from: user.map { ($0.latitude, $0.longitude) })
+    }
+
     private func recompute(animated: Bool) {
         let user = location.recent(maxAge: 300)?.coordinate
         guard let snapshot = live.snapshot, let center = mapCenter ?? user else { return }
@@ -463,11 +600,16 @@ struct HuntView: View {
             Geo.km((r.center.latitude - r.span.latitudeDelta / 2, r.center.longitude - r.span.longitudeDelta / 2),
                    (r.center.latitude + r.span.latitudeDelta / 2, r.center.longitude + r.span.longitudeDelta / 2)) * 500
         } ?? 0
-        var next = Wanted.pins(snapshot: snapshot, catalog: catalog, caught: sightings.stats,
-                               lat: center.latitude, lon: center.longitude, within: max(Wanted.radius, visible),
-                               from: user.map { ($0.latitude, $0.longitude) })
+        // Filtered down to what you're after: look across the whole city, not just the view.
+        let picked = targets
+        let filtered = !picked.isEmpty
+        var next = filtered
+            ? cityWide().filter { picked.matches($0.model) }
+            : Wanted.pins(snapshot: snapshot, catalog: catalog, caught: sightings.stats,
+                          lat: center.latitude, lon: center.longitude, within: max(Wanted.radius, visible),
+                          from: user.map { ($0.latitude, $0.longitude) })
         // Panned away from you: make sure what's around you still feeds the list.
-        if let user, Geo.km((user.latitude, user.longitude), (center.latitude, center.longitude)) * 1000 > visible {
+        if !filtered, let user, Geo.km((user.latitude, user.longitude), (center.latitude, center.longitude)) * 1000 > visible {
             let ids = Set(next.map(\.id))
             next += Wanted.pins(snapshot: snapshot, catalog: catalog, caught: sightings.stats,
                                 lat: user.latitude, lon: user.longitude, from: (user.latitude, user.longitude))
@@ -559,7 +701,7 @@ private struct WantedPinView: View {
                         .accessibilityHidden(true)
                 }
             }
-            .foregroundStyle(filled ? (pin.model.tier == .legendary ? Palette.ink : Palette.bg) : pin.accent)
+            .foregroundStyle(filled ? pin.model.tier.onMapColor : pin.accent)
             .padding(.vertical, 4)
             .padding(.horizontal, 7)
             .background(filled ? pin.accent : Palette.bg.opacity(0.88), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
@@ -588,7 +730,7 @@ private struct GroupBubble: View {
         let size = min(38, 22 + sqrt(CGFloat(group.pins.count)) * 2.5)
         Text("\(group.pins.count)")
             .font(TaborFont.mono(group.pins.count > 99 ? 11 : 12.5, 700))
-            .foregroundStyle(filled ? (group.lead.model.tier == .legendary ? Palette.ink : Palette.bg) : accent)
+            .foregroundStyle(filled ? group.lead.model.tier.onMapColor : accent)
             .frame(width: size, height: size)
             .background(filled ? accent : Palette.bg.opacity(0.88), in: Circle())
             .overlay(Circle().strokeBorder(filled ? Palette.bg.opacity(0.6) : accent, lineWidth: 1.5))
@@ -631,16 +773,12 @@ private struct PinCard: View {
     /// Which way it's going relative to you; nil until it's been seen moving.
     let motion: Motion?
     let onOpen: () -> Void
+    /// Off to the camera to catch it.
+    let onCatch: () -> Void
     let onClose: () -> Void
 
     private var motionLine: (text: String, color: Color) {
-        switch motion {
-        case .approaching: ("COMING YOUR WAY", Palette.green)
-        case .passing: ("GOING PAST", Palette.yellow)
-        case .leaving: ("MOVING AWAY", Palette.sub)
-        case .stopped: ("STOPPED", Palette.yellow)
-        case nil: ("WATCHING WHICH WAY IT GOES…", Palette.faint)
-        }
+        motion.map { (text: $0.text, color: $0.color) } ?? (text: "WATCHING WHICH WAY IT GOES…", color: Palette.faint)
     }
 
     var body: some View {
@@ -649,15 +787,7 @@ private struct PinCard: View {
                 KindTag(kind: pin.vehicle.kind)
                 TierPill(tier: pin.model.tier, fleet: pin.model.fleet)
                 Spacer()
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(Palette.sub)
-                        .frame(width: 28, height: 28)
-                        .background(Palette.chip, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Close")
+                CloseButton(action: onClose)
             }
             Text(pin.model.name)
                 .font(TaborFont.grotesk(24, 700))
@@ -677,17 +807,89 @@ private struct PinCard: View {
                     : "You have \(owned) of \(pin.model.fleet). This one isn't among them.")
                 .font(TaborFont.grotesk(13))
                 .foregroundStyle(pin.kind == .newModel ? Palette.greenInk : Palette.sub)
-            Button(action: onOpen) {
-                Mono("OPEN IN BOOK", size: 12, weight: 700, spacing: 0.12, color: Palette.bg)
+            HStack(spacing: 8) {
+                Button(action: onOpen) {
+                    HStack(spacing: 6) {
+                        Image(systemName: AppTab.book.symbol)
+                            .font(.system(size: 11, weight: .bold))
+                        Mono("BOOK", size: 12, weight: 700, spacing: 0.12, color: Palette.ink)
+                    }
+                    .foregroundStyle(Palette.ink)
+                    .padding(.vertical, 13)
+                    .padding(.horizontal, 16)
+                    .background(Palette.chip, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(Color.white.opacity(0.1)))
+                }
+                .buttonStyle(StickerPressStyle())
+                .accessibilityLabel("Open \(pin.model.name) in the book")
+                Button(action: onCatch) {
+                    HStack(spacing: 7) {
+                        Image(systemName: AppTab.catchTab.symbol)
+                            .font(.system(size: 13, weight: .bold))
+                        Mono("CATCH IT", size: 12, weight: 700, spacing: 0.12, color: pin.model.tier.onMapColor)
+                    }
+                    .foregroundStyle(pin.model.tier.onMapColor)
                     .frame(maxWidth: .infinity)
                     .padding(13)
                     .background(pin.accent, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                }
+                .buttonStyle(StickerPressStyle())
+                .accessibilityLabel("Open the camera to catch it")
             }
-            .buttonStyle(StickerPressStyle())
             .padding(.top, 2)
         }
         .padding(16)
         .huntCard(radius: 20, stroke: pin.accent.opacity(0.35))
+    }
+}
+
+private extension Motion {
+    /// On the card.
+    var text: String {
+        switch self {
+        case .approaching: "COMING YOUR WAY"
+        case .passing: "GOING PAST"
+        case .leaving: "MOVING AWAY"
+        case .stopped: "STOPPED"
+        }
+    }
+
+    /// Under the distance in a list row.
+    var short: String {
+        switch self {
+        case .approaching: "COMING"
+        case .passing: "PASSING"
+        case .leaving: "AWAY"
+        case .stopped: "STOPPED"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .approaching: Palette.green
+        case .passing, .stopped: Palette.yellow
+        case .leaving: Palette.sub
+        }
+    }
+}
+
+/// The small ✕ on HUNT's cards, with a finger-sized target around it.
+private struct CloseButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "xmark")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(Palette.sub)
+                .frame(width: 30, height: 30)
+                .background(Palette.chip, in: Circle())
+                .padding(7)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(-7)
+        .accessibilityLabel("Close")
     }
 }
 

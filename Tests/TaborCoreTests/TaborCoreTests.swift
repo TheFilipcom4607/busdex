@@ -676,3 +676,24 @@ private func nearby(_ vehicles: [LiveVehicle]) -> [NearbyVehicle] {
     trails.record([], now: fixtureNow + 500)
     #expect(trails.trail(key).isEmpty)
 }
+
+@Test func huntTargetsMatchAnyTierOrModelAndSurviveStorage() {
+    let hrc = catalog.model(id: "tram-hrc-140n")!
+    let legendary = catalog.models.first { $0.tier == .legendary }!
+    let gold = catalog.models.first { $0.tier == .gold }!
+    // Nothing picked: everything counts.
+    #expect(HuntTargets().matches(hrc))
+    #expect(HuntTargets().isEmpty)
+    // A tier and a model: either one is enough.
+    let targets = HuntTargets(tiers: [.legendary], models: [hrc.id])
+    #expect(targets.matches(legendary))
+    #expect(targets.matches(hrc))
+    #expect(!targets.matches(gold))
+    #expect(targets.count == 2)
+    // Round-trips through its stored form, in a stable order.
+    #expect(targets.rawValue == "tier:LEGENDARY,model:tram-hrc-140n")
+    #expect(HuntTargets(rawValue: targets.rawValue) == targets)
+    #expect(HuntTargets(rawValue: "") == HuntTargets())
+    // Junk from an older or newer version is skipped.
+    #expect(HuntTargets(rawValue: "tier:MYTHIC,model:,colour:red,tier:GOLD") == HuntTargets(tiers: [.gold]))
+}

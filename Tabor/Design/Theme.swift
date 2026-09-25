@@ -75,6 +75,9 @@ extension Tier {
     /// On the live map. Common can't borrow the app's yellow there: that's GOLD's colour,
     /// and a dim grey tag would read as "nothing here".
     var mapColor: Color { self == .common ? Palette.routeInk : color }
+
+    /// Text on a `mapColor` fill: dark everywhere except on LEGENDARY's red.
+    var onMapColor: Color { self == .legendary ? Palette.ink : Palette.bg }
 }
 
 // MARK: - Type
