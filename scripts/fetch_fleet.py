@@ -198,37 +198,38 @@ VINTAGE_NUMBERS = {
 
 # Preserved buses that aren't in the ZTM database at all: the KMKM club's collection
 # (kmkm.waw.pl/autobusy-lista, 2026-09-22) plus MZA heritage buses on tourist line 100
-# in 2026 (kmkm.waw.pl/wlt-2026). (make, model, number, owner). Makes/models match the
-# ZTM spelling where a model already exists, so they join it.
+# in 2026 (kmkm.waw.pl/wlt-2026). (make, model, number, owner, build year from the
+# club's page for each bus; None where it gives none). Makes/models match the ZTM
+# spelling where a model already exists, so they join it.
 EXTRA_VINTAGE_BUSES = [
-    ("Chausson", "AH 48", 395, "KMKM"),
-    ("Jelcz", "272 MEX", 1816, "KMKM"),
-    ("Jelcz", "272 MEX", 1983, "KMKM"),
-    ("Berliet", "PR100", 3873, "KMKM"),
-    ("Ikarus", "260", 289, "KMKM"),
-    ("Ikarus", "260", 6306, "KMKM"),
-    ("Ikarus", "280", 646, "KMKM"),
-    ("Ikarus", "280", 691, "KMKM"),
-    ("Ikarus", "280", 2600, "KMKM"),
-    ("Ikarus", "280", 5715, "KMKM"),
-    ("Ikarus", "280", 5741, "MZA"),
-    ("Ikarus", "405", 6454, "KMKM"),
-    ("Ikarus", "411", 6550, "KMKM"),
-    ("Ikarus Zemun", "IK-160P", 70504, "KMKM"),
-    ("Jelcz", "043", 8058, "KMKM"),
-    ("Jelcz", "043", 8081, "KMKM"),
-    ("Jelcz", "PO1", 618, "KMKM"),
-    ("Jelcz", "PAT-4", 643, "KMKM"),
-    ("Jelcz", "M11", 95, "KMKM"),
-    ("Jelcz", "L11", 90904, "KMKM"),
-    ("Jelcz", "PR110M", 4617, "KMKM"),
-    ("Jelcz", "PR110U", 5299, "KMKM"),
-    ("Jelcz", "120MM/1", 4340, "KMKM"),
-    ("Jelcz", "M121M", 4891, "KMKM"),
-    ("Jelcz", "M121I/4", 4942, "MZA"),
-    ("San", "H-100A", 8082, "KMKM"),
-    ("San", "H-100B", 160, "KMKM"),
-    ("Solaris", "Urbino 15", 8731, "KMKM"),
+    ("Chausson", "AH 48", 395, "KMKM", 1950),
+    ("Jelcz", "272 MEX", 1816, "KMKM", 1972),
+    ("Jelcz", "272 MEX", 1983, "KMKM", 1977),
+    ("Berliet", "PR100", 3873, "KMKM", 1980),
+    ("Ikarus", "260", 289, "KMKM", 1982),
+    ("Ikarus", "260", 6306, "KMKM", 1993),
+    ("Ikarus", "280", 646, "KMKM", None),
+    ("Ikarus", "280", 691, "KMKM", None),
+    ("Ikarus", "280", 2600, "KMKM", 1987),
+    ("Ikarus", "280", 5715, "KMKM", 1997),
+    ("Ikarus", "280", 5741, "MZA", None),
+    ("Ikarus", "405", 6454, "KMKM", 1994),
+    ("Ikarus", "411", 6550, "KMKM", 1995),
+    ("Ikarus Zemun", "IK-160P", 70504, "KMKM", 1987),
+    ("Jelcz", "043", 8058, "KMKM", 1974),
+    ("Jelcz", "043", 8081, "KMKM", 1986),
+    ("Jelcz", "PO1", 618, "KMKM", None),
+    ("Jelcz", "PAT-4", 643, "KMKM", None),
+    ("Jelcz", "M11", 95, "KMKM", 1987),
+    ("Jelcz", "L11", 90904, "KMKM", 1989),
+    ("Jelcz", "PR110M", 4617, "KMKM", 1991),
+    ("Jelcz", "PR110U", 5299, "KMKM", 1978),
+    ("Jelcz", "120MM/1", 4340, "KMKM", 1993),
+    ("Jelcz", "M121M", 4891, "KMKM", 1998),
+    ("Jelcz", "M121I/4", 4942, "MZA", None),
+    ("San", "H-100A", 8082, "KMKM", 1972),
+    ("San", "H-100B", 160, "KMKM", 1973),
+    ("Solaris", "Urbino 15", 8731, "KMKM", 2001),
 ]
 
 
@@ -289,9 +290,9 @@ def with_vintage_extras(vehicles):
         out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
                     "carrier": owner, "depot": depot, "kind": "BUS", "year": None,
                     "vintage": False, "onTest": True})
-    for make, model, number, owner in EXTRA_VINTAGE_BUSES:
+    for make, model, number, owner, year in EXTRA_VINTAGE_BUSES:
         out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
-                    "carrier": owner, "depot": "", "kind": "BUS", "year": None, "vintage": True})
+                    "carrier": owner, "depot": "", "kind": "BUS", "year": year, "vintage": True})
     return out
 
 
