@@ -84,7 +84,12 @@ struct HuntView: View {
     // MARK: - Map
 
     private func map(_ shown: [WantedPin]) -> some View {
-        Map(position: $position, interactionModes: .all, selection: $selectedId) {
+        // Picked on the map itself: make sure the card that opens doesn't cover it.
+        let selection = Binding<String?>(get: { selectedId }, set: { id in
+            selectedId = id
+            if let pin = shown.first(where: { $0.id == id }) { keepClearOfCard(pin) }
+        })
+        return Map(position: $position, interactionModes: .all, selection: selection) {
             // The selected vehicle's recent path, fading out behind it.
             if let pin = shown.first(where: { $0.id == selectedId }) {
                 let trail = live.trails.trail(pin.id).map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
@@ -155,6 +160,19 @@ struct HuntView: View {
         let cell = pow(2, (log2(region.span.longitudeDelta / 10)).rounded())
         // A fixed reference latitude too, for the same reason.
         return Wanted.group(rest, cellLon: cell, latitude: 52.23) + lone
+    }
+
+    /// The card opens over the bottom of the map; a vehicle picked down there glides up into
+    /// the open part instead of hiding behind the card it just opened.
+    private func keepClearOfCard(_ pin: WantedPin) {
+        // North-up only: rotated, latitude no longer runs up the screen.
+        guard let region = mapRegion, mapHeading < 1 || mapHeading > 359 else { return }
+        let span = region.span.latitudeDelta
+        // The card's top edge sits a little below the middle of the screen.
+        guard pin.vehicle.latitude < region.center.latitude - span * 0.05 else { return }
+        let center = CLLocationCoordinate2D(latitude: pin.vehicle.latitude - span * 0.15,
+                                            longitude: region.center.longitude)
+        withAnimation(.easeInOut(duration: 0.5)) { position = .region(MKCoordinateRegion(center: center, span: region.span)) }
     }
 
     private func zoom(into g: PinGroup) {
@@ -305,7 +323,10 @@ struct HuntView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Close")
             }
-            pinList(members, visibleRows: 4.5) { pin in withAnimation(.snappy) { selectedId = pin.id } }
+            pinList(members, visibleRows: 4.5) { pin in
+                withAnimation(.snappy) { selectedId = pin.id }
+                keepClearOfCard(pin)
+            }
         }
         .padding(14)
         .huntCard()
@@ -490,8 +511,8 @@ private extension WantedPin {
 
     var accent: Color { model.tier.mapColor }
 
-    func subtitle(showDistance: Bool) -> String {
-        [vehicle.kind.rawValue, "#\(vehicle.number)", vehicle.line.isEmpty ? nil : "LINE \(vehicle.line)",
+    func subtitle(showDistance: Bool, showKind: Bool = true) -> String {
+        [showKind ? vehicle.kind.rawValue : nil, "#\(vehicle.number)", vehicle.line.isEmpty ? nil : "LINE \(vehicle.line)",
          showDistance ? HuntDistance.text(distance) : nil]
             .compactMap { $0 }.joined(separator: " · ")
     }
@@ -625,8 +646,8 @@ private struct PinCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 7) {
-                TierPill(tier: pin.model.tier, fleet: pin.model.fleet)
                 KindTag(kind: pin.vehicle.kind)
+                TierPill(tier: pin.model.tier, fleet: pin.model.fleet)
                 Spacer()
                 Button(action: onClose) {
                     Image(systemName: "xmark")
@@ -643,7 +664,7 @@ private struct PinCard: View {
                 .em(-0.03, size: 24)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-            Mono(pin.subtitle(showDistance: showDistance), size: 11, weight: 600, color: Palette.routeInk)
+            Mono(pin.subtitle(showDistance: showDistance, showKind: false), size: 11, weight: 600, color: Palette.routeInk)
             if showDistance {
                 HStack(spacing: 6) {
                     Circle().fill(motionLine.color).frame(width: 6, height: 6)
