@@ -13,3 +13,5 @@ xcuserdata/
 
 # API keys (see Config/Tabor.xcconfig)
 Config/Secrets.xcconfig
+
+CLAUDE.md
