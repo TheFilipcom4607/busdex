@@ -234,15 +234,15 @@ private func badge(_ id: String, _ sightings: [SightingRecord]) -> Achievement {
 
 @Test func linesBadgeCountsDistinctLines() {
     let s = (1...50).map { SightingRecord(number: $0, modelId: "x", date: .now, line: String($0)) }
-    #expect(badge("lines-50", s).earned)
+    #expect(badge("lines", s).level == 2 && badge("lines", s).goal == 100)
     let dupes = [SightingRecord(number: 1, modelId: "x", date: .now, line: "n14"),
                  SightingRecord(number: 2, modelId: "x", date: .now, line: " N14 "),
                  SightingRecord(number: 3, modelId: "x", date: .now, line: "")]
-    #expect(badge("lines-50", dupes).progress == 1)
+    #expect(badge("lines", dupes).progress == 1 && !badge("lines", dupes).earned)
 }
 
 @Test func depotBadgeNeedsEveryModelFromThatDepot() {
-    let depots = Achievements.evaluate([], catalog: catalog).filter { $0.kind == .depot }
+    let depots = Achievements.evaluate([], catalog: catalog).filter(\.isDepot)
     #expect(!depots.isEmpty)
     let r4 = depots.first { $0.id == "depot-BUS-R-4-Stalowa" }!
     #expect(r4.title == "R-4 Stalowa" && r4.goal > 1 && r4.progress == 0)
@@ -323,4 +323,151 @@ private func fleet(_ fetched: String?) -> FleetCatalog {
     let merged = manifest.merge(existingIds: [a.id], existingManual: [2])
     #expect(merged.sightings == [b])
     #expect(merged.manual == [.init(number: 1, modelId: "m")])
+}
+
+// MARK: - More badges
+
+private let cal: Calendar = {
+    var c = Calendar(identifier: .gregorian)
+    c.timeZone = TimeZone(identifier: "Europe/Warsaw")!
+    return c
+}()
+
+private func day(_ y: Int, _ m: Int, _ d: Int, _ h: Int = 12) -> Date {
+    cal.date(from: DateComponents(year: y, month: m, day: d, hour: h))!
+}
+
+private func eval(_ s: [SightingRecord]) -> [String: Achievement] {
+    Dictionary(uniqueKeysWithValues: Achievements.evaluate(s, catalog: catalog, calendar: cal).map { ($0.id, $0) })
+}
+
+private func any(_ modelId: String? = nil, number: Int? = nil, date: Date = day(2026, 5, 5), line: String? = nil,
+                 street: String? = nil, lat: Double? = nil, lon: Double? = nil, code: Int? = nil,
+                 temp: Double? = nil, sticker: Bool = false) -> SightingRecord {
+    let m = modelId.flatMap(catalog.model(id:)) ?? catalog.models.first { !$0.vintage }!
+    return SightingRecord(number: number ?? m.numbers[0], modelId: m.id, date: date, line: line, street: street,
+                          latitude: lat, longitude: lon, weatherCode: code, temperature: temp, hasSticker: sticker)
+}
+
+@Test func badgeIdsAreUnique() {
+    let all = Achievements.evaluate([], catalog: catalog)
+    #expect(Set(all.map(\.id)).count == all.count)
+    #expect(all.count > 40)
+    #expect(all.allSatisfy { !$0.earned })
+    #expect(all.contains { $0.secret })
+}
+
+@Test func tieredBadgesClimbLevels() {
+    let big = catalog.models.max { $0.fleet < $1.fleet }!
+    let caught = big.numbers.prefix(120).map { SightingRecord(number: $0, modelId: big.id, date: .now) }
+    let collector = eval(caught)["collector"]!
+    #expect(collector.level == 2 && collector.levels == 4 && collector.goal == 500 && collector.medal == .silver)
+    #expect(collector.detail == "500 different vehicles")
+    #expect(eval(Array(caught.prefix(9)))["collector"]!.level == 0)
+    let share = eval(caught)["fleet-share"]!
+    #expect(share.level == 1 && share.detail == "10% of Warsaw's fleet")
+    #expect(Achievement.medal(level: 4, of: 4) == .platinum)
+    #expect(Achievement.medal(level: 1, of: 1) == .gold)
+    #expect(Achievement.medal(level: 3, of: 3) == .gold)
+}
+
+@Test func rarityBadges() {
+    let single = catalog.models.first { !$0.vintage && $0.fleet == 1 }!
+    #expect(eval([any(single.id)])["unicorn"]!.earned)
+    #expect(!eval([any()])["unicorn"]!.earned)
+    let gold = catalog.models.filter { $0.tier == .gold }
+    #expect(eval(gold.map { any($0.id) })["gold-set"]!.earned)
+    let rainbow = [Tier.legendary, .gold, .rare, .common].map { t in any(catalog.models.first { $0.tier == t }!.id) }
+    #expect(eval(rainbow)["rainbow-day"]!.earned)
+    #expect(eval(Array(rainbow.prefix(3)))["rainbow-day"]!.progress == 3)
+    let pair = catalog.models.first { !$0.vintage && $0.fleet == 2 }!
+    #expect(eval(pair.numbers.map { any(pair.id, number: $0) })["model-complete"]!.earned)
+}
+
+@Test func calendarBadges() {
+    #expect(eval([any(date: day(2026, 12, 25))])["christmas"]!.earned)
+    #expect(eval([any(date: day(2027, 1, 1, 0))])["new-year"]!.earned)
+    #expect(!eval([any(date: day(2026, 12, 24, 23))])["christmas"]!.earned)
+    let seasons = [1, 4, 7, 10].map { any(date: day(2026, $0, 3)) }
+    #expect(eval(seasons)["four-seasons"]!.earned)
+    #expect(eval([any(date: day(2026, 12, 3)), any(date: day(2026, 2, 3))])["four-seasons"]!.progress == 1)
+    #expect(eval([any(date: day(2025, 3, 9)), any(date: day(2026, 3, 9, 8))])["anniversary"]!.earned)
+    #expect(!eval([any(date: day(2025, 3, 9)), any(date: day(2025, 3, 9, 18))])["anniversary"]!.earned)
+}
+
+@Test func vehicleAgeBadges() {
+    let m = catalog.models.first { !$0.vintage && $0.batches.contains { $0.year == 2024 } }!
+    let n = m.batches.first { $0.year == 2024 }!.numbers[0]
+    #expect(eval([any(m.id, number: n, date: day(2024, 6, 1))])["fresh"]!.earned)
+    #expect(!eval([any(m.id, number: n, date: day(2026, 6, 1))])["fresh"]!.earned)
+    let old = catalog.models.first { !$0.vintage && $0.batches.contains { ($0.year ?? 9999) <= 2005 } }!
+    let on = old.batches.first { ($0.year ?? 9999) <= 2005 }!.numbers[0]
+    #expect(eval([any(old.id, number: on, date: day(2026, 6, 1))])["veteran"]!.earned)
+}
+
+@Test func numberBadges() {
+    #expect(Achievements.isPalindrome(1221) && Achievements.isPalindrome(3113) && !Achievements.isPalindrome(1974))
+    let m = catalog.models.max { $0.fleet < $1.fleet }!
+    let consecutive = m.numbers.first { m.numbers.contains($0 + 1) }!
+    #expect(eval([any(m.id, number: consecutive), any(m.id, number: consecutive + 1)])["twins"]!.earned)
+    #expect(!eval([any(m.id, number: consecutive)])["twins"]!.earned)
+    if let round = catalog.models.first(where: { $0.numbers.contains { $0 % 100 == 0 } }) {
+        #expect(eval([any(round.id, number: round.numbers.first { $0 % 100 == 0 })])["round-number"]!.earned)
+    }
+    guard case .ambiguous(let both) = catalog.match(number: 1411) else { Issue.record("no shared number"); return }
+    #expect(eval(both.map { any($0.id, number: 1411) })["double-life"]!.earned)
+    let twice = [any(date: day(2026, 5, 5, 9)), any(date: day(2026, 5, 5, 17))]
+    #expect(eval(twice)["deja-vu"]!.earned)
+    #expect(!eval([any(date: day(2026, 5, 5)), any(date: day(2026, 5, 6))])["deja-vu"]!.earned)
+    #expect(eval(Array(repeating: any(), count: 10))["old-friend"]!.earned)
+}
+
+@Test func placeBadges() {
+    // Wilanów to Białołęka is ~20 km.
+    let far = [any(date: day(2026, 5, 5, 9), lat: 52.165, lon: 21.09), any(date: day(2026, 5, 5, 17), lat: 52.33, lon: 20.99)]
+    #expect(eval(far)["explorer"]!.earned)
+    let apart = [any(date: day(2026, 5, 5), lat: 52.165, lon: 21.09), any(date: day(2026, 5, 6), lat: 52.33, lon: 20.99)]
+    #expect(!eval(apart)["explorer"]!.earned)
+    #expect(Geo.km((52.2297, 21.0122), (50.0647, 19.945)) > 250) // Warsaw → Kraków
+    #expect(eval([any(lat: 52.08, lon: 21.02)])["suburbanite"]!.earned) // Piaseczno
+    #expect(!eval([any(lat: 52.23, lon: 21.01)])["suburbanite"]!.earned)
+    let street = ["105", "112", "119", "N14", "4"].map { any(line: $0, street: "Puławska") }
+    #expect(eval(street)["busy-street"]!.earned)
+    #expect(eval(street.dropLast() + [any(line: "4", street: "Marszałkowska")])["busy-street"]!.progress == 4)
+}
+
+@Test func weatherBadges() {
+    let e = eval([any(code: 73, temp: -2), any(code: 63, temp: 12), any(code: 96, temp: 31)])
+    #expect(e["snow"]!.earned && e["rain"]!.earned && e["storm"]!.earned && e["heatwave"]!.earned)
+    #expect(!e["deep-freeze"]!.earned)
+    #expect(eval([any(temp: -10)])["deep-freeze"]!.earned)
+    #expect(!eval([any()])["rain"]!.earned)
+}
+
+@Test func photographerAndOperators() {
+    #expect(eval((0..<10).map { _ in any(sticker: true) })["photographer"]!.level == 1)
+    let ops = eval([any()])["all-operators"]!
+    #expect(ops.goal > 3 && ops.progress == 1)
+}
+
+// MARK: - Weather lookup
+
+@Test func openMeteoPicksTheRightApiAndHour() {
+    let now = Date(timeIntervalSince1970: 1_790_000_000)
+    let recent = OpenMeteo.url(latitude: 52.229_7, longitude: 21.012_2, date: now.addingTimeInterval(-3600), now: now)
+    #expect(recent.host == "api.open-meteo.com")
+    #expect(recent.query!.contains("latitude=52.23") && recent.query!.contains("longitude=21.01"))
+    let old = OpenMeteo.url(latitude: 52, longitude: 21, date: now.addingTimeInterval(-400 * 86_400), now: now)
+    #expect(old.host == "archive-api.open-meteo.com")
+
+    // 14:40 UTC rounds to the 15:00 reading.
+    let catchTime = ISO8601DateFormatter().date(from: "2026-01-10T14:40:00Z")!
+    let json = Data(#"""
+    {"hourly":{"time":["2026-01-10T14:00","2026-01-10T15:00","2026-01-10T16:00"],
+    "temperature_2m":[-3.1,-4.5,null],"weather_code":[3,73,null]}}
+    """#.utf8)
+    #expect(OpenMeteo.reading(from: json, at: catchTime) == .init(code: 73, temperature: -4.5))
+    #expect(OpenMeteo.reading(from: json, at: catchTime.addingTimeInterval(3600)) == nil) // nulls
+    #expect(OpenMeteo.reading(from: Data("{}".utf8), at: catchTime) == nil)
+    #expect(Weather.isSnow(73) && Weather.isRain(61) && Weather.isStorm(95) && !Weather.isRain(3))
 }

@@ -162,6 +162,41 @@ final class Haptics {
         ], curves: [curve(.hapticIntensityControl, [(0.4, 1), (0.9, 0.35)])], fallback: .success)
     }
 
+    /// Badge unlocked: a coin dropped on a table — metallic clinks that speed up and soften
+    /// as it settles, then a warm thud as the medal lands in the toast. Better medals ring
+    /// on with bright sparkles; a secret badge rumbles in first, like a drumroll.
+    func badgeUnlocked(medal: Medal, secret: Bool) {
+        var events: [CHHapticEvent] = []
+        var curves: [CHHapticParameterCurve] = []
+        let lead: TimeInterval = secret ? 0.45 : 0
+        if secret {
+            events.append(hum(0, 0.4, intensity: 0.6, sharpness: 0.2))
+            curves.append(curve(.hapticIntensityControl, [(0, 0.3), (0.4, 1)]))
+        }
+        let clinks: [(TimeInterval, Float)] = [(0, 0.85), (0.13, 0.75), (0.22, 0.65), (0.29, 0.55), (0.34, 0.48), (0.38, 0.42), (0.41, 0.36)]
+        events += clinks.map { tap(lead + $0.0, $0.1, 0.95) }
+        events.append(tap(lead + 0.5, 1, 0.35))
+        let sparkles: Int
+        switch medal {
+        case .platinum: sparkles = 4
+        case .gold: sparkles = 2
+        case .silver: sparkles = 1
+        default: sparkles = 0
+        }
+        events += (0..<sparkles).map { tap(lead + 0.66 + Double($0) * 0.09, 0.55 + Float($0) * 0.08, 1) }
+        play(events, curves: curves, fallback: .success)
+    }
+
+    /// Spinning a medal in the badge sheet: one crisp, metallic click per face.
+    func medalTick() {
+        play([tap(0, 0.5, 1)], fallback: .selection)
+    }
+
+    /// A locked badge tapped: a dull knock, like tapping a display case.
+    func locked() {
+        play([tap(0, 0.5, 0.1)], fallback: .soft)
+    }
+
     /// Nothing readable / unknown number: a soft, low double-bump. Never harsh.
     func nope() {
         play([tap(0, 0.55, 0.15), tap(0.12, 0.42, 0.15)], fallback: .warning)
@@ -221,6 +256,12 @@ final class Haptics {
             ("Nope", { self.nope() }),
             ("Digit", { self.detent() }),
             ("Sticker press", { self.press() }),
+            ("Badge · bronze", { self.badgeUnlocked(medal: .bronze, secret: false) }),
+            ("Badge · gold", { self.badgeUnlocked(medal: .gold, secret: false) }),
+            ("Badge · platinum", { self.badgeUnlocked(medal: .platinum, secret: false) }),
+            ("Badge · secret", { self.badgeUnlocked(medal: .gold, secret: true) }),
+            ("Medal spin tick", { self.medalTick() }),
+            ("Locked badge", { self.locked() }),
         ]
     }
 

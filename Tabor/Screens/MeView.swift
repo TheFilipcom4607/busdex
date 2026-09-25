@@ -209,95 +209,6 @@ struct StickerPressStyle: ButtonStyle {
     }
 }
 
-// MARK: - Badges
-
-private struct BadgeShelf: View {
-    let badges: [Achievement]
-    @State private var showAll = false
-    private static let collapsed = 6
-
-    var body: some View {
-        // Earned first, then whatever's closest to done.
-        let sorted = badges.enumerated().sorted { a, b in
-            if a.element.earned != b.element.earned { return a.element.earned }
-            if a.element.fraction != b.element.fraction { return a.element.fraction > b.element.fraction }
-            return a.offset < b.offset
-        }.map(\.element)
-        let shown = showAll ? sorted : Array(sorted.prefix(Self.collapsed))
-
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(alignment: .firstTextBaseline) {
-                SectionLabel(text: "BADGES")
-                Spacer()
-                Mono("\(badges.filter(\.earned).count) OF \(badges.count) EARNED", size: 10.5, color: Palette.faint)
-            }
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 9), GridItem(.flexible())], spacing: 9) {
-                ForEach(shown) { BadgeTile(badge: $0) }
-            }
-            if badges.count > Self.collapsed {
-                Button {
-                    Haptics.shared.tick()
-                    withAnimation(.snappy) { showAll.toggle() }
-                } label: {
-                    Mono(showAll ? "SHOW FEWER" : "SHOW ALL \(badges.count)", size: 10.5, color: Palette.yellow)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-}
-
-private struct BadgeTile: View {
-    let badge: Achievement
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .top) {
-                Image(systemName: symbol)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(badge.earned ? Palette.yellow : Palette.dim)
-                Spacer()
-                if badge.earned {
-                    Image(systemName: "checkmark.seal.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Palette.yellow)
-                } else {
-                    Mono("\(badge.progress)/\(badge.goal)", size: 10, weight: 700, spacing: 0, color: Palette.sub)
-                }
-            }
-            Text(badge.title)
-                .font(TaborFont.grotesk(13.5, 600))
-                .foregroundStyle(badge.earned ? Palette.ink : Palette.routeInk)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-            Text(badge.detail)
-                .font(TaborFont.grotesk(11))
-                .foregroundStyle(Palette.sub)
-                .lineLimit(2, reservesSpace: true)
-            ProgressBar(fraction: badge.fraction, color: badge.earned ? Palette.yellow : Palette.dim, height: 3)
-        }
-        .padding(12)
-        .background(Palette.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
-            .stroke(badge.earned ? Palette.yellow.opacity(0.45) : Color.white.opacity(0.06)))
-        .accessibilityElement(children: .combine)
-        .accessibilityValue(badge.earned ? "Earned" : "\(badge.progress) of \(badge.goal)")
-    }
-
-    private var symbol: String {
-        switch badge.kind {
-        case .batch: "square.stack.3d.up.fill"
-        case .legendary: "crown.fill"
-        case .districts: "map.fill"
-        case .tramDay: "tram.fill"
-        case .lines: "signpost.right.and.left.fill"
-        case .depot: "building.2.fill"
-        }
-    }
-}
-
 // MARK: - Stats strip
 
 private struct StatsStrip: View {
@@ -375,6 +286,7 @@ struct SettingsSheet: View {
     @State private var confirmDelete = false
     @State private var confirmWipe = false
     @AppStorage(FleetUpdater.enabledKey) private var fleetUpdates = true
+    @AppStorage(WeatherService.enabledKey) private var weatherLookup = true
     @State private var fleetStatus: String?
     @State private var checkingFleet = false
     @State private var backingUp = false
@@ -393,6 +305,9 @@ struct SettingsSheet: View {
                         .onChange(of: haptics) { _, on in if on { Haptics.shared.completed() } }
                     Toggle("Save catches to Photos", isOn: $saveToGallery)
                     Toggle("Geotag catches", isOn: $geotag)
+                    Toggle("Weather for badges", isOn: $weatherLookup)
+                } footer: {
+                    Text("Weather comes from Open-Meteo: TABOR sends each geotagged catch's time and rough location (to about 1 km). Nothing else leaves your phone.")
                 }
                 Section {
                     Toggle("Debug mode", isOn: $debugMode)

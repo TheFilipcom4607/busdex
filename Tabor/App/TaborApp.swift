@@ -36,7 +36,9 @@ final class Router {
 
 struct RootView: View {
     @State private var router = Router()
+    @State private var badges = BadgeTracker()
     @Query private var sightings: [Sighting]
+    @Environment(\.modelContext) private var context
 
     var body: some View {
         ZStack {
@@ -55,7 +57,25 @@ struct RootView: View {
         .onReceive(NotificationCenter.default.publisher(for: .taborOpenCatch)) { _ in
             router.tab = .catchTab
         }
+        .overlay(alignment: .top) {
+            if let unlock = badges.current {
+                BadgeToast(unlock: unlock) {
+                    badges.dismiss()
+                    router.tab = .me
+                } onDismiss: {
+                    badges.dismiss()
+                }
+                .id(unlock.id)
+                .padding(.top, 4)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
         .task { await FleetUpdater.checkIfDue() }
+        // Badges: celebrate anything newly earned, and fill in weather for the weather ones.
+        .task(id: sightings.map(\.record)) {
+            badges.update(Achievements.evaluate(sightings.map(\.record), catalog: Fleet.catalog))
+            await WeatherService.backfill(sightings, context: context)
+        }
         // Refresh the Home / Lock Screen widget whenever what it shows could have changed.
         .task(id: widgetKey) { WidgetBridge.publish(sightings) }
     }

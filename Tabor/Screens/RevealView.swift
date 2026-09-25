@@ -485,6 +485,8 @@ struct RevealView: View {
 /// A one-shot burst of tier-coloured sparks from behind the sticker.
 struct SparkleBurst: View {
     let color: Color
+    /// 1 for the reveal sticker; smaller for badge medals.
+    var reach: CGFloat = 1
     @State private var go = false
     private let sparks: [(angle: Double, dist: CGFloat, size: CGFloat, delay: Double)] = (0..<22).map { i in
         (Double(i) / 22 * 360 + .random(in: -8...8), .random(in: 150...240), .random(in: 3...8), .random(in: 0...0.08))
@@ -496,8 +498,8 @@ struct SparkleBurst: View {
                 Circle()
                     .fill(s.size > 5 ? color : .white)
                     .frame(width: s.size, height: s.size)
-                    .offset(x: go ? cos(s.angle * .pi / 180) * s.dist : 0,
-                            y: go ? sin(s.angle * .pi / 180) * s.dist * 0.7 : 0)
+                    .offset(x: go ? cos(s.angle * .pi / 180) * s.dist * reach : 0,
+                            y: go ? sin(s.angle * .pi / 180) * s.dist * 0.7 * reach : 0)
                     .opacity(go ? 0 : 1)
                     .scaleEffect(go ? 0.3 : 1)
                     .animation(.easeOut(duration: 0.8).delay(s.delay), value: go)

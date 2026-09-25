@@ -14,10 +14,13 @@ public struct BackupManifest: Codable, Sendable {
         public var line: String?
         public var photoFile: String?
         public var stickerFile: String?
+        public var weatherCode: Int?
+        public var temperature: Double?
 
         public init(id: UUID, number: Int, modelId: String, date: Date, latitude: Double? = nil,
                     longitude: Double? = nil, street: String? = nil, district: String? = nil,
-                    line: String? = nil, photoFile: String? = nil, stickerFile: String? = nil) {
+                    line: String? = nil, photoFile: String? = nil, stickerFile: String? = nil,
+                    weatherCode: Int? = nil, temperature: Double? = nil) {
             self.id = id
             self.number = number
             self.modelId = modelId
@@ -29,6 +32,8 @@ public struct BackupManifest: Codable, Sendable {
             self.line = line
             self.photoFile = photoFile
             self.stickerFile = stickerFile
+            self.weatherCode = weatherCode
+            self.temperature = temperature
         }
     }
 

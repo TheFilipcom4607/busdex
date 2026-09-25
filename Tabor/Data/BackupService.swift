@@ -48,7 +48,8 @@ enum BackupService {
             BackupManifest.Sighting(id: s.id, number: s.number, modelId: s.modelId, date: s.date,
                                     latitude: s.latitude, longitude: s.longitude, street: s.street,
                                     district: s.district, line: s.line, photoFile: s.photoFile,
-                                    stickerFile: s.stickerFile)
+                                    stickerFile: s.stickerFile, weatherCode: s.weatherCode,
+                                    temperature: s.temperature)
         }, manual: manual.map { .init(number: $0.number, modelId: $0.modelId) })
     }
 
@@ -70,6 +71,8 @@ extension ModelContext {
             s.longitude = r.longitude
             s.street = r.street
             s.district = r.district
+            s.weatherCode = r.weatherCode
+            s.temperature = r.temperature
             insert(s)
         }
         for a in merged.manual { insert(ManualAssignment(number: a.number, modelId: a.modelId)) }

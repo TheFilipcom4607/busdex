@@ -18,6 +18,9 @@ final class Sighting {
     var photoFile: String?
     /// Die-cut PNG (vehicle lifted off the background with a white border).
     var stickerFile: String?
+    /// WMO weather code and °C at the catch, filled in from Open-Meteo for the weather badges.
+    var weatherCode: Int?
+    var temperature: Double?
 
     init(id: UUID = UUID(), number: Int, modelId: String, date: Date = .now, line: String? = nil,
          photoFile: String? = nil, stickerFile: String? = nil) {
@@ -31,7 +34,9 @@ final class Sighting {
     }
 
     var record: SightingRecord {
-        SightingRecord(number: number, modelId: modelId, date: date, line: line, district: district)
+        SightingRecord(number: number, modelId: modelId, date: date, line: line, district: district, street: street,
+                       latitude: latitude, longitude: longitude, weatherCode: weatherCode, temperature: temperature,
+                       hasSticker: stickerFile != nil)
     }
 }
 
