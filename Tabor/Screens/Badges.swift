@@ -300,7 +300,7 @@ struct BadgeDetailSheet: View {
         }
         .frame(maxWidth: .infinity)
         .foregroundStyle(Palette.ink)
-        .presentationDetents([badge.tiered ? PresentationDetent.large : .medium])
+        .presentationDetents([.large])
         .presentationBackground(Palette.bg)
         .task {
             // Earned medals arrive with a flourish: one full turn.
@@ -488,8 +488,9 @@ struct BadgeToast: View {
     }
 }
 
-/// A coin with real thickness: the faces sit apart and a solid rim band joins them, so a
-/// spin shows the edge instead of a flat card vanishing into a line.
+/// A coin with real thickness, drawn in one flat projection so everything lines up: the
+/// near face squashes as it turns, and the rim (the far face's outline plus the band
+/// joining the two) shows on the side turning toward you.
 struct SpinningCoin<Front: View, Back: View>: View, Animatable {
     var angle: Double
     let size: CGFloat
@@ -504,38 +505,56 @@ struct SpinningCoin<Front: View, Back: View>: View, Animatable {
 
     var body: some View {
         let rad = angle * .pi / 180
-        let s = CGFloat(sin(rad)), c = cos(rad)
-        let depth = size * 0.09
+        let s = CGFloat(sin(rad)), c = CGFloat(cos(rad))
+        let depth = size * 0.07
+        let frontX = -0.5 * depth * s
+        let squash = max(abs(c), 0.001)
+        let rim = CoinRim(width: size * squash, frontX: frontX, farX: c >= 0 ? -frontX : frontX)
+        let side = c >= 0 ? 1.0 : -1.0
         ZStack {
-            // The far face, in edge colour, so the rim's silhouette closes behind.
-            Circle().fill(edge.mix(with: .black, by: 0.35)).frame(width: size, height: size).coinTurn(rad)
-                .offset(x: (c >= 0 ? -0.5 : 0.5) * depth * s)
-            // The rim: lit across the middle, darker toward the top and bottom like a cylinder.
-            Rectangle()
-                .fill(LinearGradient(colors: [edge.mix(with: .black, by: 0.55), edge, edge.mix(with: .white, by: 0.25),
-                                              edge, edge.mix(with: .black, by: 0.55)],
-                                     startPoint: .top, endPoint: .bottom))
-                .overlay(ReedLines().stroke(Color.black.opacity(0.18), lineWidth: 0.6))
-                .frame(width: abs(s) * depth, height: size * 0.94)
+            ZStack {
+                rim.fill(LinearGradient(colors: [edge.mix(with: .black, by: 0.5), edge.mix(with: .white, by: 0.15),
+                                                 edge.mix(with: .black, by: 0.5)],
+                                        startPoint: .top, endPoint: .bottom))
+                ReedLines().stroke(Color.black.opacity(0.12), lineWidth: 0.6)
+            }
+            .clipShape(rim)
             Group {
-                if c >= 0 {
-                    front.coinTurn(rad).offset(x: 0.5 * depth * s)
-                } else {
-                    back.scaleEffect(x: -1).coinTurn(rad).offset(x: -0.5 * depth * s) // un-mirror the far side
+                if c >= 0 { front } else { back }
+            }
+            // The face dims as it turns away, and a glint slides across it with the turn.
+            .overlay {
+                ZStack {
+                    Circle().fill(Color.black.opacity(0.4 * (1 - squash)))
+                    Circle().fill(LinearGradient(colors: [.clear, .white.opacity(0.35), .clear],
+                                                 startPoint: UnitPoint(x: 0.5 * side * s - 0.1, y: 0),
+                                                 endPoint: UnitPoint(x: 0.5 * side * s + 0.5, y: 1)))
+                        .blendMode(.overlay)
                 }
             }
+            .scaleEffect(x: squash)
+            .offset(x: c >= 0 ? frontX : -frontX)
         }
         .frame(width: size + depth, height: size)
     }
 }
 
-private extension View {
-    func coinTurn(_ rad: Double) -> some View {
-        rotation3DEffect(.radians(rad), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
+/// The far face's outline and the band between the two faces, as one shape.
+private struct CoinRim: Shape {
+    var width: CGFloat
+    var frontX: CGFloat
+    var farX: CGFloat
+
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.addEllipse(in: CGRect(x: r.midX + farX - width / 2, y: r.minY, width: width, height: r.height))
+        let left = r.midX + min(frontX, -frontX), right = r.midX + max(frontX, -frontX)
+        p.addRect(CGRect(x: left, y: r.minY, width: right - left, height: r.height))
+        return p
     }
 }
 
-/// Fine horizontal grooves across the rim band.
+/// Fine horizontal grooves across the rim.
 private struct ReedLines: Shape {
     func path(in r: CGRect) -> Path {
         var p = Path()
