@@ -9,7 +9,12 @@ struct ModelPageView: View {
     let modelId: String
     @Query private var sightings: [Sighting]
     @State private var sort: StickerSort = .number
+    @AppStorage(DebugRecord.enabledKey) private var debugMode = false
+    /// Debug: the vehicle picked for deletion, waiting for confirmation.
+    @State private var deleting: Int?
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
+    @Environment(Router.self) private var router
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 11), count: 3)
 
@@ -88,7 +93,9 @@ struct ModelPageView: View {
                         LazyVGrid(columns: columns, spacing: 11) {
                             ForEach(ordered(batch.numbers, owned: ownedByNumber), id: \.self) { n in
                                 if let v = ownedByNumber[n] {
-                                    NavigationLink(value: BookRoute.vehicle(modelId: model.id, number: n)) {
+                                    // A button, not a NavigationLink: a link steals the long press
+                                    // the debug delete menu needs.
+                                    Button { router.bookPath.append(.vehicle(modelId: model.id, number: n)) } label: {
                                         DieCut(number: n, sticker: sightings.sticker(number: n, modelId: model.id),
                                                photo: sightings.photo(number: n, modelId: model.id)) {
                                             if v.timesSeen > 1 {
@@ -98,6 +105,7 @@ struct ModelPageView: View {
                                         .frame(height: 104)
                                     }
                                     .buttonStyle(StickerPressStyle(tilt: stickerTilt(n)))
+                                    .contextMenu { debugMenu(n) }
                                 } else {
                                     EmptySlot(label: String(n)).frame(height: 104)
                                 }
@@ -111,12 +119,13 @@ struct ModelPageView: View {
                             .padding(.bottom, 10)
                         LazyVGrid(columns: columns, spacing: 11) {
                             ForEach(strays, id: \.number) { v in
-                                NavigationLink(value: BookRoute.vehicle(modelId: model.id, number: v.number)) {
+                                Button { router.bookPath.append(.vehicle(modelId: model.id, number: v.number)) } label: {
                                     DieCut(number: v.number, sticker: sightings.sticker(number: v.number, modelId: model.id),
                                            photo: sightings.photo(number: v.number, modelId: model.id))
                                         .frame(height: 104)
                                 }
                                 .buttonStyle(StickerPressStyle(tilt: stickerTilt(v.number)))
+                                .contextMenu { debugMenu(v.number) }
                             }
                         }
                     }
@@ -128,6 +137,38 @@ struct ModelPageView: View {
             .softTopEdge()
         }
         .taborScreen()
+        // String(n): a fleet number is an id, never "1,075".
+        .confirmationDialog(Text(verbatim: deleting.map { "Delete #\(String($0)) from your book?" } ?? ""),
+                            isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+                            titleVisibility: .visible) {
+            if let n = deleting {
+                let count = sightings.filter { $0.number == n && $0.modelId == model.id }.count
+                Button(count > 1 ? "Delete all \(count) sightings" : "Delete it", role: .destructive) { delete(n, model: model) }
+            }
+        } message: {
+            Text("Its photos and sticker go too; the rest of your book stays. Shots saved to Photos stay. This can't be undone.")
+        }
+    }
+
+    /// Debug only: long-press a caught sticker to take it out of the book.
+    @ViewBuilder
+    private func debugMenu(_ number: Int) -> some View {
+        if debugMode {
+            Button("Delete from book", systemImage: "trash", role: .destructive) {
+                // Let the menu finish closing, or the dialog has nothing to present from.
+                Task {
+                    try? await Task.sleep(for: .milliseconds(350))
+                    deleting = number
+                }
+            }
+        }
+    }
+
+    private func delete(_ number: Int, model: VehicleModel) {
+        sightings.filter { $0.number == number && $0.modelId == model.id }.forEach(context.deleteSighting)
+        try? context.save()
+        deleting = nil
+        Haptics.shared.nope()
     }
 
     private func subtitle(_ m: VehicleModel) -> String {
