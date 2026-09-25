@@ -244,9 +244,17 @@ MERGE = {
 
 # Where the ZTM database lags behind the street (per Warszawikia, 2 Sep 2026):
 # Mobilis's new Otokars run since 1 Sep 2026 but aren't listed yet, and its MAN Lion's
-# City Hybrids (#9501-9561) were retired in 2026 but are still listed.
+# City Hybrids (#9501-9561) were retired in 2026 but are still listed. MZA's second
+# batch of 30 Yutong U12s (#1940-1969, R-1 Woronicza) runs since 3 Sep 2026 (per
+# Warszawikia, 25 Sep 2026; 13 of them seen live that day). New Solaris Urbino 18
+# electrics are coming in at R-2 Kleszczowa as #58xx (MZA ordered 50 for 2H 2026);
+# only the numbers seen live on 2026-09-25 are listed, not the whole assumed range.
+# (make, model, number, operator, year, depot.)
 EXTRA_BUSES = [
-    ("Otokar", "Kent C LF Mild Hybrid", n, "Mobilis", 2026) for n in range(9601, 9655)
+    *[("Otokar", "Kent C LF Mild Hybrid", n, "Mobilis", 2026, "Ursus") for n in range(9601, 9655)],
+    *[("Yutong", "U12-B", n, "MZA", 2026, 'R-1 "Woronicza" (R-07)') for n in range(1940, 1970)],
+    *[("Solaris", "Urbino 18E", n, "MZA", 2026, 'R-2 "Kleszczowa" (R-11)')
+      for n in (5803, 5804, 5805, 5807, 5808, 5815, 5817, 5819, 5822, 5827, 5830, 5833)],
 ]
 # Buses on loan for a trial, not (yet) in the ZTM database. The app tags them ON TEST:
 # catchable and in the book, but, like vintage stock, outside the fleet % and the set
@@ -279,11 +287,11 @@ def with_vintage_extras(vehicles):
         out.append({**v, "vintage": v["number"].isdigit() and int(v["number"]) in split})
     # Once ZTM catches up and lists one of these itself, its own row wins.
     listed = {(v["kind"], v["number"]) for v in vehicles}
-    for make, model, number, owner, year in EXTRA_BUSES:
+    for make, model, number, owner, year, depot in EXTRA_BUSES:
         if ("BUS", str(number)) in listed:
             continue
         out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
-                    "carrier": owner, "depot": "Ursus", "kind": "BUS", "year": year, "vintage": False})
+                    "carrier": owner, "depot": depot, "kind": "BUS", "year": year, "vintage": False})
     for make, model, number, owner, depot, _, _ in TEST_BUSES:
         if ("BUS", str(number)) in listed:
             continue
