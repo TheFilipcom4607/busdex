@@ -235,14 +235,14 @@ struct BadgeDetailSheet: View {
             Capsule().fill(Palette.track).frame(width: 36, height: 4).padding(.top, 10)
             // Tiered badges list their levels too, so they scroll inside the same half-height sheet.
             if badge.tiered {
-                ScrollView { details.padding(.bottom, 16) }
+                ScrollView { details.padding(.bottom, 28) }
                     .scrollIndicators(.hidden)
+                    // Soft edge instead of a hard cut where the list runs under the sheet's bottom.
+                    .mask(LinearGradient(stops: [.init(color: .black, location: 0.85), .init(color: .clear, location: 1)],
+                                         startPoint: .top, endPoint: .bottom))
             } else {
                 details
                 Spacer(minLength: 16)
-            }
-            if badge.earned {
-                Mono("DRAG THE MEDAL TO SPIN IT", size: 9.5, color: Palette.ghost).padding(.bottom, 12)
             }
         }
         .frame(maxWidth: .infinity)
@@ -275,9 +275,14 @@ struct BadgeDetailSheet: View {
             .padding(.top, 18)
             .contentShape(Rectangle())
             .gesture(spinGesture)
+            .overlay(alignment: .bottom) {
+                if badge.earned {
+                    Mono("DRAG TO SPIN", size: 9, color: Palette.ghost)
+                }
+            }
 
             Mono(kicker, size: 11, weight: 600, spacing: 0.16, color: badge.earned ? badge.medal.glow : Palette.dim)
-                .padding(.top, 6)
+                .padding(.top, 12)
             Text(revealed ? badge.title : "Secret badge")
                 .font(TaborFont.grotesk(26, 700))
                 .em(-0.02, size: 26)
