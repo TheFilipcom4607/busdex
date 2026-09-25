@@ -233,7 +233,38 @@ struct BadgeDetailSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             Capsule().fill(Palette.track).frame(width: 36, height: 4).padding(.top, 10)
+            // Tiered badges list their levels too, so they scroll inside the same half-height sheet.
+            if badge.tiered {
+                ScrollView { details.padding(.bottom, 16) }
+                    .scrollIndicators(.hidden)
+            } else {
+                details
+                Spacer(minLength: 16)
+            }
+            if badge.earned {
+                Mono("DRAG THE MEDAL TO SPIN IT", size: 9.5, color: Palette.ghost).padding(.bottom, 12)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .foregroundStyle(Palette.ink)
+        .presentationDetents([.medium])
+        .presentationBackground(Palette.bg)
+        .task {
+            // Earned medals arrive with a flourish: one full turn.
+            guard badge.earned else { return }
+            try? await Task.sleep(for: .milliseconds(250))
+            withAnimation(.spring(response: 0.9, dampingFraction: 0.75)) { angle = 360 }
+            Haptics.shared.badgeUnlocked(medal: badge.medal, secret: false)
+        }
+    }
 
+    private var kicker: String {
+        if badge.earned { return badge.tiered ? "LEVEL \(badge.level) OF \(badge.levels) · \(badge.medal.name)" : "EARNED" }
+        return badge.secret ? "SECRET" : "LOCKED"
+    }
+
+    private var details: some View {
+        VStack(spacing: 0) {
             ZStack {
                 if badge.earned {
                     SparkleBurst(color: badge.medal.glow, reach: 0.75).id(burst)
@@ -293,27 +324,7 @@ struct BadgeDetailSheet: View {
                 .padding(.top, 18)
                 .padding(.horizontal, 22)
             }
-            Spacer(minLength: 16)
-            if badge.earned {
-                Mono("DRAG THE MEDAL TO SPIN IT", size: 9.5, color: Palette.ghost).padding(.bottom, 12)
-            }
         }
-        .frame(maxWidth: .infinity)
-        .foregroundStyle(Palette.ink)
-        .presentationDetents([.large])
-        .presentationBackground(Palette.bg)
-        .task {
-            // Earned medals arrive with a flourish: one full turn.
-            guard badge.earned else { return }
-            try? await Task.sleep(for: .milliseconds(250))
-            withAnimation(.spring(response: 0.9, dampingFraction: 0.75)) { angle = 360 }
-            Haptics.shared.badgeUnlocked(medal: badge.medal, secret: false)
-        }
-    }
-
-    private var kicker: String {
-        if badge.earned { return badge.tiered ? "LEVEL \(badge.level) OF \(badge.levels) · \(badge.medal.name)" : "EARNED" }
-        return badge.secret ? "SECRET" : "LOCKED"
     }
 
     /// Front shows the symbol; turned past 90° you see the engraved back.
