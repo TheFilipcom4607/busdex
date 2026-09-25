@@ -490,7 +490,7 @@ struct CatchView: View {
         case .certain(let m) where mode.kind != nil && m.kind != mode.kind:
             "A \(m.kind.rawValue) NUMBER · YOU'RE IN \(mode.rawValue) MODE"
         case .certain(let m):
-            [m.vintage ? "VINTAGE" : nil, m.kind.rawValue, liveLine(camera.reading, kind: m.kind).map { "LINE \($0)" },
+            [m.regular ? nil : m.tier.rawValue, m.kind.rawValue, liveLine(camera.reading, kind: m.kind).map { "LINE \($0)" },
              m.batch(containing: camera.reading ?? 0)?.year.map { "BUILT \($0)" }, "TAP TO CATCH"]
                 .compactMap { $0 }.joined(separator: " · ")
         }

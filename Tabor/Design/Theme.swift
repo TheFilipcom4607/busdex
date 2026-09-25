@@ -27,6 +27,8 @@ enum Palette {
     static let radar = Color(hex: 0x5CC8FF)
     /// Vintage tier: old brass fittings.
     static let brass = Color(hex: 0xD2A064)
+    /// ON TEST: a visitor, not part of the fleet's rarity scale.
+    static let violet = Color(hex: 0xB79BFF)
 
     // Sticker (white die-cut) internals
     static let paper = Color.white
@@ -58,6 +60,7 @@ extension Tier {
         case .rare: Palette.green
         case .common: Palette.dim
         case .vintage: Palette.brass
+        case .onTest: Palette.violet
         }
     }
 
@@ -69,6 +72,7 @@ extension Tier {
         case .rare: Palette.green
         case .common: Palette.sub
         case .vintage: Palette.brass
+        case .onTest: Palette.violet
         }
     }
 

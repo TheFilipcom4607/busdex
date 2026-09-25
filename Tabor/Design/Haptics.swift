@@ -114,6 +114,12 @@ final class Haptics {
             for (t, i) in [(0.0, 0.4), (0.1, 0.45), (0.4, 0.6), (0.5, 0.7)] as [(TimeInterval, Float)] {
                 events.append(tap(t, i, 0.55))
             }
+        case .onTest:
+            // An electric motor spinning up: one hum that climbs in strength and pitch.
+            build = 0.62
+            events.append(hum(0, build - 0.06, intensity: 1, sharpness: 0.3))
+            curves.append(curve(.hapticIntensityControl, [(0, 0.2), (build - 0.06, 0.8)]))
+            curves.append(curve(.hapticSharpnessControl, [(0, -0.3), (build - 0.06, 0.4)]))
         case .legendary:
             // A drumroll: ticks that accelerate and sharpen, over a swell that cuts out
             // right before the drop so nothing masks it.
@@ -250,6 +256,7 @@ final class Haptics {
             ("Reveal · gold", { self.reveal(tier: .gold, isNewModel: false) }),
             ("Reveal · legendary", { self.reveal(tier: .legendary, isNewModel: false) }),
             ("Reveal · vintage", { self.reveal(tier: .vintage, isNewModel: false) }),
+            ("Reveal · on test", { self.reveal(tier: .onTest, isNewModel: true) }),
             ("Hold to stick (0.55 s)", { self.demoHold() }),
             ("Stick", { self.stick() }),
             ("Completed", { self.completed() }),

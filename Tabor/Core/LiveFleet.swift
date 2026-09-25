@@ -220,10 +220,10 @@ public enum Wanted {
         }.prefix(limit))
     }
 
-    /// Vintage stock sorts last in the book, but one that's actually out running is as
-    /// rare a sight as anything: rank it with the legendaries.
+    /// Vintage and test stock sort last in the book, but one that's actually out running
+    /// is as rare a sight as anything: rank it with the legendaries.
     static func huntRank(_ tier: Tier) -> Int {
-        tier == .vintage ? Tier.legendary.rank : tier.rank
+        tier == .vintage || tier == .onTest ? Tier.legendary.rank : tier.rank
     }
 }
 

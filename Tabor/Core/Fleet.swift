@@ -43,10 +43,14 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     public let batches: [Batch]
     /// Tourist-line / museum stock: only out on summer weekends or special events.
     public let vintage: Bool
+    /// On loan for a trial run: out for a few weeks, then gone.
+    public let onTest: Bool
+    /// Where a test vehicle runs, e.g. "LINE 106 · ALSO 122, 123 · TRIAL UNTIL 30 SEP 2026".
+    public let runs: String?
 
     public init(id: String, name: String, make: String, code: String? = nil, kind: VehicleKind,
                 operators: [String], fleet: Int, firstYear: Int?, lastYear: Int?, batches: [Batch],
-                vintage: Bool = false) {
+                vintage: Bool = false, onTest: Bool = false, runs: String? = nil) {
         self.id = id
         self.name = name
         self.make = make
@@ -58,10 +62,12 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         self.lastYear = lastYear
         self.batches = batches
         self.vintage = vintage
+        self.onTest = onTest
+        self.runs = runs
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, make, code, kind, operators, fleet, firstYear, lastYear, batches, vintage
+        case id, name, make, code, kind, operators, fleet, firstYear, lastYear, batches, vintage, onTest, runs
     }
 
     public init(from decoder: Decoder) throws {
@@ -77,6 +83,8 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         lastYear = try c.decodeIfPresent(Int.self, forKey: .lastYear)
         batches = try c.decode([Batch].self, forKey: .batches)
         vintage = try c.decodeIfPresent(Bool.self, forKey: .vintage) ?? false
+        onTest = try c.decodeIfPresent(Bool.self, forKey: .onTest) ?? false
+        runs = try c.decodeIfPresent(String.self, forKey: .runs)
     }
 
     public var numbers: [Int] { batches.flatMap(\.numbers).sorted() }
@@ -89,13 +97,20 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
 
     public var rangeDisplay: String { NumberSpan.display(numbers) }
 
-    /// Vintage stock gets its own tier whatever its size: it isn't rare, it's seasonal.
-    public var tier: Tier { vintage ? .vintage : Tier.of(fleet: fleet) }
+    /// Regular service stock: what the fleet %, the set badges and the rarity tiers are
+    /// about. Vintage and test vehicles are extras on the side.
+    public var regular: Bool { !vintage && !onTest }
 
-    /// Where to find a vintage vehicle, e.g. "TOURIST LINES T & 36 · SUMMER WEEKENDS".
-    public var vintageWhere: String? {
-        guard vintage else { return nil }
-        return kind == .tram ? "TOURIST LINES T & 36 · SUMMER WEEKENDS" : "TOURIST LINE 100 & EVENTS · SUMMER WEEKENDS"
+    /// Vintage and test stock get their own tier whatever their size: they aren't rare,
+    /// they're seasonal or passing through.
+    public var tier: Tier { vintage ? .vintage : onTest ? .onTest : Tier.of(fleet: fleet) }
+
+    /// Where to find a vintage or test vehicle, e.g. "TOURIST LINES T & 36 · SUMMER WEEKENDS".
+    public var whereToFind: String? {
+        if vintage {
+            return kind == .tram ? "TOURIST LINES T & 36 · SUMMER WEEKENDS" : "TOURIST LINE 100 & EVENTS · SUMMER WEEKENDS"
+        }
+        return onTest ? runs : nil
     }
 
     public func batch(containing number: Int) -> Batch? {
@@ -129,6 +144,7 @@ public enum Tier: String, Sendable, CaseIterable {
     case rare = "RARE"
     case common = "COMMON"
     case vintage = "VINTAGE"
+    case onTest = "ON TEST"
 
     /// Thresholds from the design prototype's `tierOf`.
     public static func of(fleet: Int) -> Tier {
@@ -146,6 +162,7 @@ public enum Tier: String, Sendable, CaseIterable {
         case .rare: 2
         case .common: 3
         case .vintage: 4
+        case .onTest: 5
         }
     }
 }

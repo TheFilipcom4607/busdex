@@ -164,7 +164,7 @@ struct HuntFilterSheet: View {
     }
 
     /// What you'd picked before first; then models out on the road now, rarest first and
-    /// nearest within a rarity; then the rest, regular stock before vintage, by name.
+    /// nearest within a rarity; then the rest, regular stock before vintage and test, by name.
     private static func initialOrder(_ models: [VehicleModel], running: [WantedPin], picked: Set<String>) -> [String] {
         let nearest = Dictionary(running.map { ($0.model.id, $0.distance) }, uniquingKeysWith: min)
         return models.sorted { a, b in
@@ -176,8 +176,8 @@ struct HuntFilterSheet: View {
                 let ra = Wanted.huntRank(a.tier), rb = Wanted.huntRank(b.tier)
                 if ra != rb { return ra < rb }
                 if na != nb { return na < nb }
-            } else if a.vintage != b.vintage {
-                return !a.vintage
+            } else if a.regular != b.regular {
+                return a.regular
             }
             return a.name < b.name
         }.map(\.id)

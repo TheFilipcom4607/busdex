@@ -42,7 +42,8 @@ private func sampleModel() -> VehicleModel {
     // The 112N prototype still runs on regular lines: a real legendary, not vintage.
     #expect(catalog.model(id: "tram-konstal-112n")?.tier == .legendary)
     let all = catalog.models.reduce(0) { $0 + $1.fleet }
-    #expect(catalog.totalFleet == all - vintage.reduce(0) { $0 + $1.fleet })
+    let extras = catalog.models.filter { !$0.regular }
+    #expect(catalog.totalFleet == all - extras.reduce(0) { $0 + $1.fleet })
     let stats = CollectionStats(sightings: [SightingRecord(number: 43, modelId: "tram-falkenried-a", date: .now)])
     #expect(stats.fleetShare(catalog: catalog) == 0)
 }
@@ -115,6 +116,16 @@ private func sampleModel() -> VehicleModel {
     #expect(catalog.match(number: 1971, preferring: .tram).suggested?.id == "bus-yutong-u12-b")
 }
 
+@Test func trialBusIsOnTestAndOutsideTheFleet() {
+    // The Irizar ie tram on trial with MZA isn't in the ZTM database.
+    let m = catalog.match(number: 959, kind: .bus).suggested
+    #expect(m?.name == "Irizar ie tram 12" && m?.tier == .onTest)
+    #expect(m?.regular == false && m?.whereToFind?.contains("LINE 106") == true)
+    // A single bus, but not a Unicorn or a LEGENDARY: it's only passing through.
+    #expect(!catalog.models.filter { $0.tier == .legendary }.contains { $0.id == m?.id })
+    #expect(Wanted.huntRank(.onTest) == Tier.legendary.rank)
+}
+
 @Test func preservedBusesOutsideZtmAreVintage() {
     // KMKM's Solaris Urbino 15 #8731 isn't in the ZTM database.
     let m = catalog.match(number: 8731, kind: .bus).suggested
@@ -183,7 +194,7 @@ private func badge(_ id: String, _ sightings: [SightingRecord]) -> Achievement {
 }
 
 @Test func fullBatchBadge() {
-    let m = catalog.models.first { !$0.vintage && $0.batches.contains { $0.numbers.count == 2 } }!
+    let m = catalog.models.first { $0.regular && $0.batches.contains { $0.numbers.count == 2 } }!
     let b = m.batches.first { $0.numbers.count == 2 }!
     let half = badge("full-batch", [SightingRecord(number: b.numbers[0], modelId: m.id, date: .now)])
     #expect(!half.earned && half.progress >= 1)
@@ -247,7 +258,7 @@ private func badge(_ id: String, _ sightings: [SightingRecord]) -> Achievement {
     let r4 = depots.first { $0.id == "depot-BUS-R-4-Stalowa" }!
     #expect(r4.title == "R-4 Stalowa" && r4.goal > 1 && r4.progress == 0)
     let atR4 = catalog.models.compactMap { m -> SightingRecord? in
-        guard !m.vintage, m.kind == .bus,
+        guard m.regular, m.kind == .bus,
               let b = m.batches.first(where: { $0.depotCode == "R-4" && $0.depotName == "Stalowa" }) else { return nil }
         return SightingRecord(number: b.numbers[0], modelId: m.id, date: .now)
     }
@@ -344,7 +355,7 @@ private func eval(_ s: [SightingRecord]) -> [String: Achievement] {
 private func any(_ modelId: String? = nil, number: Int? = nil, date: Date = day(2026, 5, 5), line: String? = nil,
                  street: String? = nil, lat: Double? = nil, lon: Double? = nil, code: Int? = nil,
                  temp: Double? = nil, sticker: Bool = false) -> SightingRecord {
-    let m = modelId.flatMap(catalog.model(id:)) ?? catalog.models.first { !$0.vintage }!
+    let m = modelId.flatMap(catalog.model(id:)) ?? catalog.models.first { $0.regular }!
     return SightingRecord(number: number ?? m.numbers[0], modelId: m.id, date: date, line: line, street: street,
                           latitude: lat, longitude: lon, weatherCode: code, temperature: temp, hasSticker: sticker)
 }
@@ -372,7 +383,7 @@ private func any(_ modelId: String? = nil, number: Int? = nil, date: Date = day(
 }
 
 @Test func rarityBadges() {
-    let single = catalog.models.first { !$0.vintage && $0.fleet == 1 }!
+    let single = catalog.models.first { $0.regular && $0.fleet == 1 }!
     #expect(eval([any(single.id)])["unicorn"]!.earned)
     #expect(!eval([any()])["unicorn"]!.earned)
     let gold = catalog.models.filter { $0.tier == .gold }
@@ -381,7 +392,7 @@ private func any(_ modelId: String? = nil, number: Int? = nil, date: Date = day(
     #expect(eval(rainbow)["rainbow-day"]!.earned)
     #expect(eval(Array(rainbow.prefix(3)))["rainbow-day"]!.progress == 3)
     // The smallest regular model with more than one vehicle, whatever the fleet data holds.
-    let small = catalog.models.filter { !$0.vintage && $0.fleet >= 2 }.min { $0.fleet < $1.fleet }!
+    let small = catalog.models.filter { $0.regular && $0.fleet >= 2 }.min { $0.fleet < $1.fleet }!
     #expect(eval(small.numbers.map { any(small.id, number: $0) })["model-complete"]!.earned)
 }
 
@@ -397,11 +408,11 @@ private func any(_ modelId: String? = nil, number: Int? = nil, date: Date = day(
 }
 
 @Test func vehicleAgeBadges() {
-    let m = catalog.models.first { !$0.vintage && $0.batches.contains { $0.year == 2024 } }!
+    let m = catalog.models.first { $0.regular && $0.batches.contains { $0.year == 2024 } }!
     let n = m.batches.first { $0.year == 2024 }!.numbers[0]
     #expect(eval([any(m.id, number: n, date: day(2024, 6, 1))])["fresh"]!.earned)
     #expect(!eval([any(m.id, number: n, date: day(2026, 6, 1))])["fresh"]!.earned)
-    let old = catalog.models.first { !$0.vintage && $0.batches.contains { ($0.year ?? 9999) <= 2005 } }!
+    let old = catalog.models.first { $0.regular && $0.batches.contains { ($0.year ?? 9999) <= 2005 } }!
     let on = old.batches.first { ($0.year ?? 9999) <= 2005 }!.numbers[0]
     #expect(eval([any(old.id, number: on, date: day(2026, 6, 1))])["veteran"]!.earned)
 }

@@ -89,10 +89,11 @@ struct ModelPageView: View {
             .padding(.horizontal, 22)
             .padding(.bottom, 14)
 
-            if let place = model.vintageWhere {
-                Mono(place, size: 10.5, spacing: 0.1, color: Palette.brass)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+            if let place = model.whereToFind {
+                // Wraps rather than shrinking away: a test bus's lines and dates run long.
+                Mono(place, size: 10.5, spacing: 0.1, color: model.tier.color)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 22)
                     .padding(.top, -6)
                     .padding(.bottom, 12)

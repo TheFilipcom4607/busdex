@@ -247,6 +247,17 @@ MERGE = {
 EXTRA_BUSES = [
     ("Otokar", "Kent C LF Mild Hybrid", n, "Mobilis", 2026) for n in range(9601, 9655)
 ]
+# Buses on loan for a trial, not (yet) in the ZTM database. The app tags them ON TEST:
+# catchable and in the book, but, like vintage stock, outside the fleet % and the set
+# badges, since they're gone again after a few weeks. (make, model, number, operator,
+# depot, where it runs.) Irizar ie tram 12 #959: MZA's trial from R-4 Stalowa until the
+# end of September 2026, seen live on line 106 on 2026-09-25 (ZTM, api.um.warszawa.pl).
+TEST_BUSES = [
+    ("Irizar", "ie tram 12", 959, "MZA", 'R-4 "Stalowa" (R-13)',
+     "LINE 106 · ALSO 122, 123, 157, 166 · TRIAL UNTIL 30 SEP 2026"),
+]
+RUNS = {(make, model): runs for make, model, _, _, _, runs in TEST_BUSES}
+
 RETIRED = {
     ("BUS", "MAN", "A37", "Mobilis"): set(range(9501, 9562)),
 }
@@ -270,6 +281,12 @@ def with_vintage_extras(vehicles):
             continue
         out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
                     "carrier": owner, "depot": "Ursus", "kind": "BUS", "year": year, "vintage": False})
+    for make, model, number, owner, depot, _ in TEST_BUSES:
+        if ("BUS", str(number)) in listed:
+            continue
+        out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
+                    "carrier": owner, "depot": depot, "kind": "BUS", "year": None,
+                    "vintage": False, "onTest": True})
     for make, model, number, owner in EXTRA_VINTAGE_BUSES:
         out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
                     "carrier": owner, "depot": "", "kind": "BUS", "year": None, "vintage": True})
@@ -334,6 +351,8 @@ def build(vehicles):
             "batches": batches,
             # Curated models, split-out sets, and models that exist only as preserved buses.
             "vintage": model_id in VINTAGE or split or all(v["vintage"] for v in vs),
+            "onTest": all(v.get("onTest", False) for v in vs),
+            **({"runs": RUNS[(make, model)]} if (make, model) in RUNS else {}),
         })
     models.sort(key=lambda m: (m["kind"], -m["fleet"], m["name"]))
     missing = VINTAGE - {m["id"] for m in models}

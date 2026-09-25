@@ -78,8 +78,8 @@ public struct FleetCatalog: Sendable {
 
     public func model(id: String) -> VehicleModel? { byId[id] }
 
-    /// Vehicles on regular routes; vintage stock doesn't count toward the fleet.
-    public var totalFleet: Int { models.filter { !$0.vintage }.reduce(0) { $0 + $1.fleet } }
+    /// Vehicles on regular routes; vintage and test stock don't count toward the fleet.
+    public var totalFleet: Int { models.filter { $0.regular }.reduce(0) { $0 + $1.fleet } }
 
     /// Manual assignments win, then the ZTM database.
     public func match(number: Int, kind: VehicleKind? = nil,
@@ -89,8 +89,8 @@ public struct FleetCatalog: Sendable {
         switch hits.count {
         case 0: return .unknown
         case 1: return .certain(hits[0])
-        // Regular stock before preserved vehicles, then the bigger fleet first.
-        default: return .ambiguous(hits.sorted { ($0.vintage ? 1 : 0, -$0.fleet) < ($1.vintage ? 1 : 0, -$1.fleet) })
+        // Regular stock before preserved and test vehicles, then the bigger fleet first.
+        default: return .ambiguous(hits.sorted { ($0.regular ? 0 : 1, -$0.fleet) < ($1.regular ? 0 : 1, -$1.fleet) })
         }
     }
 

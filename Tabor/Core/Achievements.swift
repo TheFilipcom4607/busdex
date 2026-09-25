@@ -178,7 +178,7 @@ public enum Achievements {
     // MARK: Rarity
 
     static func unicorn(_ c: Context) -> Achievement? {
-        let singles = c.catalog.models.filter { !$0.vintage && $0.fleet == 1 }
+        let singles = c.catalog.models.filter { $0.regular && $0.fleet == 1 }
         guard !singles.isEmpty else { return nil }
         return Achievement(id: "unicorn", title: "Unicorn", detail: "The only vehicle of its kind in Warsaw",
                            symbol: "wand.and.stars", progress: singles.contains(where: c.has) ? 1 : 0, goal: 1)
@@ -213,7 +213,7 @@ public enum Achievements {
     /// Every vehicle of one model (two or more of them; a single is the Unicorn).
     static func modelComplete(_ c: Context) -> Achievement {
         var best: (have: Int, size: Int, name: String)?
-        for m in c.catalog.models where !m.vintage && m.fleet >= 2 {
+        for m in c.catalog.models where m.regular && m.fleet >= 2 {
             let have = m.numbers.filter((c.owned[m.id] ?? []).contains).count
             guard have > 0 else { continue }
             if best.map({ have * $0.size > $0.have * m.fleet }) ?? true { best = (have, m.fleet, m.name) }
@@ -262,7 +262,7 @@ public enum Achievements {
 
     static func veteran(_ c: Context) -> Achievement {
         let oldest = c.sightings.compactMap { s -> Int? in
-            guard let m = c.model(s), !m.vintage, let y = m.batch(containing: s.number)?.year else { return nil }
+            guard let m = c.model(s), m.regular, let y = m.batch(containing: s.number)?.year else { return nil }
             return c.year(s.date) - y
         }.max() ?? 0
         return Achievement(id: "veteran", title: "Veteran", detail: "A vehicle still in service at 20 years old",
@@ -272,7 +272,7 @@ public enum Achievements {
     /// Operators are counted by each model's main one: a model shared by several
     /// operators doesn't tick them all off.
     static func allOperators(_ c: Context) -> Achievement? {
-        let regular = c.catalog.models.filter { !$0.vintage }
+        let regular = c.catalog.models.filter { $0.regular }
         let all = Set(regular.compactMap(\.operators.first))
         guard !all.isEmpty else { return nil }
         let have = Set(regular.filter(c.has).compactMap(\.operators.first))
@@ -397,7 +397,7 @@ public enum Achievements {
     static func depots(_ c: Context) -> [Achievement] {
         c.catalog.depots.compactMap { d in
             let atDepot = { (b: Batch) in b.depotCode == d.code && b.depotName == d.name }
-            let models = c.catalog.models.filter { m in !m.vintage && m.kind == d.kind && m.batches.contains(where: atDepot) }
+            let models = c.catalog.models.filter { m in m.regular && m.kind == d.kind && m.batches.contains(where: atDepot) }
             guard !models.isEmpty else { return nil }
             let have = models.filter { m in
                 let mine = c.owned[m.id] ?? []

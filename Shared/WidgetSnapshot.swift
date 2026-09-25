@@ -6,7 +6,7 @@ struct WidgetSnapshot: Codable, Equatable {
     static let appGroup = "group.com.filipmanikowski.tabor"
     static let widgetKind = "tabor.progress"
 
-    /// Distinct vehicles caught that count toward the fleet (vintage stock doesn't).
+    /// Distinct vehicles caught that count toward the fleet (vintage and test stock don't).
     var caught: Int
     var fleet: Int
     /// The streak as of `lastCatch`'s day.

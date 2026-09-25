@@ -37,7 +37,7 @@ struct BookIndexView: View {
             TopBar {
                 Mono("YOUR BOOK", size: 12, spacing: 0.16)
             } trailing: {
-                // Same count as the widget: the total leaves vintage stock out, so the count must too.
+                // Same count as the widget: the total leaves vintage and test stock out, so the count must too.
                 Mono("\(stats.fleetCaught(catalog: catalog).grouped) / \(catalog.totalFleet.grouped)", size: 12)
             }
             ScreenTitle(text: "Warsaw rolling stock")
@@ -65,17 +65,17 @@ struct BookIndexView: View {
 
             ScrollView {
                 LazyVStack(spacing: 9) {
-                    ForEach(rows.filter { !$0.vintage }) { m in row(m, stats: stats) }
-                    // Tourist-line stock lives in its own section: it's seasonal, not rare.
+                    ForEach(rows.filter(\.regular)) { m in row(m, stats: stats) }
+                    // Test and tourist-line stock live in sections of their own: they're
+                    // passing through or seasonal, not rare.
+                    let onTest = rows.filter(\.onTest)
+                    if !onTest.isEmpty {
+                        sectionHeader(.onTest, note: "ON TRIAL FOR A FEW WEEKS · NOT PART OF THE FLEET %")
+                        ForEach(onTest) { m in row(m, stats: stats) }
+                    }
                     let vintage = rows.filter(\.vintage)
                     if !vintage.isEmpty {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Mono("VINTAGE", size: 10.5, weight: 700, spacing: 0.14, color: Palette.brass)
-                            Mono("TOURIST LINES ON SUMMER WEEKENDS · NOT PART OF THE FLEET %", size: 9.5, color: Palette.faint)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, 18)
-                        .padding(.bottom, 2)
+                        sectionHeader(.vintage, note: "TOURIST LINES ON SUMMER WEEKENDS · NOT PART OF THE FLEET %")
                         ForEach(vintage) { m in row(m, stats: stats) }
                     }
                     Mono(catalog.source.uppercased(), size: 9, spacing: 0.06, color: Palette.faint)
@@ -89,6 +89,16 @@ struct BookIndexView: View {
             .softTopEdge()
         }
         .taborScreen()
+    }
+
+    private func sectionHeader(_ tier: Tier, note: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Mono(tier.rawValue, size: 10.5, weight: 700, spacing: 0.14, color: tier.color)
+            Mono(note, size: 9.5, color: Palette.faint)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 18)
+        .padding(.bottom, 2)
     }
 
     private func row(_ m: VehicleModel, stats: CollectionStats) -> some View {

@@ -120,6 +120,7 @@ struct ShareCard: View {
         case .legendary: (tier.color, 0.34)
         case .rare: (tier.color, 0.30)
         case .vintage: (tier.color, 0.32)
+        case .onTest: (tier.color, 0.30)
         }
     }
 

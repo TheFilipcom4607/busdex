@@ -77,9 +77,9 @@ public struct CollectionStats: Sendable {
         }.prefix(limit).map { $0 }
     }
 
-    /// Caught vehicles that count toward the fleet total (vintage and unknown models don't).
+    /// Caught vehicles that count toward the fleet total (vintage, test and unknown models don't).
     public func fleetCaught(catalog: FleetCatalog) -> Int {
-        vehicles.filter { catalog.model(id: $0.modelId).map { !$0.vintage } ?? false }.count
+        vehicles.filter { catalog.model(id: $0.modelId).map { $0.regular } ?? false }.count
     }
 
     /// Share of all known-size fleets that has been caught, 0...1.
@@ -127,6 +127,9 @@ public enum RevealHint {
             let left = model.numbers.filter { !owned.contains($0) }.count
             let more = left == 0 ? "That's all of them." : "\(left) more to find."
             return "A vintage \(model.kind.rawValue.lowercased()) — it only comes out on tourist lines. Nice timing. \(more)"
+        }
+        if model.onTest {
+            return "Caught on its trial run — it's only in Warsaw for a few weeks. Nice timing."
         }
         let modelLeft = model.numbers.filter { !owned.contains($0) }
         if modelLeft.isEmpty { return "That's every \(model.name) in Warsaw. Model complete." }
