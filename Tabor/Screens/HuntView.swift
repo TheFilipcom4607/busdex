@@ -27,6 +27,8 @@ struct HuntView: View {
     @State private var centered = false
     @State private var pins: [WantedPin] = []
     @State private var selectedId: String?
+    /// A small bubble you tapped: its vehicles, listed so you can pick one.
+    @State private var openGroup: [String]?
     /// What the map is showing: pins cover it, however far you zoom out.
     @State private var mapRegion: MKCoordinateRegion?
     private var mapCenter: CLLocationCoordinate2D? { mapRegion?.center }
@@ -91,7 +93,8 @@ struct HuntView: View {
                     .tag(g.id)
                     .annotationTitles(.hidden)
                 } else {
-                    Annotation("\(g.pins.count) vehicles", coordinate: g.lead.coordinate, anchor: .center) {
+                    Annotation("\(g.pins.count) vehicles", coordinate: CLLocationCoordinate2D(latitude: g.latitude, longitude: g.longitude),
+                               anchor: .center) {
                         GroupBubble(group: g)
                     }
                     .tag(g.id)
@@ -109,21 +112,34 @@ struct HuntView: View {
         .onChange(of: selectedId) { _, id in
             guard let id else { return }
             Haptics.shared.tick()
-            // A bubble isn't something to select: zoom in until its vehicles come apart.
-            if id.hasPrefix("group:"), let g = groups(shown).first(where: { $0.id == id }) {
-                selectedId = nil
+            guard id.hasPrefix("group:"), let g = groups(shown).first(where: { $0.id == id }) else {
+                // Picked from the open list: keep it, so closing the card goes back to it.
+                if openGroup?.contains(id) != true { openGroup = nil }
+                return
+            }
+            selectedId = nil
+            // A few vehicles, or already zoomed in (a pętla, a stop): list them to pick from.
+            // A big crowd further out: zoom in until it comes apart.
+            if g.pins.count <= 6 || (mapRegion?.span.longitudeDelta ?? 1) < 0.02 {
+                withAnimation(.snappy) { openGroup = g.pins.map(\.id) }
+            } else {
                 zoom(into: g)
             }
         }
     }
 
-    /// Vehicles merged wherever their tags would overlap at the current zoom (a tag is
-    /// about a seventh of the screen wide). The selected one always stands alone.
+    /// Vehicles merged only where their tags would really sit on top of each other (a
+    /// square is roughly a tenth of the screen wide, a bit under a tag). The selected one
+    /// stands alone.
     private func groups(_ shown: [WantedPin]) -> [PinGroup] {
         let rest = shown.filter { $0.id != selectedId }
         let lone = shown.filter { $0.id == selectedId }.map { PinGroup(lead: $0, pins: [$0]) }
         guard let region = mapRegion else { return lone + rest.map { PinGroup(lead: $0, pins: [$0]) } }
-        return Wanted.group(rest, cellLon: region.span.longitudeDelta / 7, latitude: region.center.latitude) + lone
+        // Squares snap to powers of two, so a nudge of the map (or a tap) doesn't redraw
+        // every group; they only change when you really zoom.
+        let cell = pow(2, (log2(region.span.longitudeDelta / 10)).rounded())
+        // A fixed reference latitude too, for the same reason.
+        return Wanted.group(rest, cellLon: cell, latitude: 52.23) + lone
     }
 
     private func zoom(into g: PinGroup) {
@@ -166,6 +182,7 @@ struct HuntView: View {
                     withAnimation(.snappy) {
                         filter = f
                         selectedId = nil
+                        openGroup = nil
                     }
                 } label: {
                     Mono(f.rawValue, size: 11, weight: 600, spacing: 0.1, color: on ? Palette.bg : .white.opacity(0.75))
@@ -240,6 +257,10 @@ struct HuntView: View {
                 }
                 .id(selected.id)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else if let ids = openGroup {
+                let members = ids.compactMap { id in shown.first { $0.id == id } }
+                groupList(members)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             } else if let empty = emptyState(shown: shown) {
                 empty
             } else {
@@ -247,6 +268,67 @@ struct HuntView: View {
             }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: selectedId)
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: openGroup)
+    }
+
+    /// The vehicles in a tapped bubble; picking one opens its card (and ✕ on that card
+    /// comes back here).
+    private func groupList(_ members: [WantedPin]) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                SectionLabel(text: "\(members.count) HERE")
+                Spacer()
+                Button {
+                    withAnimation(.snappy) { openGroup = nil }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Palette.sub)
+                        .frame(width: 28, height: 28)
+                        .background(Palette.chip, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close")
+            }
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(members) { pin in
+                        pinRow(pin) { withAnimation(.snappy) { selectedId = pin.id } }
+                    }
+                }
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            // Fits its rows; past four and a half it scrolls, with the half row hinting so.
+            .frame(height: min(CGFloat(members.count), 4.5) * 55)
+        }
+        .padding(14)
+        .background(Palette.card.opacity(0.94), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Palette.hairline))
+        .shadow(color: .black.opacity(0.4), radius: 16, y: 8)
+    }
+
+    private func pinRow(_ pin: WantedPin, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(pin.kind == .newModel ? pin.accent : .clear)
+                    .strokeBorder(pin.accent, lineWidth: 1.5)
+                    .frame(width: 5, height: 30)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(pin.model.tier.rawValue) · \(pin.model.name)")
+                        .font(TaborFont.grotesk(14.5, 600))
+                        .lineLimit(1)
+                    Mono(pin.subtitle(showDistance: hasFix), size: 10.5, color: Palette.sub)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Palette.faint)
+            }
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     /// The list sticks to what's actually near you, even with all of Warsaw on the map.
@@ -271,27 +353,7 @@ struct HuntView: View {
             }
             Spacer().frame(height: 8)
             ForEach(near.prefix(3)) { pin in
-                Button { select(pin) } label: {
-                    HStack(spacing: 10) {
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(pin.kind == .newModel ? pin.accent : .clear)
-                            .strokeBorder(pin.accent, lineWidth: 1.5)
-                            .frame(width: 5, height: 30)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(pin.model.tier.rawValue) · \(pin.model.name)")
-                                .font(TaborFont.grotesk(14.5, 600))
-                                .lineLimit(1)
-                            Mono(pin.subtitle(showDistance: hasFix), size: 10.5, color: Palette.sub)
-                        }
-                        Spacer(minLength: 4)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(Palette.faint)
-                    }
-                    .padding(.vertical, 7)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
+                pinRow(pin) { select(pin) }
             }
         }
         .padding(14)

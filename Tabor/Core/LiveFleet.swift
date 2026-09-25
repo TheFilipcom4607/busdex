@@ -229,37 +229,42 @@ public enum Wanted {
 
 /// Vehicles that would sit on top of each other on the map, shown as one count bubble.
 public struct PinGroup: Identifiable, Sendable {
-    /// The rarest vehicle in the group; the bubble sits on it.
+    /// The rarest vehicle in the group; it colours the bubble.
     public let lead: WantedPin
     public let pins: [WantedPin]
+    /// The map square the group lives in: the same square keeps the same id across
+    /// refreshes, so a bubble doesn't lose its identity as its buses creep along.
+    public let cell: String
+
+    public init(lead: WantedPin, pins: [WantedPin], cell: String = "") {
+        self.lead = lead
+        self.pins = pins
+        self.cell = cell
+    }
 
     /// A lone vehicle keeps its own id, so selecting it works the same grouped or not.
-    public var id: String { pins.count == 1 ? lead.id : "group:\(lead.id)" }
+    public var id: String { pins.count == 1 ? lead.id : "group:\(cell)" }
     public var hasNewModel: Bool { pins.contains { $0.kind == .newModel } }
+    /// Middle of the group, where its bubble sits.
+    public var latitude: Double { pins.map(\.vehicle.latitude).reduce(0, +) / Double(pins.count) }
+    public var longitude: Double { pins.map(\.vehicle.longitude).reduce(0, +) / Double(pins.count) }
 }
 
 extension Wanted {
-    /// Greedy screen-space clustering: pins in priority order, each joining the first group
-    /// whose lead is within one cell (`cellLon` degrees wide, a bit less tall) or starting
-    /// its own. Rarer vehicles lead, so a bubble always shows the best thing inside it.
+    /// Buckets pins into fixed map squares `cellLon` degrees wide (and as tall on screen).
+    /// Squares are anchored to the map, not to the vehicles, so groups hold still between
+    /// refreshes instead of reshuffling. Pins keep their priority order: the rarest leads.
     public static func group(_ pins: [WantedPin], cellLon: Double, latitude: Double) -> [PinGroup] {
         guard cellLon > 0 else { return pins.map { PinGroup(lead: $0, pins: [$0]) } }
         // On a Mercator map a degree of latitude is taller than one of longitude.
         let cellLat = cellLon * cos(latitude * .pi / 180)
-        var leads: [WantedPin] = []
-        var members: [[WantedPin]] = []
+        var order: [String] = []
+        var members: [String: [WantedPin]] = [:]
         for p in pins {
-            let hit = leads.firstIndex { l in
-                abs(p.vehicle.longitude - l.vehicle.longitude) < cellLon
-                    && abs(p.vehicle.latitude - l.vehicle.latitude) < cellLat * 0.6
-            }
-            if let hit {
-                members[hit].append(p)
-            } else {
-                leads.append(p)
-                members.append([p])
-            }
+            let key = "\(Int(floor(p.vehicle.longitude / cellLon))):\(Int(floor(p.vehicle.latitude / cellLat)))"
+            if members[key] == nil { order.append(key) }
+            members[key, default: []].append(p)
         }
-        return zip(leads, members).map { PinGroup(lead: $0, pins: $1) }
+        return order.map { PinGroup(lead: members[$0]![0], pins: members[$0]!, cell: $0) }
     }
 }

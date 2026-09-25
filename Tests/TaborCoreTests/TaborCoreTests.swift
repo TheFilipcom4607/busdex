@@ -619,21 +619,29 @@ private func nearby(_ vehicles: [LiveVehicle]) -> [NearbyVehicle] {
 @Test func crowdedPinsBecomeOneBubbleLedByTheRarest() {
     let hrc = catalog.model(id: "tram-hrc-140n")!
     let legendary = catalog.models.first { $0.tier == .legendary && $0.kind == .tram }!
+    // A pętla: three trams within 20 m, and one far away.
     let snap = LiveSnapshot(vehicles: [
         live(hrc.numbers[0], .tram, metres: 100),
-        live(hrc.numbers[1], .tram, metres: 120),
-        live(legendary.numbers[0], .tram, metres: 110),
+        live(hrc.numbers[1], .tram, metres: 110),
+        live(legendary.numbers[0], .tram, metres: 120),
         live(hrc.numbers[2], .tram, metres: 2500),
     ], fetched: fixtureNow)
     let pins = Wanted.pins(snapshot: snap, catalog: catalog, caught: CollectionStats(sightings: []),
                            lat: here.lat, lon: here.lon)
-    // Cells ~200 m wide: the three at the stop merge, the far one stays alone.
-    let groups = Wanted.group(pins, cellLon: 0.003, latitude: here.lat)
+    let groups = Wanted.group(pins, cellLon: 0.01, latitude: here.lat)
     #expect(groups.map(\.pins.count).sorted() == [1, 3])
     let crowd = groups.first { $0.pins.count == 3 }!
     #expect(crowd.lead.model.id == legendary.id)
     #expect(crowd.id.hasPrefix("group:"))
     #expect(groups.first { $0.pins.count == 1 }!.id == pins.last!.id)
-    // Zoomed right in, nothing overlaps.
-    #expect(Wanted.group(pins, cellLon: 0.0001, latitude: here.lat).count == 4)
+    // The buses creep along between refreshes: same square, same group id.
+    let moved = LiveSnapshot(vehicles: snap.vehicles.map {
+        LiveVehicle(number: $0.number, kind: $0.kind, line: $0.line, latitude: $0.latitude + 0.00005,
+                    longitude: $0.longitude, time: $0.time)
+    }, fetched: fixtureNow)
+    let again = Wanted.group(Wanted.pins(snapshot: moved, catalog: catalog, caught: CollectionStats(sightings: []),
+                                         lat: here.lat, lon: here.lon), cellLon: 0.01, latitude: here.lat)
+    #expect(again.first { $0.pins.count == 3 }?.id == crowd.id)
+    // Zoomed right in, nothing shares a square.
+    #expect(Wanted.group(pins, cellLon: 0.00005, latitude: here.lat).count == 4)
 }
