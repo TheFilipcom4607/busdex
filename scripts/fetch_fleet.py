@@ -373,7 +373,10 @@ def build(vehicles):
     depots = sorted({parse_depot(v["depot"]) + (v["kind"],) for v in vehicles if v["depot"]})
     raw = json.loads(RAW.read_text())
     OUT.write_text(json.dumps({
-        "source": f"ZTM Warszawa vehicle database ({BASE}), fetched {raw['fetched']}",
+        # ZTM is the base; the hand-kept lists above fill its gaps (new deliveries, trial
+        # and club buses, names, build years).
+        "source": f"Warsaw ZTM vehicle database (fetched {raw['fetched']}), plus Warszawikia, "
+                  "the KMKM club, TransInfo, phototrans.eu and live GPS",
         "fetched": raw["fetched"],
         "models": models,
         "depots": [{"code": c, "name": n, "kind": k} for c, n, k in depots],
