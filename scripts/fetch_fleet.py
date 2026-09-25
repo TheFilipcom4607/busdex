@@ -85,7 +85,15 @@ def year_options(body):
 
 
 def scrape():
-    years = year_options(get(BASE))
+    first = get(BASE)
+    years = year_options(first)
+    if not years:
+        # CloudFront answers some networks (e.g. CI runners) with a 200 challenge page
+        # instead of the database; say so rather than building an empty fleet.
+        title = re.search(r"<title>(.*?)</title>", first, re.S)
+        raise RuntimeError(f"no year filter on the page — not the vehicle database? "
+                           f"title={title.group(1).strip() if title else None!r}, {len(first)} bytes: "
+                           f"{re.sub(r'\\s+', ' ', first[:400])!r}")
     vehicles = {}
     for traction, kind in TRACTIONS.items():
         for y in years:
