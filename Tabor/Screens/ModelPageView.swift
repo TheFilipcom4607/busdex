@@ -109,7 +109,7 @@ struct ModelPageView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(model.batches.enumerated()), id: \.offset) { i, batch in
-                        batchHeader(batch, have: batch.numbers.filter { ownedByNumber[$0] != nil }.count)
+                        batchHeader(batch, have: batch.numbers.filter { ownedByNumber[$0] != nil }.count, trial: model.trial)
                             .padding(.top, i == 0 ? 6 : 18)
                             .padding(.bottom, 10)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -212,8 +212,8 @@ struct ModelPageView: View {
     }
 
     /// "2022 BATCH · R-3 MOKOTÓW · 4209—4282" with how much of it you have; green once complete.
-    private func batchHeader(_ b: Batch, have: Int) -> some View {
-        let year = b.year.map { "\($0) BATCH" } ?? "YEAR UNKNOWN"
+    private func batchHeader(_ b: Batch, have: Int, trial: String?) -> some View {
+        let year = b.year.map { "\($0) BATCH" } ?? trial ?? "YEAR UNKNOWN"
         let done = have == b.numbers.count
         return HStack(spacing: 8) {
             Mono([year, b.depotDisplay, b.rangeDisplay].filter { !$0.isEmpty }.joined(separator: " · "),

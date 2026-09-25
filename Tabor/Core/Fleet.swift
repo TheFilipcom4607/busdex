@@ -47,10 +47,13 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     public let onTest: Bool
     /// Where a test vehicle runs, e.g. "LINE 106 · ALSO 122, 123 · TRIAL UNTIL 30 SEP 2026".
     public let runs: String?
+    /// When a test vehicle is here, e.g. "ON TRIAL SEP 2026": shown where the build year
+    /// would be, which for a demo bus is neither known nor the point.
+    public let trial: String?
 
     public init(id: String, name: String, make: String, code: String? = nil, kind: VehicleKind,
                 operators: [String], fleet: Int, firstYear: Int?, lastYear: Int?, batches: [Batch],
-                vintage: Bool = false, onTest: Bool = false, runs: String? = nil) {
+                vintage: Bool = false, onTest: Bool = false, runs: String? = nil, trial: String? = nil) {
         self.id = id
         self.name = name
         self.make = make
@@ -64,10 +67,11 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         self.vintage = vintage
         self.onTest = onTest
         self.runs = runs
+        self.trial = trial
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, make, code, kind, operators, fleet, firstYear, lastYear, batches, vintage, onTest, runs
+        case id, name, make, code, kind, operators, fleet, firstYear, lastYear, batches, vintage, onTest, runs, trial
     }
 
     public init(from decoder: Decoder) throws {
@@ -85,6 +89,7 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         vintage = try c.decodeIfPresent(Bool.self, forKey: .vintage) ?? false
         onTest = try c.decodeIfPresent(Bool.self, forKey: .onTest) ?? false
         runs = try c.decodeIfPresent(String.self, forKey: .runs)
+        trial = try c.decodeIfPresent(String.self, forKey: .trial)
     }
 
     public var numbers: [Int] { batches.flatMap(\.numbers).sorted() }

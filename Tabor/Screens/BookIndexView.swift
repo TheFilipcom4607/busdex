@@ -158,7 +158,7 @@ struct DexRow: View {
 
     /// "2005—2016 · 9 BATCHES", or the number span for single-batch models.
     private var detail: String {
-        let years = model.yearsDisplay ?? "YEAR ?"
+        let years = model.yearsDisplay ?? model.trial ?? "YEAR ?"
         if model.batches.count > 1 { return "\(years) · \(model.batches.count) BATCHES" }
         return "\(years) · \(model.rangeDisplay)"
     }
