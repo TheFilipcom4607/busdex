@@ -183,37 +183,39 @@ private struct WelcomePage: View {
     }
 }
 
-/// Brackets round a fleet number with the scan line running over it, and the pill the
-/// camera shows once it has read one.
+/// A real photo of a whole bus framed in the brackets, with the number on its front picked
+/// out: the vehicle is what becomes the sticker, the number only has to be in the shot.
 private struct CameraPage: View {
-    @State private var scan = false
+    @State private var found = false
+    /// Where "1971" sits on the bus's front in the photo, as fractions of the image.
+    private static let number = CGRect(x: 0.2465, y: 0.6625, width: 0.047, height: 0.0475)
 
     var body: some View {
         PageLayout(kicker: "CATCH",
-                   title: "Point it at the fleet number.",
-                   text: "Front, side or back: TABOR reads the number and knows the model. The rarer it is, the bigger the reveal.") {
-            VStack(spacing: 18) {
+                   title: "Get the whole bus in the shot.",
+                   text: "Front, side or back, with its fleet number somewhere in view. TABOR finds the number, knows the model and cuts the vehicle out as your sticker. The rarer it is, the bigger the reveal.") {
+            VStack(spacing: 14) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(Palette.card)
-                    Text("1971")
-                        .font(TaborFont.mono(64, 700))
-                        .foregroundStyle(Palette.stickerInk)
-                        .padding(.vertical, 6)
-                        .padding(.horizontal, 22)
-                        .background(Palette.paper, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .rotationEffect(.degrees(-3))
+                    Image("ViewfinderBus")
+                        .resizable()
+                        .scaledToFill()
+                    GeometryReader { g in
+                        let n = Self.number
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .stroke(Palette.green, lineWidth: 2.5)
+                            .shadow(color: Palette.green.opacity(0.8), radius: 4)
+                            .frame(width: g.size.width * n.width, height: g.size.height * n.height)
+                            .scaleEffect(found ? 1 : 2.2)
+                            .opacity(found ? 1 : 0)
+                            .position(x: g.size.width * n.midX, y: g.size.height * n.midY)
+                    }
                     Brackets()
                         .stroke(Palette.yellow, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
-                        .padding(26)
-                    GeometryReader { g in
-                        LinearGradient(colors: [.clear, Palette.yellow.opacity(0.55), .clear], startPoint: .leading, endPoint: .trailing)
-                            .frame(height: 2)
-                            .padding(.horizontal, 34)
-                            .offset(y: scan ? g.size.height - 40 : 38)
-                    }
+                        .shadow(color: .black.opacity(0.4), radius: 3)
+                        .padding(12)
                 }
-                .frame(width: 290, height: 200)
+                .frame(width: 320, height: 200)
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 HStack(spacing: 7) {
                     Circle().fill(Palette.green).frame(width: 6, height: 6)
                     Mono("1971 · YUTONG U12 · TAP TO CATCH", size: 11, weight: 600, spacing: 0.1, color: Palette.ink)
@@ -222,10 +224,17 @@ private struct CameraPage: View {
                 .padding(.horizontal, 14)
                 .background(Palette.chip, in: Capsule())
                 .overlay(Capsule().stroke(Palette.hairline))
+                .opacity(found ? 1 : 0.35)
+                // CC BY-SA 4.0 asks for the credit wherever the photo is shown.
+                Text("Photo: J2 kolej, CC BY-SA 4.0, via Wikimedia Commons")
+                    .font(TaborFont.grotesk(10))
+                    .foregroundStyle(Palette.faint)
             }
         }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) { scan = true }
+        .task {
+            // Framed, then a beat later the number is picked out, like the live camera does.
+            try? await Task.sleep(for: .milliseconds(700))
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { found = true }
         }
     }
 }
