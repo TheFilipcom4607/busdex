@@ -282,6 +282,8 @@ struct SettingsSheet: View {
     @State private var showIntro = false
     @AppStorage(DebugRecord.enabledKey) private var debugMode = false
     @State private var debugCount = DebugRecord.count
+    @AppStorage(DebugRecord.unlockedKey) private var debugUnlocked = false
+    @State private var versionTaps = 0
     @State private var exportURL: URL?
     @State private var exporting = false
     @State private var confirmDelete = false
@@ -312,32 +314,34 @@ struct SettingsSheet: View {
                 } footer: {
                     Text("Weather comes from Open-Meteo: TABOR sends each geotagged catch's time and rough location (to about 1 km). Nothing else leaves your phone.")
                 }
-                Section {
-                    Toggle("Debug mode", isOn: $debugMode)
-                    if debugMode {
-                        NavigationLink("Haptics lab") { HapticsLab() }
-                    }
-                    if debugMode || debugCount > 0 {
-                        LabeledContent("Logged shots", value: "\(debugCount)")
-                        Button(exporting ? "Zipping…" : "Share as ZIP") {
-                            exporting = true
-                            Task {
-                                exportURL = await Task.detached { DebugRecord.exportZip() }.value
-                                exporting = false
-                            }
+                if showsDebug {
+                    Section {
+                        Toggle("Debug mode", isOn: $debugMode)
+                        if debugMode {
+                            NavigationLink("Haptics lab") { HapticsLab() }
                         }
-                        .disabled(debugCount == 0 || exporting)
-                        Button("Delete debug data", role: .destructive) { confirmDelete = true }
-                            .disabled(debugCount == 0)
+                        if debugMode || debugCount > 0 {
+                            LabeledContent("Logged shots", value: "\(debugCount)")
+                            Button(exporting ? "Zipping…" : "Share as ZIP") {
+                                exporting = true
+                                Task {
+                                    exportURL = await Task.detached { DebugRecord.exportZip() }.value
+                                    exporting = false
+                                }
+                            }
+                            .disabled(debugCount == 0 || exporting)
+                            Button("Delete debug data", role: .destructive) { confirmDelete = true }
+                                .disabled(debugCount == 0)
+                        }
+                        if debugMode {
+                            Button("Delete all catches", role: .destructive) { confirmWipe = true }
+                                .disabled(allSightings.isEmpty)
+                        }
+                    } header: {
+                        Text("Debug")
+                    } footer: {
+                        Text("Saves every shot — failed reads and retakes included — with what the OCR and sticker cutter saw. Also in Files › On My iPhone › TABOR › Debug.")
                     }
-                    if debugMode {
-                        Button("Delete all catches", role: .destructive) { confirmWipe = true }
-                            .disabled(allSightings.isEmpty)
-                    }
-                } header: {
-                    Text("Debug")
-                } footer: {
-                    Text("Saves every shot — failed reads and retakes included — with what the OCR and sticker cutter saw. Also in Files › On My iPhone › TABOR › Debug.")
                 }
                 Section {
                     LabeledContent("Key", value: keySource)
@@ -484,6 +488,16 @@ extension SettingsSheet {
 }
 
 extension SettingsSheet {
+    /// Xcode builds always show Debug. TestFlight and App Store builds keep it hidden until
+    /// it's unlocked, or while it's still on or holding shots from before it was hidden.
+    var showsDebug: Bool {
+        #if DEBUG
+        true
+        #else
+        debugUnlocked || debugMode || debugCount > 0
+        #endif
+    }
+
     /// Signs off the bottom of Settings while TABOR is in beta, with the build to quote.
     var betaNote: some View {
         let info = Bundle.main.infoDictionary
@@ -495,8 +509,19 @@ extension SettingsSheet {
                 .foregroundStyle(Palette.ink)
             Text("Something broken, or a bus it got wrong? Take a screenshot and tap Share Beta Feedback, or just tell me.")
                 .multilineTextAlignment(.center)
-            Mono("BETA · \(version) (\(build))", size: 10, spacing: 0.12, color: Palette.faint)
+            Mono(debugUnlocked ? "BETA · \(version) (\(build)) · DEBUG" : "BETA · \(version) (\(build))",
+                 size: 10, spacing: 0.12, color: debugUnlocked ? Palette.yellow : Palette.faint)
                 .padding(.top, 4)
+                .contentShape(Rectangle())
+                // Seven taps unlock Debug, like Android's developer options.
+                .onTapGesture {
+                    guard !debugUnlocked else { return }
+                    versionTaps += 1
+                    if versionTaps >= 7 {
+                        withAnimation { debugUnlocked = true }
+                        Haptics.shared.completed()
+                    }
+                }
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 8)

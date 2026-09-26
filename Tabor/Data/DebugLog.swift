@@ -8,6 +8,8 @@ import UIKit
 /// Browse it in Files › On My iPhone › TABOR, or share it all as a ZIP from Settings.
 final class DebugRecord: @unchecked Sendable {
     static let enabledKey = "debugMode"
+    /// TestFlight and App Store builds hide the Debug settings until this is set.
+    static let unlockedKey = "debugUnlocked"
     static var isEnabled: Bool { UserDefaults.standard.bool(forKey: enabledKey) }
 
     static let root: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
