@@ -278,6 +278,7 @@ struct SettingsSheet: View {
     @AppStorage(Haptics.enabledKey) private var haptics = true
     @AppStorage("saveToGallery") private var saveToGallery = true
     @AppStorage("geotag") private var geotag = true
+    @State private var showIntro = false
     @AppStorage(DebugRecord.enabledKey) private var debugMode = false
     @State private var debugCount = DebugRecord.count
     @State private var exportURL: URL?
@@ -392,7 +393,9 @@ struct SettingsSheet: View {
                         Text("New deliveries show up without an app update: TABOR checks GitHub for a fresher ZTM snapshot once a day.")
                     }
                 }
-                Section {} footer: { betaNote }
+                Section {
+                    Button("Show the intro again") { showIntro = true }
+                } footer: { betaNote }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -404,6 +407,7 @@ struct SettingsSheet: View {
         .presentationDetents([.medium, .large])
         .onAppear { debugCount = DebugRecord.count }
         .sheet(item: $exportURL) { url in ShareSheet(items: [url]) }
+        .fullScreenCover(isPresented: $showIntro) { OnboardingView { showIntro = false } }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.zip]) { result in
             if case .success(let url) = result { importBackup(url) }
         }

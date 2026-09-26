@@ -192,7 +192,8 @@ extension Int {
     var grouped: String {
         let f = NumberFormatter()
         f.numberStyle = .decimal
-        f.groupingSeparator = " "
+        // No-break, so "2 673" never splits across a line end.
+        f.groupingSeparator = "\u{00A0}"
         return f.string(from: NSNumber(value: self)) ?? String(self)
     }
 }

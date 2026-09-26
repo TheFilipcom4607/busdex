@@ -5,10 +5,34 @@ import SwiftUI
 struct TaborApp: App {
     var body: some Scene {
         WindowGroup {
-            RootView()
+            LaunchGate()
                 .preferredColorScheme(.dark)
         }
         .modelContainer(TaborStore.container)
+    }
+}
+
+/// Onboarding first, the app after. Someone who already has catches (an existing user, or
+/// a restored backup) goes straight in.
+struct LaunchGate: View {
+    static let onboardedKey = "onboarded"
+    @AppStorage(Self.onboardedKey) private var onboarded = false
+    @Query(Self.oneCatch) private var anyCatch: [Sighting]
+
+    private static var oneCatch: FetchDescriptor<Sighting> {
+        var d = FetchDescriptor<Sighting>()
+        d.fetchLimit = 1
+        return d
+    }
+
+    var body: some View {
+        if onboarded || !anyCatch.isEmpty {
+            RootView()
+                .transition(.opacity)
+        } else {
+            OnboardingView { withAnimation(.easeInOut(duration: 0.35)) { onboarded = true } }
+                .transition(.opacity)
+        }
     }
 }
 

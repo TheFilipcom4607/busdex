@@ -309,7 +309,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "TABOR reads the fleet number off buses and trams you point it at.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Geotag your catches so they show up on your spotting map.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Shows the buses and trams running near you on HUNT, and geotags your catches for your spotting map.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save the full-resolution shot of each catch to your Photos.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIFileSharingEnabled = YES;
@@ -346,7 +346,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "TABOR reads the fleet number off buses and trams you point it at.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Geotag your catches so they show up on your spotting map.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Shows the buses and trams running near you on HUNT, and geotags your catches for your spotting map.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save the full-resolution shot of each catch to your Photos.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIFileSharingEnabled = YES;

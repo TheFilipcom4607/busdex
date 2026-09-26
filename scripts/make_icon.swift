@@ -2,7 +2,8 @@
 // die-cut sticker on the app's dark background — ram-horn mirrors, big round-shouldered
 // windscreen, the chrome bar with upturned ends, LED-ringed pill headlights, a green
 // electric plate. Tagged 1971.
-// Usage: swift scripts/make_icon.swift   (writes into Tabor/Resources/Assets.xcassets)
+// Usage: swift scripts/make_icon.swift   (writes the icon, and the onboarding sticker, into
+// Tabor/Resources/Assets.xcassets)
 import AppKit
 import CoreText
 
@@ -260,5 +261,15 @@ func iconSet(_ name: String) {
 
 CTFontManagerRegisterFontsForURL(root.appendingPathComponent("Tabor/Resources/Fonts/IBMPlexMono-Bold.ttf") as CFURL, .process, nil)
 
+/// The same sticker on a transparent background, for the first onboarding page.
+func imageSet(_ name: String, _ img: CGImage) {
+    let dir = assets.appendingPathComponent("\(name).imageset")
+    try! FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    write(img, dir.appendingPathComponent("\(name).png"))
+    let contents = #"{"images":[{"filename":"\#(name).png","idiom":"universal"}],"info":{"author":"xcode","version":1}}"#
+    try! contents.write(to: dir.appendingPathComponent("Contents.json"), atomically: true, encoding: .utf8)
+}
+
 iconSet("AppIcon")
+imageSet("WelcomeSticker", render(.dark))
 print("wrote icons to \(assets.path)")
