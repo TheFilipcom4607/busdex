@@ -16,3 +16,6 @@ Config/Secrets.xcconfig
 
 CLAUDE.md
 __pycache__/
+
+# Local test images
+/test-images/
