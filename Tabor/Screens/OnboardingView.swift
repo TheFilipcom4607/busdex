@@ -1,7 +1,7 @@
 import AVFoundation
 import SwiftUI
 
-/// First launch: three pages on what TABOR is, each asking for the permission it needs
+/// First launch: what TABOR is and why you'd play it, then how, each permission asked for
 /// right where it says why. The app proper (and its camera) only starts once it's done;
 /// people who already have catches never see it.
 struct OnboardingView: View {
@@ -10,7 +10,7 @@ struct OnboardingView: View {
     @State private var askedLocation = false
     private let location = LocationService.shared
 
-    enum Page: Int, CaseIterable { case welcome, camera, hunt }
+    enum Page: Int, CaseIterable { case welcome, book, camera, hunt }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,6 +29,7 @@ struct OnboardingView: View {
 
             TabView(selection: $page) {
                 WelcomePage().tag(Page.welcome)
+                BookPage().tag(Page.book)
                 CameraPage().tag(Page.camera)
                 HuntPage().tag(Page.hunt)
             }
@@ -78,7 +79,7 @@ struct OnboardingView: View {
     /// The permission this page is about hasn't been asked for yet.
     private var needsPermission: Bool {
         switch page {
-        case .welcome: false
+        case .welcome, .book: false
         case .camera: AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined
         case .hunt: location.authorization == .notDetermined
         }
@@ -87,6 +88,7 @@ struct OnboardingView: View {
     private var primaryLabel: String {
         switch page {
         case .welcome: "LET'S GO"
+        case .book: "NEXT"
         case .camera: needsPermission ? "ALLOW CAMERA" : "NEXT"
         case .hunt: needsPermission ? "ALLOW LOCATION" : "START CATCHING"
         }
@@ -94,7 +96,7 @@ struct OnboardingView: View {
 
     private func primary() {
         switch page {
-        case .welcome:
+        case .welcome, .book:
             advance()
         case .camera:
             guard needsPermission else { return advance() }
@@ -157,9 +159,9 @@ private struct WelcomePage: View {
     private let total = Fleet.catalog.totalFleet
 
     var body: some View {
-        PageLayout(kicker: "WARSAW ROLLING STOCK",
+        PageLayout(kicker: "A COLLECTING GAME FOR WARSAW",
                    title: "Catch every bus and tram in Warsaw.",
-                   text: "Photograph a vehicle's fleet number and TABOR turns it into a sticker for your book. \(total.grouped) of them are out there.") {
+                   text: "Snap one and it becomes a sticker in your book. Some models run by the hundred; a few, only a handful. \(total.grouped) vehicles to find.") {
             ZStack {
                 RadialGradient(colors: [Palette.yellow.opacity(landed ? 0.22 : 0), .clear],
                                center: .center, startRadius: 10, endRadius: 190)
@@ -179,6 +181,75 @@ private struct WelcomePage: View {
             withAnimation(.spring(response: 0.32, dampingFraction: 0.55)) { landed = true }
             try? await Task.sleep(for: .milliseconds(120))
             Haptics.shared.stick()
+        }
+    }
+}
+
+/// Why you'd keep going: a few book rows filling up, one per rarity, so "rare" means
+/// something before the first catch does.
+private struct BookPage: View {
+    @State private var filled = false
+
+    /// The biggest regular model in each tier, buses and trams taking turns: real names,
+    /// and the fleet sizes that make the rarity obvious (a dozen against hundreds).
+    private let rows: [(model: VehicleModel, share: Double)] = {
+        let regular = Fleet.catalog.models.filter(\.regular)
+        let picks: [(Tier, VehicleKind, Double)] = [(.legendary, .bus, 0.17), (.gold, .tram, 0.4), (.rare, .bus, 0.55), (.common, .tram, 0.72)]
+        return picks.compactMap { tier, kind, share in
+            let inTier = regular.filter { $0.tier == tier }
+            let pick = inTier.filter { $0.kind == kind }.max { $0.fleet < $1.fleet } ?? inTier.max { $0.fleet < $1.fleet }
+            return pick.map { ($0, share) }
+        }
+    }()
+
+    var body: some View {
+        PageLayout(kicker: "BOOK",
+                   title: "Fill the book, model by model.",
+                   text: "Every model has a page and every vehicle a slot. Rarity goes by how many exist, so a legendary is one of a dozen or fewer. Badges come along the way.") {
+            VStack(spacing: 8) {
+                ForEach(Array(rows.enumerated()), id: \.offset) { i, row in
+                    MiniRow(model: row.model, share: filled ? row.share : 0)
+                        .animation(.spring(response: 0.7, dampingFraction: 0.85).delay(Double(i) * 0.12), value: filled)
+                }
+            }
+            .frame(width: 310)
+        }
+        .task {
+            try? await Task.sleep(for: .milliseconds(300))
+            filled = true
+        }
+    }
+
+    /// A slimmer book row: name and rarity, then how much of the model is caught.
+    private struct MiniRow: View {
+        let model: VehicleModel
+        let share: Double
+
+        var body: some View {
+            let owned = Int((Double(model.fleet) * share).rounded(.up))
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: model.kind == .tram ? "tram.fill" : "bus.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Palette.sub)
+                    Text(model.name)
+                        .font(TaborFont.grotesk(14, 600))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Mono(model.tier.rawValue, size: 10, weight: 700, spacing: 0.12, color: model.tier.color)
+                }
+                HStack(spacing: 10) {
+                    ProgressBar(fraction: share, color: model.tier.bar, height: 5)
+                    OwnedCount(owned: owned, fleet: model.fleet, size: 12)
+                        .contentTransition(.numericText())
+                        .frame(minWidth: 58, alignment: .trailing)
+                }
+            }
+            .padding(.vertical, 11)
+            .padding(.horizontal, 14)
+            .background(Palette.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.white.opacity(0.06)))
         }
     }
 }
