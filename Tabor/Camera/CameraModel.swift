@@ -456,15 +456,17 @@ extension CGImagePropertyOrientation {
 
 struct CameraPreview: UIViewRepresentable {
     let session: AVCaptureSession
-    var onTap: ((CGPoint) -> Void)? = nil
+    /// The tap in the view's own points, and the same spot as a device point for focusing.
+    var onTap: ((_ point: CGPoint, _ devicePoint: CGPoint) -> Void)? = nil
 
     final class PreviewView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
         var previewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
-        var onTap: ((CGPoint) -> Void)?
+        var onTap: ((CGPoint, CGPoint) -> Void)?
 
         @objc func tapped(_ g: UITapGestureRecognizer) {
-            onTap?(previewLayer.captureDevicePointConverted(fromLayerPoint: g.location(in: self)))
+            let p = g.location(in: self)
+            onTap?(p, previewLayer.captureDevicePointConverted(fromLayerPoint: p))
         }
     }
 

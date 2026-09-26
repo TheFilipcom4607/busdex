@@ -193,16 +193,18 @@ struct CatchView: View {
     @ViewBuilder private var viewfinder: some View {
         switch camera.status {
         case .running:
-            CameraPreview(session: camera.session) { devicePoint in
+            CameraPreview(session: camera.session) { point, devicePoint in
+                // Only inside the brackets: a hurried tap that just misses the shutter or a
+                // zoom button used to refocus on whatever was behind it and spoil the shot.
+                let brackets = bracketGlobal.offsetBy(dx: -finderFrame.minX, dy: -finderFrame.minY)
+                guard brackets.contains(point) else { return }
                 camera.focus(at: devicePoint)
-            }
-            .simultaneousGesture(SpatialTapGesture().onEnded { e in
-                withAnimation(.spring(response: 0.3)) { focusPoint = e.location }
+                withAnimation(.spring(response: 0.3)) { focusPoint = point }
                 Task {
                     try? await Task.sleep(for: .seconds(0.9))
                     withAnimation(.easeOut) { focusPoint = nil }
                 }
-            })
+            }
             .simultaneousGesture(MagnifyGesture()
                 .onChanged { v in
                     let start = pinchStart ?? camera.zoom
@@ -385,6 +387,8 @@ struct CatchView: View {
                     }
                     .animation(.spring(response: 0.25, dampingFraction: 0.5), value: shutterDown)
                     .animation(.easeInOut(duration: 0.25), value: locked)
+                    // Hit in a hurry without looking: a 100 pt target around the 76 pt ring.
+                    .contentShape(Circle().inset(by: -12))
                 }
                 .buttonStyle(ShutterStyle(pressed: $shutterDown))
                 .disabled(capturing || camera.status != .running)
@@ -433,6 +437,8 @@ struct CatchView: View {
                         .padding(.horizontal, on ? 4 : 0)
                         .background(on ? Palette.yellow : Color.clear, in: Capsule())
                         .contentTransition(.numericText())
+                        // Taller targets than they look; less below, where the shutter's is.
+                        .hitArea(top: 12, bottom: 6, sides: 4)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Zoom \(Self.zoomLabel(s)) times")
@@ -653,6 +659,13 @@ struct CatchView: View {
 }
 
 extension View {
+    /// Grows the tappable area past what's drawn, without moving anything.
+    func hitArea(top: CGFloat, bottom: CGFloat, sides: CGFloat) -> some View {
+        padding(EdgeInsets(top: top, leading: sides, bottom: bottom, trailing: sides))
+            .contentShape(Rectangle())
+            .padding(EdgeInsets(top: -top, leading: -sides, bottom: -bottom, trailing: -sides))
+    }
+
     /// Frosted dark glass for controls floating over the live camera.
     func glass<S: Shape>(_ shape: S) -> some View {
         background(.ultraThinMaterial, in: shape)
