@@ -239,8 +239,16 @@ func numberTag(_ ctx: CGContext, _ text: String) {
     ctx.restoreGState()
 }
 
-func write(_ img: CGImage, _ path: URL, size: Int? = nil) {
+func write(_ img: CGImage, _ path: URL, size: Int? = nil, opaque: Bool = false) {
     var img = img
+    // App Store Connect rejects a main icon with an alpha channel, even a fully opaque one.
+    if opaque {
+        let c = CGContext(data: nil, width: img.width, height: img.height, bitsPerComponent: 8, bytesPerRow: 0,
+                          space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                          bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+        c.draw(img, in: CGRect(x: 0, y: 0, width: img.width, height: img.height))
+        img = c.makeImage()!
+    }
     if let size {
         let c = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0,
                           space: CGColorSpace(name: CGColorSpace.sRGB)!,
@@ -254,9 +262,10 @@ func write(_ img: CGImage, _ path: URL, size: Int? = nil) {
 
 func iconSet(_ name: String) {
     let dir = assets.appendingPathComponent("\(name).appiconset")
-    write(render(.normal), dir.appendingPathComponent("\(name).png"))
+    write(render(.normal), dir.appendingPathComponent("\(name).png"), opaque: true)
+    // The dark icon is meant to be transparent: iOS puts it on its own dark backdrop.
     write(render(.dark), dir.appendingPathComponent("\(name)-Dark.png"))
-    write(render(.tinted), dir.appendingPathComponent("\(name)-Tinted.png"))
+    write(render(.tinted), dir.appendingPathComponent("\(name)-Tinted.png"), opaque: true)
 }
 
 CTFontManagerRegisterFontsForURL(root.appendingPathComponent("Tabor/Resources/Fonts/IBMPlexMono-Bold.ttf") as CFURL, .process, nil)
