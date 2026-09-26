@@ -1047,7 +1047,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Przycisk czynności"
+            "value": "Przycisk akcji"
           }
         }
       }
@@ -3506,7 +3506,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Na iPhone’ach, które go mają: Ustawienia › Przycisk czynności."
+            "value": "Na iPhone’ach, które go mają: Ustawienia › Przycisk akcji."
           }
         }
       }
@@ -4260,7 +4260,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "TABOR ma przycisk Złap na ekran blokady, do centrum sterowania i pod przycisk czynności. Od razu otwiera aparat, nawet na zablokowanym telefonie."
+            "value": "TABOR ma przycisk Złap na ekran blokady, do centrum sterowania i pod przycisk akcji. Od razu otwiera aparat, nawet na zablokowanym telefonie."
           }
         }
       }
