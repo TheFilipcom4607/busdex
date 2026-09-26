@@ -709,3 +709,18 @@ private func nearby(_ vehicles: [LiveVehicle]) -> [NearbyVehicle] {
     // Junk from an older or newer version is skipped.
     #expect(HuntTargets(rawValue: "tier:MYTHIC,model:,colour:red,tier:GOLD") == HuntTargets(tiers: [.gold]))
 }
+
+@Test func huntTargetsKindNarrowsRatherThanAdds() {
+    let hrc = catalog.model(id: "tram-hrc-140n")!
+    let bus = catalog.models.first { $0.kind == .bus && $0.regular }!
+    // Trams only: every tram counts, no bus does, and it's not a city-wide hunt.
+    let trams = HuntTargets(kind: .tram)
+    #expect(trams.matches(hrc) && !trams.matches(bus))
+    #expect(!trams.isEmpty && !trams.hasPicks && trams.count == 1)
+    // With picks, the kind narrows them: a bus model picked under TRAM doesn't match.
+    let mixed = HuntTargets(tiers: [hrc.tier], models: [bus.id], kind: .tram)
+    #expect(mixed.matches(hrc) && !mixed.matches(bus))
+    #expect(mixed.rawValue.hasPrefix("kind:TRAM,"))
+    #expect(HuntTargets(rawValue: mixed.rawValue) == mixed)
+    #expect(HuntTargets(rawValue: "kind:BOAT") == HuntTargets())
+}

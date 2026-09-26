@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Pick what HUNT shows: whole rarities, or particular models, any of which counts (a
-/// wanted list). Changes apply as you tap, so the map behind the half-height sheet follows.
+/// Pick what HUNT shows: buses or trams only, and whole rarities or particular models, any
+/// of which counts (a wanted list). Changes apply as you tap, so the map behind the
+/// half-height sheet follows.
 struct HuntFilterSheet: View {
     @Binding var targets: HuntTargets
     /// Every uncaught vehicle running right now, anywhere.
@@ -23,21 +24,33 @@ struct HuntFilterSheet: View {
     }
 
     var body: some View {
-        let byModel = Dictionary(grouping: running, by: \.model.id)
-        let byTier = Dictionary(grouping: running, by: \.model.tier)
-        let models = shownModels
         // Read once: the binding decodes the stored filter on every read.
         let picked = targets
+        let byKind = Dictionary(grouping: running, by: \.model.kind)
+        // Rarity counts follow the type picked, so they say what you'd actually get.
+        let ofKind = picked.kind.map { byKind[$0] ?? [] } ?? running
+        let byModel = Dictionary(grouping: running, by: \.model.id)
+        let byTier = Dictionary(grouping: ofKind, by: \.model.tier)
+        let models = shownModels(kind: picked.kind)
 
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(alignment: .firstTextBaseline) {
-                        SectionLabel(text: "RARITY")
+                        SectionLabel(text: "TYPE")
                         Spacer()
                         Mono("UNCAUGHT, OUT NOW", size: 9.5, color: Palette.faint)
                     }
                     .padding(.bottom, 9)
+                    HStack(spacing: 7) {
+                        ForEach(VehicleKind.allCases, id: \.self) { k in
+                            kindChip(k, count: byKind[k]?.count ?? 0, on: picked.kind == k)
+                        }
+                    }
+
+                    SectionLabel(text: "RARITY")
+                        .padding(.top, 24)
+                        .padding(.bottom, 9)
                     FlowRow(spacing: 7) {
                         ForEach(Tier.allCases, id: \.self) { t in
                             tierChip(t, count: byTier[t]?.count ?? 0, on: picked.tiers.contains(t))
@@ -89,6 +102,34 @@ struct HuntFilterSheet: View {
     }
 
     // MARK: - Pieces
+
+    /// One of BUS / TRAM, or neither: tapping the lit one goes back to both.
+    private func kindChip(_ k: VehicleKind, count: Int, on: Bool) -> some View {
+        Button {
+            Haptics.shared.tick()
+            withAnimation(.snappy) {
+                targets.kind = on ? nil : k
+                // A model of the other kind could never match any more: drop it.
+                if !on { targets.models = targets.models.filter { catalog.model(id: $0)?.kind == k } }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: k == .bus ? "bus.fill" : "tram.fill")
+                    .font(.system(size: 11, weight: .bold))
+                Mono(k == .bus ? "BUSES" : "TRAMS", size: 11, weight: 700, spacing: 0.1,
+                     color: on ? Palette.bg : Palette.ink)
+                Mono("\(count)", size: 11, weight: 500, spacing: 0, color: on ? Palette.bg.opacity(0.65) : Palette.faint)
+            }
+            .foregroundStyle(on ? Palette.bg : Palette.ink)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(on ? Palette.ink : Palette.chip, in: Capsule())
+            .overlay(Capsule().stroke(Palette.ink.opacity(on ? 0 : 0.2)))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(k == .bus ? "Buses" : "Trams") only, \(count) out now")
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
 
     private func tierChip(_ t: Tier, count: Int, on: Bool) -> some View {
         Button {
@@ -149,11 +190,11 @@ struct HuntFilterSheet: View {
     // MARK: - Data
 
     /// Search matches every word anywhere in the name or ZTM code, ignoring case and accents
-    /// ("guleryuz cobra" finds the Güleryüz Cobra GD272).
-    private var shownModels: [VehicleModel] {
+    /// ("guleryuz cobra" finds the Güleryüz Cobra GD272). Only the type picked, if one is.
+    private func shownModels(kind: VehicleKind?) -> [VehicleModel] {
         let words = search.split(whereSeparator: \.isWhitespace).map(String.init)
         return order.compactMap(catalog.model(id:)).filter { m in
-            words.allSatisfy { w in m.name.localizedStandardContains(w) || (m.code ?? "").localizedStandardContains(w) }
+            (kind == nil || m.kind == kind) && words.allSatisfy { w in m.name.localizedStandardContains(w) || (m.code ?? "").localizedStandardContains(w) }
         }
     }
 

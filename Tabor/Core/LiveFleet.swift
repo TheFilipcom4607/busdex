@@ -228,41 +228,51 @@ public enum Wanted {
 }
 
 /// What you're after on the HUNT map, like a wanted list: rarities and models, any one of
-/// which counts. Empty means everything.
+/// which counts, optionally narrowed to buses or trams. Empty means everything.
 public struct HuntTargets: Equatable, Sendable, RawRepresentable {
     public var tiers: Set<Tier>
     /// Model ids.
     public var models: Set<String>
+    /// Only buses or only trams; nil for both. Narrows the picks rather than adding to them.
+    public var kind: VehicleKind?
 
-    public init(tiers: Set<Tier> = [], models: Set<String> = []) {
+    public init(tiers: Set<Tier> = [], models: Set<String> = [], kind: VehicleKind? = nil) {
         self.tiers = tiers
         self.models = models
+        self.kind = kind
     }
 
-    public var isEmpty: Bool { tiers.isEmpty && models.isEmpty }
-    public var count: Int { tiers.count + models.count }
+    public var isEmpty: Bool { !hasPicks && kind == nil }
+    /// Rarities or models picked: you're after something specific, so HUNT looks across
+    /// the whole city. Buses or trams alone keep the usual view around you.
+    public var hasPicks: Bool { !tiers.isEmpty || !models.isEmpty }
+    public var count: Int { tiers.count + models.count + (kind == nil ? 0 : 1) }
 
     public func matches(_ model: VehicleModel) -> Bool {
-        isEmpty || tiers.contains(model.tier) || models.contains(model.id)
+        (kind == nil || model.kind == kind)
+            && (!hasPicks || tiers.contains(model.tier) || models.contains(model.id))
     }
 
-    /// "tier:GOLD,model:bus-mercus-syn2z", so it can live in UserDefaults.
+    /// "kind:TRAM,tier:GOLD,model:bus-mercus-syn2z", so it can live in UserDefaults.
     public var rawValue: String {
-        (tiers.map { "tier:\($0.rawValue)" }.sorted() + models.map { "model:\($0)" }.sorted())
+        ((kind.map { ["kind:\($0.rawValue)"] } ?? []) + tiers.map { "tier:\($0.rawValue)" }.sorted()
+            + models.map { "model:\($0)" }.sorted())
             .joined(separator: ",")
     }
 
     /// Unknown tokens (a tier renamed in a later version) are skipped, never fatal.
     public init(rawValue: String) {
-        var tiers = Set<Tier>(), models = Set<String>()
+        var tiers = Set<Tier>(), models = Set<String>(), kind: VehicleKind?
         for token in rawValue.split(separator: ",") {
             if token.hasPrefix("tier:") {
                 if let tier = Tier(rawValue: String(token.dropFirst(5))) { tiers.insert(tier) }
             } else if token.hasPrefix("model:"), token.count > 6 {
                 models.insert(String(token.dropFirst(6)))
+            } else if token.hasPrefix("kind:") {
+                kind = VehicleKind(rawValue: String(token.dropFirst(5)))
             }
         }
-        self.init(tiers: tiers, models: models)
+        self.init(tiers: tiers, models: models, kind: kind)
     }
 }
 
@@ -339,8 +349,11 @@ public struct LiveTrails: Sendable {
     public static let minStep = 15.0
     /// A heading needs this much travel, so one jittery fix can't flip the arrow.
     public static let headingBase = 30.0
-    public static let maxAge: TimeInterval = 300
-    public static let maxPoints = 12
+    /// How much path the map draws behind a selected vehicle.
+    public static let maxAge: TimeInterval = 600
+    public static let maxPoints = 40
+    /// A vehicle that stops reporting this long has left the feed (depot, end of shift).
+    public static let forgetAfter: TimeInterval = 300
     /// Reporting in, but no travel for this long: standing at a stop or a light.
     public static let stoppedAfter: TimeInterval = 45
 
@@ -367,7 +380,7 @@ public struct LiveTrails: Sendable {
             points[key] = Array(trail.suffix(Self.maxPoints))
         }
         // Vehicles that left the feed (depot, end of shift) are forgotten.
-        for (key, seen) in lastSeen where now.timeIntervalSince(seen) > Self.maxAge {
+        for (key, seen) in lastSeen where now.timeIntervalSince(seen) > Self.forgetAfter {
             lastSeen[key] = nil
             points[key] = nil
         }

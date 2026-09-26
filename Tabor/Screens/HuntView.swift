@@ -116,7 +116,7 @@ struct HuntView: View {
     /// A city-wide (filtered) hunt only gets pins around where you're looking, with a screen's
     /// margin all round, so a broad filter doesn't hand the map a thousand annotations.
     private func onMap(_ shown: [WantedPin]) -> [WantedPin] {
-        guard !targets.isEmpty, let r = mapRegion else { return shown }
+        guard targets.hasPicks, let r = mapRegion else { return shown }
         return shown.filter { p in
             p.id == selectedId || (abs(p.vehicle.latitude - r.center.latitude) < r.span.latitudeDelta
                                    && abs(p.vehicle.longitude - r.center.longitude) < r.span.longitudeDelta)
@@ -307,6 +307,9 @@ struct HuntView: View {
         let picked = targets
         return ScrollView(.horizontal) {
             HStack(spacing: 6) {
+                if let kind = picked.kind {
+                    targetChip(kind == .bus ? "BUSES ONLY" : "TRAMS ONLY", color: Palette.ink) { targets.kind = nil }
+                }
                 ForEach(Tier.allCases.filter { picked.tiers.contains($0) }, id: \.self) { t in
                     targetChip(t.rawValue, color: t.mapColor) { targets.tiers.subtract([t]) }
                 }
@@ -494,17 +497,23 @@ struct HuntView: View {
     /// nearest first (to you, or to the map's centre without a fix) — you're after something
     /// specific, so how far it is matters most.
     private func listed(_ shown: [WantedPin]) -> [WantedPin] {
-        guard !targets.isEmpty else { return nearYou(shown) }
+        guard targets.hasPicks else { return nearYou(shown) }
         return shown.sorted { $0.distance < $1.distance }
+    }
+
+    /// "UNCAUGHT NEARBY", or "NEW TRAM MODELS NEARBY" with trams picked.
+    private var nearbyTitle: String {
+        let kind = targets.kind.map { $0 == .bus ? "BUS" : "TRAM" }
+        return filter == .newModels ? "NEW \(kind.map { "\($0) " } ?? "")MODELS NEARBY"
+            : "UNCAUGHT \(kind.map { "\($0)S " } ?? "")NEARBY"
     }
 
     private func wantedList(_ near: [WantedPin]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                SectionLabel(text: !targets.isEmpty ? "MATCHING YOUR FILTER"
-                             : filter == .newModels ? "NEW MODELS NEARBY" : "UNCAUGHT NEARBY")
+                SectionLabel(text: targets.hasPicks ? "MATCHING YOUR FILTER" : nearbyTitle)
                 Spacer()
-                Mono(!targets.isEmpty ? "\(near.count) OUT NOW" : hasFix ? "\(near.count) WITHIN 3 KM" : "AROUND THE MAP CENTRE",
+                Mono(targets.hasPicks ? "\(near.count) OUT NOW" : hasFix ? "\(near.count) WITHIN 3 KM" : "AROUND THE MAP CENTRE",
                      size: 9.5, color: Palette.faint)
             }
             if filter == .all {
@@ -544,7 +553,7 @@ struct HuntView: View {
                                    if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                                }))
         }
-        if !targets.isEmpty {
+        if targets.hasPicks {
             guard shown.isEmpty else { return nil }
             return MessageCard(icon: "line.3.horizontal.decrease.circle", title: "Nothing out that matches",
                                text: filter == .newModels
@@ -553,10 +562,12 @@ struct HuntView: View {
                                action: ("Clear the filter", { withAnimation(.snappy) { targets = HuntTargets() } }))
         }
         if nearYou(shown).isEmpty {
+            let what = targets.kind.map { $0 == .bus ? "bus" : "tram" }
             return MessageCard(icon: "checkmark.seal.fill",
-                               title: filter == .newModels ? "No new models within 3 km" : "Nothing uncaught within 3 km",
+                               title: filter == .newModels ? "No new \(what.map { "\($0) " } ?? "")models within 3 km"
+                                   : "No uncaught \(what.map { "\($0)s" } ?? "vehicles") within 3 km",
                                text: filter == .newModels ? "Everything running around here is a model you have. Switch to ALL UNCAUGHT for more of them."
-                                   : "Every vehicle running around here is already in your book.")
+                                   : "Every \(what ?? "vehicle") running around here is already in your book.")
         }
         return nil
     }
@@ -602,7 +613,7 @@ struct HuntView: View {
         } ?? 0
         // Filtered down to what you're after: look across the whole city, not just the view.
         let picked = targets
-        let filtered = !picked.isEmpty
+        let filtered = picked.hasPicks
         var next = filtered
             ? cityWide().filter { picked.matches($0.model) }
             : Wanted.pins(snapshot: snapshot, catalog: catalog, caught: sightings.stats,
