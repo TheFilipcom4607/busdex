@@ -270,7 +270,10 @@ struct HuntView: View {
                         openGroup = nil
                     }
                 } label: {
+                    // A chip never wraps: a long translation shrinks a touch instead.
                     Mono(f.name, size: 11, weight: 600, spacing: 0.1, color: on ? Palette.bg : .white.opacity(0.75))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                         .padding(.vertical, 7)
                         .padding(.horizontal, 12)
                         .background(on ? Palette.ink : .clear, in: Capsule())

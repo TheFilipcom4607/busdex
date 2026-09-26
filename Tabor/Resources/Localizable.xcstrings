@@ -964,7 +964,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "WSZYSTKIE NIEZŁAPANE"
+            "value": "NIEZŁAPANE"
           }
         }
       }
@@ -2149,7 +2149,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wszystko, co jeździ w okolicy, to modele, które już masz. Przełącz na WSZYSTKIE NIEZŁAPANE, żeby zobaczyć więcej."
+            "value": "Wszystko, co jeździ w okolicy, to modele, które już masz. Przełącz na NIEZŁAPANE, żeby zobaczyć więcej."
           }
         }
       }
@@ -3285,7 +3285,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Żaden z nich nie jest dla ciebie nowym modelem. Przełącz na WSZYSTKIE NIEZŁAPANE albo poszerz filtr."
+            "value": "Żaden z nich nie jest dla ciebie nowym modelem. Przełącz na NIEZŁAPANE albo poszerz filtr."
           }
         }
       }
