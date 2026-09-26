@@ -39,6 +39,7 @@ struct RootView: View {
     @State private var badges = BadgeTracker()
     @Query private var sightings: [Sighting]
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -59,6 +60,12 @@ struct RootView: View {
         }
         .background(Palette.bg.ignoresSafeArea())
         .environment(router)
+        // Keep the live feed ticking on every tab, so HUNT opens with trails already drawn.
+        .onAppear { LiveFleetService.shared.start(LiveFleetService.appClient) }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { LiveFleetService.shared.start(LiveFleetService.appClient) }
+            if phase == .background { LiveFleetService.shared.stop(LiveFleetService.appClient) }
+        }
         // The Lock Screen / Control Center control lands here.
         .onReceive(NotificationCenter.default.publisher(for: .taborOpenCatch)) { _ in
             router.tab = .catchTab
