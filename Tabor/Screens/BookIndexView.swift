@@ -3,6 +3,15 @@ import SwiftUI
 
 enum DexFilter: String, CaseIterable {
     case all = "ALL", bus = "BUS", tram = "TRAM", missing = "MISSING"
+
+    var name: String {
+        switch self {
+        case .all: String(localized: "ALL", comment: "Book filter")
+        case .bus: String(localized: "filter.bus", defaultValue: "BUS", comment: "Book filter: buses only")
+        case .tram: String(localized: "filter.tram", defaultValue: "TRAM", comment: "Book filter: trams only")
+        case .missing: String(localized: "MISSING", comment: "Book filter: models you have under a quarter of")
+        }
+    }
 }
 
 struct BookIndexView: View {
@@ -40,7 +49,7 @@ struct BookIndexView: View {
                 // Same count as the widget: the total leaves vintage and test stock out, so the count must too.
                 Mono("\(stats.fleetCaught(catalog: catalog).grouped) / \(catalog.totalFleet.grouped)", size: 12)
             }
-            ScreenTitle(text: "Warsaw rolling stock")
+            ScreenTitle(text: String(localized: "Warsaw rolling stock"))
                 .padding(.top, 14)
                 .padding(.horizontal, 22)
             HStack(spacing: 7) {
@@ -50,7 +59,7 @@ struct BookIndexView: View {
                         Haptics.shared.tick()
                         withAnimation(.snappy) { filter = f }
                     } label: {
-                        Mono(f.rawValue, size: 11.5, weight: 600, spacing: 0.1,
+                        Mono(f.name, size: 11.5, weight: 600, spacing: 0.1,
                              color: f == filter ? Palette.bg : Palette.sub)
                             .padding(.vertical, 8)
                             .padding(.horizontal, 12)
@@ -70,15 +79,15 @@ struct BookIndexView: View {
                     // passing through or seasonal, not rare.
                     let onTest = rows.filter(\.onTest)
                     if !onTest.isEmpty {
-                        sectionHeader(.onTest, note: "ON TRIAL FOR A FEW WEEKS · NOT PART OF THE FLEET %")
+                        sectionHeader(.onTest, note: String(localized: "ON TRIAL FOR A FEW WEEKS · NOT PART OF THE FLEET %"))
                         ForEach(onTest) { m in row(m, stats: stats) }
                     }
                     let vintage = rows.filter(\.vintage)
                     if !vintage.isEmpty {
-                        sectionHeader(.vintage, note: "TOURIST LINES ON SUMMER WEEKENDS · NOT PART OF THE FLEET %")
+                        sectionHeader(.vintage, note: String(localized: "TOURIST LINES ON SUMMER WEEKENDS · NOT PART OF THE FLEET %"))
                         ForEach(vintage) { m in row(m, stats: stats) }
                     }
-                    Mono(catalog.source.uppercased(), size: 9, spacing: 0.06, color: Palette.faint)
+                    Mono(catalog.sourceDisplay.uppercased(), size: 9, spacing: 0.06, color: Palette.faint)
                         .multilineTextAlignment(.center)
                         .padding(.vertical, 18)
                 }
@@ -93,7 +102,7 @@ struct BookIndexView: View {
 
     private func sectionHeader(_ tier: Tier, note: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Mono(tier.rawValue, size: 10.5, weight: 700, spacing: 0.14, color: tier.color)
+            Mono(tier.name, size: 10.5, weight: 700, spacing: 0.14, color: tier.color)
             Mono(note, size: 9.5, color: Palette.faint)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -136,7 +145,7 @@ struct DexRow: View {
             HStack {
                 Mono(detail, size: 10.5, spacing: 0.1)
                 Spacer()
-                Mono(model.tier.rawValue, size: 10, weight: 700, spacing: 0.12, color: model.tier.color)
+                Mono(model.tier.name, size: 10, weight: 700, spacing: 0.12, color: model.tier.color)
             }
         }
         .padding(.vertical, 13)
@@ -158,8 +167,8 @@ struct DexRow: View {
 
     /// "2005—2016 · 9 BATCHES", or the number span for single-batch models.
     private var detail: String {
-        let years = model.yearsDisplay ?? model.trial ?? "YEAR ?"
-        if model.batches.count > 1 { return "\(years) · \(model.batches.count) BATCHES" }
+        let years = model.yearsDisplay ?? model.trialDisplay ?? String(localized: "YEAR ?")
+        if model.batches.count > 1 { return String(localized: "\(years) · \(model.batches.count) BATCHES") }
         return "\(years) · \(model.rangeDisplay)"
     }
 }

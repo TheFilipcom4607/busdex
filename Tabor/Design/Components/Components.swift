@@ -104,7 +104,7 @@ struct TierPill: View {
     var body: some View {
         let fill: Color = solid ? tier.color : (tier == .gold ? Palette.goldWash : tier.color.opacity(0.18))
         let ink: Color = solid ? (tier == .common ? Palette.ink : Palette.bg) : (tier == .gold ? Palette.goldInk : tier.color)
-        Mono("\(tier.rawValue) · \(fleet)", size: 10.5, weight: 700, spacing: 0.1, color: ink)
+        Mono("\(tier.name) · \(fleet)", size: 10.5, weight: 700, spacing: 0.1, color: ink)
             .lineLimit(1)
             .fixedSize()
             .padding(.vertical, 4)
@@ -165,7 +165,7 @@ struct KindTag: View {
     let kind: VehicleKind
 
     var body: some View {
-        Mono(kind.rawValue, size: 10, weight: 700, spacing: 0.1, color: Palette.sub)
+        Mono(kind.name, size: 10, weight: 700, spacing: 0.1, color: Palette.sub)
             .padding(.vertical, 3)
             .padding(.horizontal, 7)
             .background(Palette.track, in: RoundedRectangle(cornerRadius: 4))

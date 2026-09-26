@@ -3,6 +3,14 @@ import Foundation
 public enum VehicleKind: String, Codable, Sendable, CaseIterable {
     case bus = "BUS"
     case tram = "TRAM"
+
+    /// The caps label shown on tags. `rawValue` is stored and parsed, so it never changes.
+    public var name: String {
+        switch self {
+        case .bus: String(localized: "BUS", comment: "Vehicle kind tag")
+        case .tram: String(localized: "TRAM", comment: "Vehicle kind tag")
+        }
+    }
 }
 
 /// Vehicles of one model delivered in the same production year — the design's
@@ -50,10 +58,14 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     /// When a test vehicle is here, e.g. "ON TRIAL SEP 2026": shown where the build year
     /// would be, which for a demo bus is neither known nor the point.
     public let trial: String?
+    /// `runs` and `trial` in Polish. Hand-written in fetch_fleet.py; older fleet files lack them.
+    public let runsPl: String?
+    public let trialPl: String?
 
     public init(id: String, name: String, make: String, code: String? = nil, kind: VehicleKind,
                 operators: [String], fleet: Int, firstYear: Int?, lastYear: Int?, batches: [Batch],
-                vintage: Bool = false, onTest: Bool = false, runs: String? = nil, trial: String? = nil) {
+                vintage: Bool = false, onTest: Bool = false, runs: String? = nil, trial: String? = nil,
+                runsPl: String? = nil, trialPl: String? = nil) {
         self.id = id
         self.name = name
         self.make = make
@@ -68,10 +80,13 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         self.onTest = onTest
         self.runs = runs
         self.trial = trial
+        self.runsPl = runsPl
+        self.trialPl = trialPl
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, make, code, kind, operators, fleet, firstYear, lastYear, batches, vintage, onTest, runs, trial
+        case id, name, make, code, kind, operators, fleet, firstYear, lastYear, batches, vintage, onTest, runs, trial,
+             runsPl, trialPl
     }
 
     public init(from decoder: Decoder) throws {
@@ -90,7 +105,12 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         onTest = try c.decodeIfPresent(Bool.self, forKey: .onTest) ?? false
         runs = try c.decodeIfPresent(String.self, forKey: .runs)
         trial = try c.decodeIfPresent(String.self, forKey: .trial)
+        runsPl = try c.decodeIfPresent(String.self, forKey: .runsPl)
+        trialPl = try c.decodeIfPresent(String.self, forKey: .trialPl)
     }
+
+    /// `trial` in the app's language.
+    public var trialDisplay: String? { AppLanguage.polish ? trialPl ?? trial : trial }
 
     public var numbers: [Int] { batches.flatMap(\.numbers).sorted() }
 
@@ -113,9 +133,10 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     /// Where to find a vintage or test vehicle, e.g. "TOURIST LINES T & 36 · SUMMER WEEKENDS".
     public var whereToFind: String? {
         if vintage {
-            return kind == .tram ? "TOURIST LINES T & 36 · SUMMER WEEKENDS" : "TOURIST LINE 100 & EVENTS · SUMMER WEEKENDS"
+            return kind == .tram ? String(localized: "TOURIST LINES T & 36 · SUMMER WEEKENDS")
+                : String(localized: "TOURIST LINE 100 & EVENTS · SUMMER WEEKENDS")
         }
-        return onTest ? runs : nil
+        return onTest ? (AppLanguage.polish ? runsPl ?? runs : runs) : nil
     }
 
     public func batch(containing number: Int) -> Batch? {
@@ -133,6 +154,12 @@ public struct Depot: Codable, Hashable, Sendable {
         self.name = name
         self.kind = kind
     }
+}
+
+/// Which of the app's languages it's running in: the string catalog iOS picked, not the
+/// region, so a Polish phone set to English gets the English fleet notes.
+public enum AppLanguage {
+    public static var polish: Bool { Bundle.main.preferredLocalizations.first?.hasPrefix("pl") == true }
 }
 
 public enum NumberSpan {
@@ -159,6 +186,18 @@ public enum Tier: String, Sendable, CaseIterable {
         return .common
     }
 
+    /// The caps label. `rawValue` is stored (the HUNT filter), so it stays English.
+    public var name: String {
+        switch self {
+        case .legendary: String(localized: "LEGENDARY", comment: "Rarity tier")
+        case .gold: String(localized: "GOLD", comment: "Rarity tier")
+        case .rare: String(localized: "RARE", comment: "Rarity tier")
+        case .common: String(localized: "COMMON", comment: "Rarity tier")
+        case .vintage: String(localized: "VINTAGE", comment: "Rarity tier: tourist/museum vehicles")
+        case .onTest: String(localized: "ON TEST", comment: "Rarity tier: vehicles on a trial run")
+        }
+    }
+
     /// Lower sorts rarer.
     public var rank: Int {
         switch self {
@@ -174,12 +213,14 @@ public enum Tier: String, Sendable, CaseIterable {
 
 public struct FleetData: Codable, Sendable {
     public let source: String
+    public var sourcePl: String? = nil
     public let fetched: String?
     public let models: [VehicleModel]
     public let depots: [Depot]
 
-    public init(source: String, fetched: String?, models: [VehicleModel], depots: [Depot]) {
+    public init(source: String, sourcePl: String? = nil, fetched: String?, models: [VehicleModel], depots: [Depot]) {
         self.source = source
+        self.sourcePl = sourcePl
         self.fetched = fetched
         self.models = models
         self.depots = depots

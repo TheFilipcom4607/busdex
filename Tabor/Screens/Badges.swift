@@ -19,7 +19,15 @@ extension Medal {
     /// For text on the dark background: the glow alone is too dark for bronze (brown on black).
     var ink: Color { colors.count > 1 ? colors[0].mix(with: colors[1], by: 0.55) : Palette.dim }
 
-    var name: String { rawValue.uppercased() }
+    var name: String {
+        switch self {
+        case .none: ""
+        case .bronze: String(localized: "BRONZE", comment: "Badge medal")
+        case .silver: String(localized: "SILVER", comment: "Badge medal")
+        case .gold: String(localized: "medal.gold", defaultValue: "GOLD", comment: "Badge medal (the tier GOLD is a separate key)")
+        case .platinum: String(localized: "PLATINUM", comment: "Badge medal")
+        }
+    }
 }
 
 /// A struck coin: bright metal rim, a recessed face and an embossed symbol, with a sheen
@@ -149,7 +157,7 @@ struct BadgeShelf: View {
 
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                SectionLabel(text: "BADGES")
+                SectionLabel(text: String(localized: "BADGES"))
                 Spacer()
                 Mono("\(earned) OF \(badges.count)", size: 10.5, color: earned > 0 ? Palette.yellow : Palette.faint)
             }
@@ -190,7 +198,7 @@ private struct BadgeCell: View {
         VStack(spacing: 6) {
             Medallion(badge: badge, size: 62)
             if badge.tiered { LevelPips(badge: badge) } else { Color.clear.frame(height: 5) }
-            Text(revealed ? badge.title : "Secret")
+            Text(revealed ? badge.title : String(localized: "Secret", comment: "A secret badge's name until earned"))
                 .font(TaborFont.grotesk(12, 600))
                 .foregroundStyle(badge.earned ? Palette.ink : Palette.sub)
                 .lineLimit(1)
@@ -201,13 +209,14 @@ private struct BadgeCell: View {
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(revealed ? badge.title : "Secret badge")
-        .accessibilityValue(badge.earned ? "Earned, \(badge.medal.rawValue)" : revealed ? "\(badge.progress) of \(badge.goal)" : "Locked")
+        .accessibilityLabel(revealed ? badge.title : String(localized: "Secret badge"))
+        .accessibilityValue(badge.earned ? String(localized: "Earned, \(badge.medal.name.lowercased())")
+            : revealed ? String(localized: "\(badge.progress) of \(badge.goal)") : String(localized: "Locked"))
     }
 
     private var caption: String {
         if badge.secret && !badge.earned { return "???" }
-        if badge.maxed { return badge.tiered ? "MAXED" : "EARNED" }
+        if badge.maxed { return badge.tiered ? String(localized: "MAXED") : String(localized: "EARNED") }
         return "\(badge.progress)/\(badge.goal)"
     }
 }
@@ -262,8 +271,10 @@ struct BadgeDetailSheet: View {
     }
 
     private var kicker: String {
-        if badge.earned { return badge.tiered ? "LEVEL \(badge.level) OF \(badge.levels) · \(badge.medal.name)" : "EARNED" }
-        return badge.secret ? "SECRET" : "LOCKED"
+        if badge.earned {
+            return badge.tiered ? String(localized: "LEVEL \(badge.level) OF \(badge.levels) · \(badge.medal.name)") : String(localized: "EARNED")
+        }
+        return badge.secret ? String(localized: "SECRET") : String(localized: "LOCKED")
     }
 
     private var details: some View {
@@ -286,12 +297,12 @@ struct BadgeDetailSheet: View {
 
             Mono(kicker, size: 11, weight: 600, spacing: 0.16, color: badge.earned ? badge.medal.ink : Palette.dim)
                 .padding(.top, 12)
-            Text(revealed ? badge.title : "Secret badge")
+            Text(revealed ? badge.title : String(localized: "Secret badge"))
                 .font(TaborFont.grotesk(26, 700))
                 .em(-0.02, size: 26)
                 .multilineTextAlignment(.center)
                 .padding(.top, 6)
-            Text(revealed ? badge.detail : "Keep catching. This one shows itself the moment you earn it.")
+            Text(revealed ? badge.detail : String(localized: "Keep catching. This one shows itself the moment you earn it."))
                 .font(TaborFont.grotesk(14.5))
                 .foregroundStyle(Palette.sub)
                 .multilineTextAlignment(.center)
@@ -471,7 +482,7 @@ struct BadgeToast: View {
                     .font(TaborFont.grotesk(17, 700))
                     .foregroundStyle(Palette.ink)
                     .lineLimit(1)
-                Text(unlock.others > 0 ? "and \(unlock.others) more. See them all on your shelf." : b.detail)
+                Text(unlock.others > 0 ? String(localized: "and \(unlock.others) more. See them all on your shelf.") : b.detail)
                     .font(TaborFont.grotesk(12.5))
                     .foregroundStyle(Palette.sub)
                     .lineLimit(2)
@@ -500,10 +511,10 @@ struct BadgeToast: View {
 
     private var kicker: String {
         let b = unlock.badge
-        if unlock.others > 0 { return "\(unlock.others + 1) BADGES UNLOCKED" }
-        if b.secret { return "SECRET BADGE FOUND" }
-        if b.tiered && b.level > 1 { return "LEVEL UP · \(b.medal.name)" }
-        return b.tiered ? "BADGE UNLOCKED · \(b.medal.name)" : "BADGE UNLOCKED"
+        if unlock.others > 0 { return String(localized: "\(unlock.others + 1) BADGES UNLOCKED") }
+        if b.secret { return String(localized: "SECRET BADGE FOUND") }
+        if b.tiered && b.level > 1 { return String(localized: "LEVEL UP · \(b.medal.name)") }
+        return b.tiered ? String(localized: "BADGE UNLOCKED · \(b.medal.name)") : String(localized: "BADGE UNLOCKED")
     }
 }
 

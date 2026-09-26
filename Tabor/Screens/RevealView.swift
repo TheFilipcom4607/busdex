@@ -33,7 +33,8 @@ struct RevealView: View {
 
     private static let shotDate: DateFormatter = {
         let f = DateFormatter()
-        f.dateFormat = "d MMM"
+        f.locale = .app
+        f.setLocalizedDateFormatFromTemplate("dMMM")
         return f
     }()
 
@@ -81,7 +82,7 @@ struct RevealView: View {
                 VStack(alignment: .leading, spacing: 7) {
                     Mono(kicker(isNewVehicle: isNewVehicle, isNewModel: isNewModel, modelOwned: modelOwned, existing: existing),
                          size: 12, spacing: 0.16, color: accent)
-                    Text(model?.name ?? (number == nil ? "What did you catch?" : "Which model is it?"))
+                    Text(model?.name ?? (number == nil ? String(localized: "What did you catch?") : String(localized: "Which model is it?")))
                         .font(TaborFont.grotesk(30, 700))
                         .em(-0.03, size: 30)
                         .lineLimit(2)
@@ -100,17 +101,21 @@ struct RevealView: View {
 
                 if ready, let model, let number {
                     HStack(spacing: 10) {
-                        StatTile(label: "YOUR", value: isNewVehicle ? Ordinal.string(modelOwned + 1) : "×\(existing!.timesSeen + 1)",
-                                 valueColor: Palette.yellow, caption: isNewVehicle ? "of \(model.fleet)" : "sightings")
-                        StatTile(label: "MODEL", value: isNewModel ? "NEW" : "\(modelOwned + (isNewVehicle ? 1 : 0))",
+                        let seen = (existing?.timesSeen ?? 0) + 1
+                        StatTile(label: String(localized: "YOUR", comment: "Reveal tile: your Nth of this model"),
+                                 value: isNewVehicle ? Ordinal.string(modelOwned + 1) : "×\(seen)",
+                                 valueColor: Palette.yellow,
+                                 caption: isNewVehicle ? String(localized: "of \(model.fleet)") : PluralCaption.sightings(seen))
+                        StatTile(label: String(localized: "MODEL"), value: isNewModel ? String(localized: "NEW", comment: "Reveal tile: a model new to you") : "\(modelOwned + (isNewVehicle ? 1 : 0))",
                                  valueColor: isNewModel ? Palette.green : Palette.ink,
-                                 caption: isNewModel ? "species" : "of \(model.fleet)")
+                                 caption: isNewModel ? String(localized: "species") : String(localized: "of \(model.fleet)"))
                         if Calendar.current.isDateInToday(draft.date) {
-                            StatTile(label: "STREAK", value: "\(Streak.days(sightings.map(\.date) + [draft.date]))",
-                                     caption: "days")
+                            let streak = Streak.days(sightings.map(\.date) + [draft.date])
+                            StatTile(label: String(localized: "STREAK"), value: "\(streak)",
+                                     caption: PluralCaption.days(streak))
                         } else {
                             // Imported shot from another day: it doesn't touch today's streak.
-                            StatTile(label: "SHOT", value: Self.shotDate.string(from: draft.date).uppercased(),
+                            StatTile(label: String(localized: "SHOT", comment: "Reveal tile: the date an imported photo was taken"), value: Self.shotDate.string(from: draft.date).uppercased(),
                                      valueSize: 18, caption: Self.shotYear.string(from: draft.date))
                         }
                     }
@@ -279,7 +284,7 @@ struct RevealView: View {
                 .shadow(color: .black.opacity(0.4), radius: 4, y: 3)
             VStack(alignment: .leading, spacing: 4) {
                 Mono([batch?.depotDisplay, batch?.year.map(String.init)].compactMap { $0 }.joined(separator: " · ")
-                     .nonEmpty ?? (model?.kind.rawValue ?? "NUMBER NOT READ"), size: 10.5, spacing: 0.12, color: Palette.sub)
+                     .nonEmpty ?? (model?.kind.name ?? String(localized: "NUMBER NOT READ")), size: 10.5, spacing: 0.12, color: Palette.sub)
                     .lineLimit(1)
                 if let model { TierPill(tier: tier, fleet: model.fleet, solid: false) }
             }
@@ -487,11 +492,12 @@ struct RevealView: View {
     }
 
     private func kicker(isNewVehicle: Bool, isNewModel: Bool, modelOwned: Int, existing: OwnedVehicle?) -> String {
-        guard model != nil, draft.number != nil else { return "NUMBER NEEDED" }
-        if !landed { return "CUTTING IT OUT…" }
-        if !isNewVehicle { return "SEEN AGAIN · SIGHTING #\((existing?.timesSeen ?? 0) + 1)" }
-        if isNewModel { return "NEW SPECIES · YOUR 1st" }
-        return "NEW \(model!.kind.rawValue) · YOUR \(Ordinal.string(modelOwned + 1))"
+        guard let model, draft.number != nil else { return String(localized: "NUMBER NEEDED") }
+        if !landed { return String(localized: "CUTTING IT OUT…") }
+        if !isNewVehicle { return String(localized: "SEEN AGAIN · SIGHTING #\((existing?.timesSeen ?? 0) + 1)") }
+        if isNewModel { return String(localized: "NEW SPECIES · YOUR \(Ordinal.string(1))") }
+        let nth = Ordinal.string(modelOwned + 1)
+        return model.kind == .tram ? String(localized: "NEW TRAM · YOUR \(nth)") : String(localized: "NEW BUS · YOUR \(nth)")
     }
 }
 
@@ -520,5 +526,31 @@ struct SparkleBurst: View {
         }
         .allowsHitTesting(false)
         .onAppear { go = true }
+    }
+}
+
+/// A count's noun without the count ("days" under a big "5"). String catalogs insist a
+/// plural variant shows its number, so the form (Polish has three) is picked here.
+enum PluralCaption {
+    private static func form(_ n: Int) -> String {
+        guard n != 1 else { return "one" }
+        let ones = n % 10, tens = n % 100
+        return (2...4).contains(ones) && !(12...14).contains(tens) ? "few" : "many"
+    }
+
+    static func days(_ n: Int) -> String {
+        switch form(n) {
+        case "one": String(localized: "caption.days.one", defaultValue: "day")
+        case "few": String(localized: "caption.days.few", defaultValue: "days")
+        default: String(localized: "caption.days.many", defaultValue: "days")
+        }
+    }
+
+    static func sightings(_ n: Int) -> String {
+        switch form(n) {
+        case "one": String(localized: "caption.sightings.one", defaultValue: "sighting")
+        case "few": String(localized: "caption.sightings.few", defaultValue: "sightings")
+        default: String(localized: "caption.sightings.many", defaultValue: "sightings")
+        }
     }
 }

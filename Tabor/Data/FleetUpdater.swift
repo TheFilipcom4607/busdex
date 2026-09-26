@@ -37,8 +37,8 @@ enum FleetUpdater {
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             UserDefaults.standard.set(Date(), forKey: lastCheckKey)
-            guard (response as? HTTPURLResponse)?.statusCode == 200 else { return .failed("The server didn't answer.") }
-            guard let remote = FleetCatalog.validated(json: data) else { return .failed("The downloaded data was broken.") }
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else { return .failed(String(localized: "The server didn't answer.")) }
+            guard let remote = FleetCatalog.validated(json: data) else { return .failed(String(localized: "The downloaded data was broken.")) }
             // Beat both what's running and anything already waiting for the next launch.
             let pending = (try? Data(contentsOf: downloadedURL)).flatMap(FleetCatalog.validated)
             guard remote.isNewer(than: Fleet.catalog), remote.isNewer(than: pending) else {

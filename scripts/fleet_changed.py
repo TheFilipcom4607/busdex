@@ -14,7 +14,7 @@ PATH = "Tabor/Resources/fleet.json"
 
 
 def content(d):
-    return {k: v for k, v in d.items() if k not in ("source", "fetched")}
+    return {k: v for k, v in d.items() if k not in ("source", "sourcePl", "fetched")}
 
 
 new = json.loads((ROOT / PATH).read_text())

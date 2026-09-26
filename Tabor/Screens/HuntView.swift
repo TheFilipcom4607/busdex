@@ -6,6 +6,13 @@ import SwiftUI
 enum HuntFilter: String, CaseIterable {
     case all = "ALL UNCAUGHT"
     case newModels = "NEW MODELS"
+
+    var name: String {
+        switch self {
+        case .all: String(localized: "ALL UNCAUGHT")
+        case .newModels: String(localized: "NEW MODELS")
+        }
+    }
 }
 
 /// HUNT: every bus and tram running near you that isn't in your book yet, live.
@@ -263,7 +270,7 @@ struct HuntView: View {
                         openGroup = nil
                     }
                 } label: {
-                    Mono(f.rawValue, size: 11, weight: 600, spacing: 0.1, color: on ? Palette.bg : .white.opacity(0.75))
+                    Mono(f.name, size: 11, weight: 600, spacing: 0.1, color: on ? Palette.bg : .white.opacity(0.75))
                         .padding(.vertical, 7)
                         .padding(.horizontal, 12)
                         .background(on ? Palette.ink : .clear, in: Capsule())
@@ -308,10 +315,10 @@ struct HuntView: View {
         return ScrollView(.horizontal) {
             HStack(spacing: 6) {
                 if let kind = picked.kind {
-                    targetChip(kind == .bus ? "BUSES ONLY" : "TRAMS ONLY", color: Palette.ink) { targets.kind = nil }
+                    targetChip(kind == .bus ? String(localized: "BUSES ONLY") : String(localized: "TRAMS ONLY"), color: Palette.ink) { targets.kind = nil }
                 }
                 ForEach(Tier.allCases.filter { picked.tiers.contains($0) }, id: \.self) { t in
-                    targetChip(t.rawValue, color: t.mapColor) { targets.tiers.subtract([t]) }
+                    targetChip(t.name, color: t.mapColor) { targets.tiers.subtract([t]) }
                 }
                 ForEach(picked.models.compactMap(catalog.model(id:)).sorted { $0.name < $1.name }) { m in
                     targetChip(m.name.uppercased(), color: m.tier.mapColor) { targets.models.subtract([m.id]) }
@@ -421,7 +428,7 @@ struct HuntView: View {
     private func groupList(_ members: [WantedPin]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                SectionLabel(text: "\(members.count) HERE")
+                SectionLabel(text: String(localized: "\(members.count) HERE"))
                 Spacer()
                 CloseButton { withAnimation(.snappy) { openGroup = nil } }
             }
@@ -458,7 +465,7 @@ struct HuntView: View {
                     .frame(width: 5, height: 30)
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(alignment: .firstTextBaseline, spacing: 7) {
-                        Mono(pin.model.tier.rawValue, size: 9.5, weight: 700, spacing: 0.12, color: pin.accent)
+                        Mono(pin.model.tier.name, size: 9.5, weight: 700, spacing: 0.12, color: pin.accent)
                             .fixedSize()
                         Text(pin.model.name)
                             .font(TaborFont.grotesk(14.5, 600))
@@ -503,23 +510,28 @@ struct HuntView: View {
 
     /// "UNCAUGHT NEARBY", or "NEW TRAM MODELS NEARBY" with trams picked.
     private var nearbyTitle: String {
-        let kind = targets.kind.map { $0 == .bus ? "BUS" : "TRAM" }
-        return filter == .newModels ? "NEW \(kind.map { "\($0) " } ?? "")MODELS NEARBY"
-            : "UNCAUGHT \(kind.map { "\($0)S " } ?? "")NEARBY"
+        switch (filter, targets.kind) {
+        case (.newModels, nil): String(localized: "NEW MODELS NEARBY")
+        case (.newModels, .bus): String(localized: "NEW BUS MODELS NEARBY")
+        case (.newModels, .tram): String(localized: "NEW TRAM MODELS NEARBY")
+        case (.all, nil): String(localized: "UNCAUGHT NEARBY")
+        case (.all, .bus): String(localized: "UNCAUGHT BUSES NEARBY")
+        case (.all, .tram): String(localized: "UNCAUGHT TRAMS NEARBY")
+        }
     }
 
     private func wantedList(_ near: [WantedPin]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                SectionLabel(text: targets.hasPicks ? "MATCHING YOUR FILTER" : nearbyTitle)
+                SectionLabel(text: targets.hasPicks ? String(localized: "MATCHING YOUR FILTER") : nearbyTitle)
                 Spacer()
                 Mono(targets.hasPicks ? "\(near.count) OUT NOW" : hasFix ? "\(near.count) WITHIN 3 KM" : "AROUND THE MAP CENTRE",
                      size: 9.5, color: Palette.faint)
             }
             if filter == .all {
                 HStack(spacing: 12) {
-                    LegendSwatch(filled: true, text: "NEW MODEL")
-                    LegendSwatch(filled: false, text: "MODEL YOU HAVE")
+                    LegendSwatch(filled: true, text: String(localized: "NEW MODEL"))
+                    LegendSwatch(filled: false, text: String(localized: "MODEL YOU HAVE"))
                     Spacer()
                 }
                 .padding(.top, 2)
@@ -535,39 +547,48 @@ struct HuntView: View {
     private func emptyState(shown: [WantedPin]) -> MessageCard? {
         switch live.status {
         case .noKey:
-            return MessageCard(icon: "key.fill", title: "Live positions are off",
-                               text: "HUNT needs a free api.um.warszawa.pl key. Add yours in Me › Settings › Live data.")
+            return MessageCard(icon: "key.fill", title: String(localized: "Live positions are off"),
+                               text: String(localized: "HUNT needs a free api.um.warszawa.pl key. Add yours in ME › Settings › Live data."))
         case .error(let why) where live.fresh(maxAge: 120) == nil:
-            return MessageCard(icon: "antenna.radiowaves.left.and.right.slash", title: "The city's feed is down",
-                               text: "\(why) Trying again every 15 seconds.")
+            return MessageCard(icon: "antenna.radiowaves.left.and.right.slash", title: String(localized: "The city's feed is down"),
+                               text: String(localized: "\(why) Trying again every 15 seconds."))
         case .idle, .loading:
             if live.snapshot == nil {
-                return MessageCard(icon: "dot.radiowaves.left.and.right", title: "Finding what's running…", text: nil)
+                return MessageCard(icon: "dot.radiowaves.left.and.right", title: String(localized: "Finding what's running…"), text: nil)
             }
         default: break
         }
         if location.isDenied, mapCenter == nil {
-            return MessageCard(icon: "location.slash.fill", title: "Location is off",
-                               text: "Turn it on to see what's running around you — or pan the map to look anywhere.",
-                               action: ("Open Settings", {
+            return MessageCard(icon: "location.slash.fill", title: String(localized: "Location is off"),
+                               text: String(localized: "Turn it on to see what's running around you — or pan the map to look anywhere."),
+                               action: (String(localized: "Open Settings"), {
                                    if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                                }))
         }
         if targets.hasPicks {
             guard shown.isEmpty else { return nil }
-            return MessageCard(icon: "line.3.horizontal.decrease.circle", title: "Nothing out that matches",
+            return MessageCard(icon: "line.3.horizontal.decrease.circle", title: String(localized: "Nothing out that matches"),
                                text: filter == .newModels
-                                   ? "None of it is a new model for you. Switch to ALL UNCAUGHT, or widen the filter."
-                                   : "Nothing on your filter that you haven't caught is running right now. It shows up here the moment one is.",
-                               action: ("Clear the filter", { withAnimation(.snappy) { targets = HuntTargets() } }))
+                                   ? String(localized: "None of it is a new model for you. Switch to ALL UNCAUGHT, or widen the filter.")
+                                   : String(localized: "Nothing on your filter that you haven't caught is running right now. It shows up here the moment one is."),
+                               action: (String(localized: "Clear the filter"), { withAnimation(.snappy) { targets = HuntTargets() } }))
         }
         if nearYou(shown).isEmpty {
-            let what = targets.kind.map { $0 == .bus ? "bus" : "tram" }
-            return MessageCard(icon: "checkmark.seal.fill",
-                               title: filter == .newModels ? "No new \(what.map { "\($0) " } ?? "")models within 3 km"
-                                   : "No uncaught \(what.map { "\($0)s" } ?? "vehicles") within 3 km",
-                               text: filter == .newModels ? "Everything running around here is a model you have. Switch to ALL UNCAUGHT for more of them."
-                                   : "Every \(what ?? "vehicle") running around here is already in your book.")
+            let title = switch (filter, targets.kind) {
+            case (.newModels, nil): String(localized: "No new models within 3 km")
+            case (.newModels, .bus): String(localized: "No new bus models within 3 km")
+            case (.newModels, .tram): String(localized: "No new tram models within 3 km")
+            case (.all, nil): String(localized: "No uncaught vehicles within 3 km")
+            case (.all, .bus): String(localized: "No uncaught buses within 3 km")
+            case (.all, .tram): String(localized: "No uncaught trams within 3 km")
+            }
+            let text = switch (filter, targets.kind) {
+            case (.newModels, _): String(localized: "Everything running around here is a model you have. Switch to ALL UNCAUGHT for more of them.")
+            case (.all, nil): String(localized: "Every vehicle running around here is already in your book.")
+            case (.all, .bus): String(localized: "Every bus running around here is already in your book.")
+            case (.all, .tram): String(localized: "Every tram running around here is already in your book.")
+            }
+            return MessageCard(icon: "checkmark.seal.fill", title: title, text: text)
         }
         return nil
     }
@@ -586,10 +607,10 @@ struct HuntView: View {
 
     private var statusText: String {
         switch live.status {
-        case .noKey: "NO KEY"
-        case .idle, .loading: "CONNECTING"
-        case .error: live.fresh(maxAge: 120) == nil ? "OFFLINE" : "RETRYING"
-        case .live: "LIVE"
+        case .noKey: String(localized: "NO KEY")
+        case .idle, .loading: String(localized: "CONNECTING")
+        case .error: live.fresh(maxAge: 120) == nil ? String(localized: "OFFLINE") : String(localized: "RETRYING")
+        case .live: String(localized: "LIVE")
         }
     }
 
@@ -665,16 +686,17 @@ private extension WantedPin {
     var accent: Color { model.tier.mapColor }
 
     func subtitle(showDistance: Bool, showKind: Bool = true) -> String {
-        [showKind ? vehicle.kind.rawValue : nil, "#\(vehicle.number)", vehicle.line.isEmpty ? nil : "LINE \(vehicle.line)",
+        [showKind ? vehicle.kind.name : nil, "#\(vehicle.number)", vehicle.line.isEmpty ? nil : String(localized: "LINE \(vehicle.line)"),
          showDistance ? HuntDistance.text(distance) : nil]
             .compactMap { $0 }.joined(separator: " · ")
     }
 }
 
 enum HuntDistance {
-    /// "400 M", "1.2 KM".
+    /// "400 M", "1.2 KM" ("1,2 KM" in Polish).
     static func text(_ metres: Double) -> String {
-        metres < 1000 ? "\(Int((metres / 50).rounded()) * 50) M" : String(format: "%.1f KM", metres / 1000)
+        metres < 1000 ? "\(Int((metres / 50).rounded()) * 50) M"
+            : "\((metres / 1000).formatted(FloatingPointFormatStyle<Double>(locale: .app).precision(.fractionLength(1)))) KM"
     }
 }
 
@@ -725,7 +747,7 @@ private struct WantedPinView: View {
         .shadow(color: pin.accent.opacity(filled ? 0.55 : 0.25), radius: selected ? 10 : 6)
         .scaleEffect(selected ? 1.18 : 1, anchor: .bottom)
         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: selected)
-        .accessibilityLabel("\(pin.model.tier.rawValue.lowercased()) \(pin.model.name), line \(pin.vehicle.line)")
+        .accessibilityLabel("\(pin.model.tier.name.lowercased()) \(pin.model.name), line \(pin.vehicle.line)")
         .accessibilityAddTraits(.isButton)
     }
 }
@@ -789,7 +811,7 @@ private struct PinCard: View {
     let onClose: () -> Void
 
     private var motionLine: (text: String, color: Color) {
-        motion.map { (text: $0.text, color: $0.color) } ?? (text: "WATCHING WHICH WAY IT GOES…", color: Palette.faint)
+        motion.map { (text: $0.text, color: $0.color) } ?? (text: String(localized: "WATCHING WHICH WAY IT GOES…"), color: Palette.faint)
     }
 
     var body: some View {
@@ -858,20 +880,20 @@ private extension Motion {
     /// On the card.
     var text: String {
         switch self {
-        case .approaching: "COMING YOUR WAY"
-        case .passing: "GOING PAST"
-        case .leaving: "MOVING AWAY"
-        case .stopped: "STOPPED"
+        case .approaching: String(localized: "COMING YOUR WAY")
+        case .passing: String(localized: "GOING PAST")
+        case .leaving: String(localized: "MOVING AWAY")
+        case .stopped: String(localized: "STOPPED")
         }
     }
 
     /// Under the distance in a list row.
     var short: String {
         switch self {
-        case .approaching: "COMING"
-        case .passing: "PASSING"
-        case .leaving: "AWAY"
-        case .stopped: "STOPPED"
+        case .approaching: String(localized: "COMING", comment: "Short: vehicle heading towards you")
+        case .passing: String(localized: "PASSING", comment: "Short: vehicle going past you")
+        case .leaving: String(localized: "AWAY", comment: "Short: vehicle moving away from you")
+        case .stopped: String(localized: "STOPPED")
         }
     }
 

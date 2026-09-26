@@ -167,9 +167,9 @@ final class LiveFleetService {
     private static func describe(_ error: Error) -> String {
         switch error {
         case LiveFeed.Failure.message(let m): m
-        case LiveFeed.Failure.malformed: "The city's feed sent something unreadable."
-        case let e as URLError where e.code == .notConnectedToInternet: "You're offline."
-        default: "The city's feed didn't answer."
+        case LiveFeed.Failure.malformed: String(localized: "The city's feed sent something unreadable.")
+        case let e as URLError where e.code == .notConnectedToInternet: String(localized: "You're offline.")
+        default: String(localized: "The city's feed didn't answer.")
         }
     }
 }

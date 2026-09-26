@@ -258,7 +258,7 @@ struct CatchView: View {
                         .em(0.04, size: 18)
                         .contentTransition(.numericText())
                     Rectangle().fill(Palette.bg.opacity(0.25)).frame(width: 1, height: 16)
-                    Text(model?.name ?? "Unknown model")
+                    Text(model?.name ?? String(localized: "Unknown model"))
                         .font(TaborFont.grotesk(12.5, 600))
                         .lineLimit(1)
                     if model != nil, isNew {
@@ -306,7 +306,7 @@ struct CatchView: View {
                         withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) { mode = m }
                         camera.mode = m
                     } label: {
-                        Mono(m.rawValue, size: 11.5, weight: 600, spacing: 0.1,
+                        Mono(m.name, size: 11.5, weight: 600, spacing: 0.1,
                              color: on ? Palette.bg : .white.opacity(0.72))
                             .padding(.vertical, 7)
                             .padding(.horizontal, 12)
@@ -351,11 +351,11 @@ struct CatchView: View {
     private var controls: some View {
         VStack(spacing: 16) {
             HStack {
-                settingToggle($geotag, name: "GEOTAG", on: "location.fill", off: "location.slash.fill")
+                settingToggle($geotag, name: String(localized: "GEOTAG"), on: "location.fill", off: "location.slash.fill")
                 Spacer()
                 if camera.status == .running, camera.zoomStops.count > 1 { zoomBar }
                 Spacer()
-                settingToggle($saveToGallery, name: "SAVE TO PHOTOS", on: "photo.badge.arrow.down.fill", off: "photo.badge.arrow.down")
+                settingToggle($saveToGallery, name: String(localized: "SAVE TO PHOTOS"), on: "photo.badge.arrow.down.fill", off: "photo.badge.arrow.down")
             }
 
             HStack {
@@ -452,7 +452,8 @@ struct CatchView: View {
     /// "0.5", "1", "2.4", "5".
     static func zoomLabel(_ z: CGFloat) -> String {
         let r = (z * 10).rounded() / 10
-        return r == r.rounded() ? String(Int(r)) : String(format: "%.1f", r)
+        // "0.5", or "0,5" in Polish, like the system Camera app.
+        return r == r.rounded() ? String(Int(r)) : Double(r).formatted(FloatingPointFormatStyle<Double>(locale: .app).precision(.fractionLength(1)))
     }
 
     /// Icon toggle for a capture setting; the hint pill confirms which way it went.
@@ -461,7 +462,7 @@ struct CatchView: View {
         return Button {
             Haptics.shared.tick()
             value.wrappedValue.toggle()
-            showToast("\(name) \(value.wrappedValue ? "ON" : "OFF")")
+            showToast(value.wrappedValue ? String(localized: "\(name) ON") : String(localized: "\(name) OFF"))
         } label: {
             Image(systemName: isOn ? on : off)
                 .font(.system(size: 13, weight: .semibold))
@@ -489,25 +490,25 @@ struct CatchView: View {
 
     private func hint(_ match: ModelMatch?) -> String {
         // The full-res read (and tile pass) can take a second or two on device.
-        if capturing { return "READING THE NUMBER…" }
+        if capturing { return String(localized: "READING THE NUMBER…") }
         switch camera.status {
         case .running: break
-        case .idle: return "WAKING THE CAMERA"
-        default: return "IMPORT A SHOT TO CATCH IT"
+        case .idle: return String(localized: "WAKING THE CAMERA")
+        default: return String(localized: "IMPORT A SHOT TO CATCH IT")
         }
-        guard camera.reading != nil else { return "GET THE WHOLE VEHICLE IN FRAME" }
-        return "GOT IT — HIT THE SHUTTER"
+        guard camera.reading != nil else { return String(localized: "GET THE WHOLE VEHICLE IN FRAME") }
+        return String(localized: "GOT IT — HIT THE SHUTTER")
     }
 
     private func chipCaption(_ match: ModelMatch?) -> String {
         switch match {
-        case .ambiguous(let ms): "ALSO A \(ms.dropFirst().first?.name.uppercased() ?? "") · FIX IT AFTER THE SHOT"
-        case .unknown, nil: "NOT IN THE ZTM DATABASE · PICK THE MODEL AFTER"
+        case .ambiguous(let ms): String(localized: "ALSO A \(ms.dropFirst().first?.name.uppercased() ?? "") · FIX IT AFTER THE SHOT")
+        case .unknown, nil: String(localized: "NOT IN THE ZTM DATABASE · PICK THE MODEL AFTER")
         case .certain(let m) where mode.kind != nil && m.kind != mode.kind:
-            "A \(m.kind.rawValue) NUMBER · YOU'RE IN \(mode.rawValue) MODE"
+            m.kind == .tram ? String(localized: "A TRAM NUMBER · YOU'RE IN BUS MODE") : String(localized: "A BUS NUMBER · YOU'RE IN TRAM MODE")
         case .certain(let m):
-            [m.regular ? nil : m.tier.rawValue, m.kind.rawValue, liveLine(camera.reading, kind: m.kind).map { "LINE \($0)" },
-             m.batch(containing: camera.reading ?? 0)?.year.map { "BUILT \($0)" }, "TAP TO CATCH"]
+            [m.regular ? nil : m.tier.name, m.kind.name, liveLine(camera.reading, kind: m.kind).map { String(localized: "LINE \($0)") },
+             m.batch(containing: camera.reading ?? 0)?.year.map { String(localized: "BUILT \(String($0))") }, String(localized: "TAP TO CATCH")]
                 .compactMap { $0 }.joined(separator: " · ")
         }
     }

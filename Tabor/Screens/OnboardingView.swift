@@ -87,10 +87,10 @@ struct OnboardingView: View {
 
     private var primaryLabel: String {
         switch page {
-        case .welcome: "LET'S GO"
-        case .book: "NEXT"
-        case .camera: needsPermission ? "ALLOW CAMERA" : "NEXT"
-        case .hunt: needsPermission ? "ALLOW LOCATION" : "START CATCHING"
+        case .welcome: String(localized: "LET'S GO")
+        case .book: String(localized: "NEXT")
+        case .camera: needsPermission ? String(localized: "ALLOW CAMERA") : String(localized: "NEXT")
+        case .hunt: needsPermission ? String(localized: "ALLOW LOCATION") : String(localized: "START CATCHING")
         }
     }
 
@@ -159,9 +159,9 @@ private struct WelcomePage: View {
     private let total = Fleet.catalog.totalFleet
 
     var body: some View {
-        PageLayout(kicker: "A COLLECTING GAME FOR WARSAW",
-                   title: "Catch every bus and tram in Warsaw.",
-                   text: "Snap one and it becomes a sticker in your book. Some models run by the hundred; a few, only a handful. \(total.grouped) vehicles to find.") {
+        PageLayout(kicker: String(localized: "A COLLECTING GAME FOR WARSAW"),
+                   title: String(localized: "Catch every bus and tram in Warsaw."),
+                   text: String(localized: "Snap one and it becomes a sticker in your book. Some models run by the hundred; a few, only a handful. \(total.grouped) vehicles to find.")) {
             ZStack {
                 RadialGradient(colors: [Palette.yellow.opacity(landed ? 0.22 : 0), .clear],
                                center: .center, startRadius: 10, endRadius: 190)
@@ -203,9 +203,9 @@ private struct BookPage: View {
     }()
 
     var body: some View {
-        PageLayout(kicker: "BOOK",
-                   title: "Fill the book, model by model.",
-                   text: "Every model has a page and every vehicle a slot. Rarity goes by how many exist, so a legendary is one of a dozen or fewer. Badges come along the way.") {
+        PageLayout(kicker: String(localized: "BOOK"),
+                   title: String(localized: "Fill the book, model by model."),
+                   text: String(localized: "Every model has a page and every vehicle a slot. Rarity goes by how many exist, so a legendary is one of a dozen or fewer. Badges come along the way.")) {
             VStack(spacing: 8) {
                 ForEach(Array(rows.enumerated()), id: \.offset) { i, row in
                     MiniRow(model: row.model, share: filled ? row.share : 0)
@@ -237,7 +237,7 @@ private struct BookPage: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    Mono(model.tier.rawValue, size: 10, weight: 700, spacing: 0.12, color: model.tier.color)
+                    Mono(model.tier.name, size: 10, weight: 700, spacing: 0.12, color: model.tier.color)
                 }
                 HStack(spacing: 10) {
                     ProgressBar(fraction: share, color: model.tier.bar, height: 5)
@@ -262,9 +262,9 @@ private struct CameraPage: View {
     private static let number = CGRect(x: 0.2465, y: 0.6625, width: 0.047, height: 0.0475)
 
     var body: some View {
-        PageLayout(kicker: "CATCH",
-                   title: "Get the whole bus in the shot.",
-                   text: "Front, side or back, with its fleet number somewhere in view. TABOR finds the number, knows the model and cuts the vehicle out as your sticker. The rarer it is, the bigger the reveal.") {
+        PageLayout(kicker: String(localized: "CATCH"),
+                   title: String(localized: "Get the whole bus in the shot."),
+                   text: String(localized: "Front, side or back, with its fleet number somewhere in view. TABOR finds the number, knows the model and cuts the vehicle out as your sticker. The rarer it is, the bigger the reveal.")) {
             VStack(spacing: 14) {
                 ZStack {
                     Image("ViewfinderBus")
@@ -347,9 +347,9 @@ private struct HuntPage: View {
     ]
 
     var body: some View {
-        PageLayout(kicker: "HUNT",
-                   title: "See what you haven't caught, live.",
-                   text: "HUNT maps every bus and tram running near you that isn't in your book yet, and which way it's going. Location is only used while TABOR is open.") {
+        PageLayout(kicker: String(localized: "HUNT"),
+                   title: String(localized: "See what you haven't caught, live."),
+                   text: String(localized: "HUNT maps every bus and tram running near you that isn't in your book yet, and which way it's going. Location is only used while TABOR is open.")) {
             ZStack {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .fill(Palette.mapBg)

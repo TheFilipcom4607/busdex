@@ -4,7 +4,7 @@ import SwiftUI
 /// Fix the number, pick the model (database matches first) and note the line.
 struct CorrectionSheet: View {
     @Binding var draft: CatchDraft
-    var title = "Fix the catch"
+    var title = String(localized: "Fix the catch")
     @Query private var manual: [ManualAssignment]
     @Environment(\.dismiss) private var dismiss
 
@@ -29,7 +29,7 @@ struct CorrectionSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    SectionLabel(text: "FLEET NUMBER")
+                    SectionLabel(text: String(localized: "FLEET NUMBER"))
                     TextField("", text: $numberText, prompt: Text("0000").foregroundStyle(Palette.ghost))
                         .font(TaborFont.mono(52, 700))
                         .keyboardType(.numberPad)
@@ -48,9 +48,9 @@ struct CorrectionSheet: View {
                         .padding(.top, 8)
 
                     HStack(spacing: 7) {
-                        kindChip(nil, "ANY")
-                        kindChip(.bus, "BUS")
-                        kindChip(.tram, "TRAM")
+                        kindChip(nil, String(localized: "ANY", comment: "Vehicle kind: bus or tram"))
+                        kindChip(.bus, VehicleKind.bus.name)
+                        kindChip(.tram, VehicleKind.tram.name)
                         Spacer()
                         HStack(spacing: 6) {
                             Mono("LINE", size: 10.5)
@@ -67,13 +67,13 @@ struct CorrectionSheet: View {
                     .padding(.top, 18)
 
                     if !candidates.isEmpty {
-                        SectionLabel(text: candidates.count > 1 ? "THIS NUMBER EXISTS ON" : "IN THE ZTM DATABASE")
+                        SectionLabel(text: candidates.count > 1 ? String(localized: "THIS NUMBER EXISTS ON") : String(localized: "IN THE ZTM DATABASE"))
                             .padding(.top, 22)
                             .padding(.bottom, 8)
                         ForEach(candidates) { m in modelRow(m, number: number) }
                     }
 
-                    SectionLabel(text: candidates.isEmpty ? "PICK THE MODEL" : "SOMETHING ELSE")
+                    SectionLabel(text: candidates.isEmpty ? String(localized: "PICK THE MODEL") : String(localized: "SOMETHING ELSE"))
                         .padding(.top, 22)
                         .padding(.bottom, 8)
                     TextField("", text: $search, prompt: Text("Search models").foregroundStyle(Palette.faint))
@@ -150,7 +150,7 @@ struct CorrectionSheet: View {
                 KindTag(kind: m.kind)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(m.name).font(TaborFont.grotesk(15, 600)).lineLimit(1)
-                    Mono([m.operators.first?.uppercased(), m.yearsDisplay, "\(m.fleet) EXIST"]
+                    Mono([m.operators.first?.uppercased(), m.yearsDisplay, String(localized: "\(m.fleet) EXIST")]
                         .compactMap { $0 }.joined(separator: " · "), size: 9.5)
                 }
                 Spacer()
@@ -179,11 +179,11 @@ struct CorrectionSheet: View {
     }
 
     private func status(_ match: ModelMatch, number: Int?) -> String {
-        guard number != nil else { return "READ IT OFF THE FRONT, SIDE OR BACK" }
+        guard number != nil else { return String(localized: "READ IT OFF THE FRONT, SIDE OR BACK") }
         switch match {
-        case .certain(let m): return "MATCH · \(m.name.uppercased())"
-        case .ambiguous(let ms): return "\(ms.count) VEHICLES HAVE THIS NUMBER — PICK ONE"
-        case .unknown: return "NOT IN THE ZTM DATABASE — PICK THE MODEL YOURSELF"
+        case .certain(let m): return String(localized: "MATCH · \(m.name.uppercased())")
+        case .ambiguous(let ms): return String(localized: "\(ms.count) VEHICLES HAVE THIS NUMBER — PICK ONE")
+        case .unknown: return String(localized: "NOT IN THE ZTM DATABASE — PICK THE MODEL YOURSELF")
         }
     }
 

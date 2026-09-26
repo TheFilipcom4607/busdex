@@ -260,14 +260,15 @@ EXTRA_BUSES = [
 # catchable and in the book, but, like vintage stock, outside the fleet % and the set
 # badges, since they're gone again after a few weeks. (make, model, number, operator,
 # depot, where it runs, when: shown where a build year would be, since a demo bus's
-# year isn't what matters.) Irizar ie tram 12 #959: MZA's trial from R-4 Stalowa, mid
+# year isn't what matters. Then the same two in Polish, for the app's Polish UI.) Irizar ie tram 12 #959: MZA's trial from R-4 Stalowa, mid
 # to end of September 2026 (TransInfo, Polskie Radio 24), seen live on line 106 on
 # 2026-09-25 (api.um.warszawa.pl).
 TEST_BUSES = [
     ("Irizar", "ie tram 12", 959, "MZA", 'R-4 "Stalowa" (R-13)',
-     "LINE 106 · ALSO 122, 123, 157, 166 · TRIAL UNTIL 30 SEP 2026", "ON TRIAL SEP 2026"),
+     "LINE 106 · ALSO 122, 123, 157, 166 · TRIAL UNTIL 30 SEP 2026", "ON TRIAL SEP 2026",
+     "LINIA 106 · TAKŻE 122, 123, 157, 166 · TESTY DO 30 WRZ 2026", "TESTY WRZ 2026"),
 ]
-TRIALS = {(make, model): (runs, when) for make, model, _, _, _, runs, when in TEST_BUSES}
+TRIALS = {(make, model): t for make, model, _, _, _, *t in TEST_BUSES}
 
 RETIRED = {
     ("BUS", "MAN", "A37", "Mobilis"): set(range(9501, 9562)),
@@ -292,7 +293,7 @@ def with_vintage_extras(vehicles):
             continue
         out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
                     "carrier": owner, "depot": depot, "kind": "BUS", "year": year, "vintage": False})
-    for make, model, number, owner, depot, _, _ in TEST_BUSES:
+    for make, model, number, owner, depot, *_ in TEST_BUSES:
         if ("BUS", str(number)) in listed:
             continue
         out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
@@ -363,7 +364,7 @@ def build(vehicles):
             # Curated models, split-out sets, and models that exist only as preserved buses.
             "vintage": model_id in VINTAGE or split or all(v["vintage"] for v in vs),
             "onTest": all(v.get("onTest", False) for v in vs),
-            **({"runs": TRIALS[(make, model)][0], "trial": TRIALS[(make, model)][1]}
+            **(dict(zip(("runs", "trial", "runsPl", "trialPl"), TRIALS[(make, model)]))
                if (make, model) in TRIALS else {}),
         })
     models.sort(key=lambda m: (m["kind"], -m["fleet"], m["name"]))
@@ -377,6 +378,8 @@ def build(vehicles):
         # and club buses, names, build years).
         "source": f"Warsaw ZTM vehicle database (fetched {raw['fetched']}), plus Warszawikia, "
                   "the KMKM club, TransInfo, phototrans.eu and live GPS",
+        "sourcePl": f"Baza pojazdów ZTM Warszawa (stan z {raw['fetched']}), a także Warszawikia, "
+                    "klub KMKM, TransInfo, phototrans.eu i GPS na żywo",
         "fetched": raw["fetched"],
         "models": models,
         "depots": [{"code": c, "name": n, "kind": k} for c, n, k in depots],

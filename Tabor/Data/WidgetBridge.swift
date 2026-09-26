@@ -30,7 +30,7 @@ enum WidgetBridge {
         let snapshot = WidgetSnapshot(
             caught: sightings.stats.fleetCaught(catalog: catalog), fleet: catalog.totalFleet,
             streak: Streak.days(sightings.map(\.date)), lastCatch: latest?.date,
-            latestNumber: latest?.number, latestModel: latest.map { _ in model?.name ?? "Unknown model" },
+            latestNumber: latest?.number, latestModel: latest.map { _ in model?.name ?? String(localized: "Unknown model") },
             latestTier: model?.tier.rawValue,
             hasImage: source != nil && FileManager.default.fileExists(atPath: imageURL.path),
             imageIsCutout: sticker != nil)

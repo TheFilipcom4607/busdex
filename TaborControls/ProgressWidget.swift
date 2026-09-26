@@ -127,7 +127,7 @@ struct ProgressWidgetView: View {
         }
     }
 
-    private var streakText: String { entry.streak == 1 ? "1 DAY" : "\(entry.streak) DAYS" }
+    private var streakText: String { String(localized: "\(entry.streak) DAYS") }
 
     private var streakBadge: some View {
         Label(String(entry.streak), systemImage: "flame.fill")
@@ -153,7 +153,8 @@ struct ProgressWidgetView: View {
                 .foregroundStyle(WidgetPalette.ink)
                 .minimumScaleFactor(0.7)
                 .lineLimit(1)
-            Text(s.latestNumber.map { "LAST: \(String($0)) · \((s.latestModel ?? "").uppercased())" } ?? "OF THE FLEET CAUGHT")
+            Text(s.latestNumber.map { String(localized: "LAST: \(String($0)) · \((s.latestModel ?? "").uppercased())") }
+                 ?? String(localized: "OF THE FLEET CAUGHT"))
                 .font(.system(size: 10, weight: .semibold, design: .monospaced))
                 .foregroundStyle(WidgetPalette.sub)
                 .lineLimit(1)

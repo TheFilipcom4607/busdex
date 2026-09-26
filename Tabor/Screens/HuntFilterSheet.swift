@@ -37,7 +37,7 @@ struct HuntFilterSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(alignment: .firstTextBaseline) {
-                        SectionLabel(text: "TYPE")
+                        SectionLabel(text: String(localized: "TYPE"))
                         Spacer()
                         Mono("UNCAUGHT, OUT NOW", size: 9.5, color: Palette.faint)
                     }
@@ -48,7 +48,7 @@ struct HuntFilterSheet: View {
                         }
                     }
 
-                    SectionLabel(text: "RARITY")
+                    SectionLabel(text: String(localized: "RARITY"))
                         .padding(.top, 24)
                         .padding(.bottom, 9)
                     FlowRow(spacing: 7) {
@@ -57,7 +57,7 @@ struct HuntFilterSheet: View {
                         }
                     }
 
-                    SectionLabel(text: "MODELS")
+                    SectionLabel(text: String(localized: "MODELS"))
                         .padding(.top, 24)
                         .padding(.bottom, 9)
                     TextField("", text: $search, prompt: Text("Search models").foregroundStyle(Palette.faint))
@@ -127,7 +127,7 @@ struct HuntFilterSheet: View {
             .overlay(Capsule().stroke(Palette.ink.opacity(on ? 0 : 0.2)))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(k == .bus ? "Buses" : "Trams") only, \(count) out now")
+        .accessibilityLabel(k == .bus ? "Buses only, \(count) out now" : "Trams only, \(count) out now")
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
@@ -137,7 +137,7 @@ struct HuntFilterSheet: View {
             withAnimation(.snappy) { targets.tiers.formSymmetricDifference([t]) }
         } label: {
             HStack(spacing: 6) {
-                Mono(t.rawValue, size: 11, weight: 700, spacing: 0.1, color: on ? t.onMapColor : t.mapColor)
+                Mono(t.name, size: 11, weight: 700, spacing: 0.1, color: on ? t.onMapColor : t.mapColor)
                 Mono("\(count)", size: 11, weight: 500, spacing: 0, color: on ? t.onMapColor.opacity(0.65) : Palette.faint)
             }
             .padding(.vertical, 8)
@@ -146,7 +146,7 @@ struct HuntFilterSheet: View {
             .overlay(Capsule().stroke(t.mapColor.opacity(on ? 0 : 0.3)))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(t.rawValue.capitalized), \(count) out now")
+        .accessibilityLabel("\(t.name.capitalized), \(count) out now")
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
@@ -164,7 +164,7 @@ struct HuntFilterSheet: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
                     HStack(spacing: 7) {
-                        Mono(m.tier.rawValue, size: 9.5, weight: 700, spacing: 0.1, color: m.tier.mapColor)
+                        Mono(m.tier.name, size: 9.5, weight: 700, spacing: 0.1, color: m.tier.mapColor)
                         Mono(Self.outText(out.count, nearest: nearest), size: 9.5,
                              color: out.isEmpty ? Palette.faint : Palette.sub)
                             .lineLimit(1)
@@ -200,8 +200,9 @@ struct HuntFilterSheet: View {
 
     /// "2 OUT · NEAREST 1.2 KM", or "NONE OUT NOW".
     private static func outText(_ count: Int, nearest: Double?) -> String {
-        guard count > 0 else { return "NONE OUT NOW" }
-        return "\(count) OUT" + (nearest.map { " · NEAREST \(HuntDistance.text($0))" } ?? "")
+        guard count > 0 else { return String(localized: "NONE OUT NOW") }
+        guard let nearest else { return String(localized: "\(count) OUT") }
+        return String(localized: "\(count) OUT · NEAREST \(HuntDistance.text(nearest))")
     }
 
     /// What you'd picked before first; then models out on the road now, rarest first and

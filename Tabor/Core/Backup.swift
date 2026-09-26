@@ -101,8 +101,8 @@ public enum BackupError: Error, LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .newerVersion: "This backup was made by a newer version of TABOR. Update the app first."
-        case .missingManifest: "That file isn't a TABOR backup."
+        case .newerVersion: String(localized: "This backup was made by a newer version of TABOR. Update the app first.")
+        case .missingManifest: String(localized: "That file isn't a TABOR backup.")
         }
     }
 }

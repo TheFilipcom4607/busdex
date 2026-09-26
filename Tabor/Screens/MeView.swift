@@ -26,7 +26,7 @@ struct MeView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    ScreenTitle(text: "Trophy shelf")
+                    ScreenTitle(text: String(localized: "Trophy shelf"))
                     Mono(trophies.isEmpty ? "NOTHING ON THE SHELF YET"
                          : "YOUR \(trophies.count) RAREST OF \(stats.caught)",
                          size: 11, color: Palette.sub)
@@ -39,10 +39,10 @@ struct MeView: View {
                     .padding(.horizontal, 22)
 
                 StatsStrip(items: [
-                    (stats.caught.grouped, "CAUGHT", Palette.ink),
-                    (percent(stats.fleetShare(catalog: catalog)), "OF FLEET", Palette.yellow),
-                    ("\(Streak.days(sightings.map(\.date)))", "DAY STREAK", Palette.ink),
-                    (depotsTouched(stats), "DEPOTS", Palette.ink),
+                    (stats.caught.grouped, String(localized: "CAUGHT"), Palette.ink),
+                    (percent(stats.fleetShare(catalog: catalog)), String(localized: "OF FLEET"), Palette.yellow),
+                    ("\(Streak.days(sightings.map(\.date)))", String(localized: "DAY STREAK"), Palette.ink),
+                    (depotsTouched(stats), String(localized: "DEPOTS"), Palette.ink),
                 ])
                 .padding(.top, 18)
                 .padding(.horizontal, 22)
@@ -52,7 +52,7 @@ struct MeView: View {
                     .padding(.horizontal, 22)
 
                 HStack(alignment: .firstTextBaseline) {
-                    SectionLabel(text: "WHERE YOU SPOT")
+                    SectionLabel(text: String(localized: "WHERE YOU SPOT"))
                     Spacer()
                     Button {
                         showMap = true
@@ -104,7 +104,7 @@ struct MeView: View {
         let patch = Dictionary(grouping: geotagged.compactMap(\.district), by: { $0 })
             .max { $0.value.count < $1.value.count }?.key
         return HStack {
-            Mono(patch.map { "\($0.uppercased()) IS YOUR PATCH" } ?? "GEOTAG A CATCH TO START YOUR MAP",
+            Mono(patch.map { String(localized: "\($0.uppercased()) IS YOUR PATCH") } ?? String(localized: "GEOTAG A CATCH TO START YOUR MAP"),
                  size: 9.5, color: Palette.sub)
             Spacer()
             Mono("\(geotagged.count) PINS", size: 9.5, color: Palette.faint)
@@ -114,10 +114,11 @@ struct MeView: View {
 
     /// One decimal under 10%, so the first few hundred catches visibly move it.
     private func percent(_ v: Double) -> String {
-        if v <= 0 { return "0%" }
-        if v < 0.001 { return "<0.1%" }
-        if v < 0.1 { return String(format: "%.1f%%", v * 100) }
-        return "\(Int((v * 100).rounded()))%"
+        let pct = FloatingPointFormatStyle<Double>.Percent().locale(.app)
+        if v <= 0 { return 0.0.formatted(pct.precision(.fractionLength(0))) }
+        if v < 0.001 { return "<" + 0.001.formatted(pct.precision(.fractionLength(1))) }
+        if v < 0.1 { return v.formatted(pct.precision(.fractionLength(1))) }
+        return v.formatted(pct.precision(.fractionLength(0)))
     }
 
     /// Depots whose vehicles you've caught, out of all depots in the snapshot.
@@ -389,7 +390,7 @@ struct SettingsSheet: View {
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
                         if let fleetStatus { Text(fleetStatus).foregroundStyle(Palette.yellow) }
-                        Text(Fleet.catalog.source)
+                        Text(Fleet.catalog.sourceDisplay)
                         Text("New deliveries show up without an app update: TABOR checks GitHub for a fresher ZTM snapshot once a day.")
                     }
                 }
@@ -451,18 +452,20 @@ extension SettingsSheet {
     var liveStatus: (text: String, color: Color) {
         let live = LiveFleetService.shared
         switch live.status {
-        case .noKey: return ("No key", Palette.red)
-        case .idle, .loading: return ("Checking…", Palette.sub)
-        case .live: return ("Working · \((live.snapshot?.vehicles.count ?? 0).grouped) vehicles", Palette.green)
-        case .error(let why): return (live.fresh(maxAge: 120) != nil ? "Working (last call failed)" : why, Palette.red)
+        case .noKey: return (String(localized: "No key"), Palette.red)
+        case .idle, .loading: return (String(localized: "Checking…"), Palette.sub)
+        case .live:
+            let n = live.snapshot?.vehicles.count ?? 0
+            return (String(localized: "Working · \(n) vehicles"), Palette.green)
+        case .error(let why): return (live.fresh(maxAge: 120) != nil ? String(localized: "Working (last call failed)") : why, Palette.red)
         }
     }
 
     /// Which key is in use, without showing all of it.
     var keySource: String {
-        if let own = LiveFleetService.overrideKey { return "Your own · …\(own.suffix(4))" }
-        if let baked = LiveFleetService.builtInKey { return "Built in · …\(baked.suffix(4))" }
-        return "None"
+        if let own = LiveFleetService.overrideKey { return String(localized: "Your own · …\(String(own.suffix(4)))") }
+        if let baked = LiveFleetService.builtInKey { return String(localized: "Built in · …\(String(baked.suffix(4)))") }
+        return String(localized: "None", comment: "No API key")
     }
 }
 
@@ -504,7 +507,7 @@ extension SettingsSheet {
             backingUp = false
             switch result {
             case .success(let url): exportURL = url
-            case .failure(let error): backupMessage = "Couldn't export: \(error.localizedDescription)"
+            case .failure(let error): backupMessage = String(localized: "Couldn't export: \(error.localizedDescription)")
             }
         }
     }
@@ -518,10 +521,10 @@ extension SettingsSheet {
             do {
                 let added = try context.restore(try result.get(), into: allSightings, manual: manual)
                 Haptics.shared.completed()
-                backupMessage = added == 0 ? "Everything in that backup is already in your book."
-                    : "Added \(added) sighting\(added == 1 ? "" : "s") to your book."
+                backupMessage = added == 0 ? String(localized: "Everything in that backup is already in your book.")
+                    : String(localized: "Added \(added) sightings to your book.")
             } catch {
-                backupMessage = "Couldn't import: \(error.localizedDescription)"
+                backupMessage = String(localized: "Couldn't import: \(error.localizedDescription)")
             }
         }
     }
@@ -532,9 +535,9 @@ extension SettingsSheet {
             let outcome = await FleetUpdater.check()
             checkingFleet = false
             switch outcome {
-            case .downloaded(let fetched): fleetStatus = "Snapshot from \(fetched) downloaded — it's used next time you open TABOR."
-            case .upToDate: fleetStatus = "You have the latest fleet data."
-            case .failed(let why): fleetStatus = "Couldn't check: \(why)"
+            case .downloaded(let fetched): fleetStatus = String(localized: "Snapshot from \(fetched) downloaded — it's used next time you open TABOR.")
+            case .upToDate: fleetStatus = String(localized: "You have the latest fleet data.")
+            case .failed(let why): fleetStatus = String(localized: "Couldn't check: \(why)")
             }
         }
     }

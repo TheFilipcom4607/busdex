@@ -26,6 +26,15 @@ public enum CatchMode: String, CaseIterable, Sendable {
         case .tram: .tram
         }
     }
+
+    /// The camera's mode picker: short words, it shares a row with the screen title.
+    public var name: String {
+        switch self {
+        case .auto: String(localized: "AUTO", comment: "Camera mode: bus or tram, whichever it reads")
+        case .bus: String(localized: "mode.bus", defaultValue: "BUS", comment: "Camera mode, keep short")
+        case .tram: String(localized: "mode.tram", defaultValue: "TRAM", comment: "Camera mode, keep short")
+        }
+    }
 }
 
 public enum NumberExtractor {

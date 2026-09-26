@@ -23,7 +23,7 @@ struct VehicleView: View {
             VStack(alignment: .leading, spacing: 0) {
                 TopBar {
                     Button { dismiss() } label: {
-                        Mono("← \((model?.name ?? "BACK").uppercased())", size: 12, spacing: 0.16)
+                        Mono("← \((model?.name ?? String(localized: "BACK")).uppercased())", size: 12, spacing: 0.16)
                             .lineLimit(1)
                     }
                     .buttonStyle(.plain)
@@ -45,7 +45,7 @@ struct VehicleView: View {
                         .lineLimit(1)
                         .fixedSize()
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(model?.name ?? "Unknown model")
+                        Text(model?.name ?? String(localized: "Unknown model"))
                             .font(TaborFont.grotesk(14, 600))
                             .lineLimit(1)
                         Mono(batch?.depotDisplay ?? model?.operators.first?.uppercased() ?? "", size: 11, color: Palette.sub)
@@ -57,7 +57,7 @@ struct VehicleView: View {
                 .padding(.horizontal, 22)
 
                 CatchPhoto(file: mine.first(where: { $0.photoFile != nil })?.photoFile, maxPixel: 1200,
-                           placeholder: "NO PHOTO YET")
+                           placeholder: String(localized: "NO PHOTO YET"))
                     .frame(height: 150)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Palette.hairline))
@@ -65,10 +65,10 @@ struct VehicleView: View {
                     .padding(.horizontal, 22)
 
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 9), GridItem(.flexible())], spacing: 9) {
-                    StatTile(label: "VEHICLE AGE", value: age(batch?.year), valueSize: 20,
-                             caption: batch?.year.map { "built \($0)" } ?? "year unknown")
-                    StatTile(label: "FIRST SEEN", value: first.map { Self.dayMonth.string(from: $0.date).uppercased() } ?? "—",
-                             valueSize: 20, caption: first.map(place) ?? "not caught yet")
+                    StatTile(label: String(localized: "VEHICLE AGE"), value: age(batch?.year), valueSize: 20,
+                             caption: batch?.year.map { String(localized: "built \(String($0))") } ?? String(localized: "year unknown"))
+                    StatTile(label: String(localized: "FIRST SEEN"), value: first.map { Self.dayMonth.string(from: $0.date).uppercased() } ?? "—",
+                             valueSize: 20, caption: first.map(place) ?? String(localized: "not caught yet"))
                 }
                 .padding(.top, 16)
                 .padding(.horizontal, 22)
@@ -97,7 +97,7 @@ struct VehicleView: View {
 
                 let lines = orderedLines(mine)
                 if !lines.isEmpty {
-                    SectionLabel(text: "SEEN ON LINES")
+                    SectionLabel(text: String(localized: "SEEN ON LINES"))
                         .padding(.top, 18)
                         .padding(.bottom, 9)
                         .padding(.horizontal, 22)
@@ -115,7 +115,7 @@ struct VehicleView: View {
                 }
 
                 HStack(alignment: .firstTextBaseline) {
-                    SectionLabel(text: "YOUR SIGHTINGS")
+                    SectionLabel(text: String(localized: "YOUR SIGHTINGS"))
                     Spacer()
                     if !mine.isEmpty { Mono("SWIPE TO EDIT", size: 9.5, color: Palette.faint) }
                 }
@@ -201,18 +201,19 @@ struct VehicleView: View {
     private func age(_ year: Int?) -> String {
         guard let year else { return "—" }
         let y = Calendar.current.component(.year, from: .now) - year
-        return y <= 0 ? "NEW" : "\(y)y"
+        return y <= 0 ? String(localized: "NEW", comment: "Vehicle age: built this year") : String(localized: "\(y)y", comment: "Vehicle age in years, short")
     }
 
     private func place(_ s: Sighting) -> String {
-        [s.street, s.line.map { "line \($0)" }].compactMap { $0 }.joined(separator: ", ").nonEmpty ?? "location off"
+        [s.street, s.line.map { String(localized: "line \($0)") }].compactMap { $0 }.joined(separator: ", ").nonEmpty
+            ?? String(localized: "location off")
     }
 
     private func logLine(_ s: Sighting, isFirst: Bool) -> String {
         var parts = [String]()
         if let street = s.street { parts.append(street.uppercased()) }
-        if let line = s.line { parts.append("LINE \(line)") }
-        parts.append(isFirst ? "CAUGHT" : "SEEN AGAIN")
+        if let line = s.line { parts.append(String(localized: "LINE \(line)")) }
+        parts.append(isFirst ? String(localized: "CAUGHT") : String(localized: "SEEN AGAIN"))
         return parts.joined(separator: " · ")
     }
 
@@ -224,13 +225,15 @@ struct VehicleView: View {
 
     static let dayMonth: DateFormatter = {
         let f = DateFormatter()
-        f.dateFormat = "d MMM"
+        f.locale = .app
+        f.setLocalizedDateFormatFromTemplate("dMMM")
         return f
     }()
 
     static let stamp: DateFormatter = {
         let f = DateFormatter()
-        f.dateFormat = "d MMM yyyy · HH:mm"
+        f.locale = .app
+        f.setLocalizedDateFormatFromTemplate("dMMMyyyyHHmm")
         return f
     }()
 }
@@ -266,7 +269,7 @@ struct EditSightingSheet: View {
 
     var body: some View {
         // The sheet only writes the draft back when Done is tapped.
-        CorrectionSheet(draft: $draft, title: "Edit sighting")
+        CorrectionSheet(draft: $draft, title: String(localized: "Edit sighting"))
             .onDisappear(perform: apply)
     }
 

@@ -1,0 +1,42 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSCameraUsageDescription": {
+      "comment": "Permission prompt",
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TABOR odczytuje numery taborowe autobusów i tramwajów, na które skierujesz aparat."
+          }
+        }
+      }
+    },
+    "NSLocationWhenInUseUsageDescription": {
+      "comment": "Permission prompt",
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokazuje w HUNT autobusy i tramwaje jeżdżące w pobliżu i zaznacza miejsca złapań na twojej mapie."
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryAddUsageDescription": {
+      "comment": "Permission prompt",
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapisuje pełnowymiarowe zdjęcie każdego złapanego pojazdu w Zdjęciach."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

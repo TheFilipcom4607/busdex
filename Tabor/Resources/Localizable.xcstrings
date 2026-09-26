@@ -1,0 +1,5334 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ""
+          }
+        }
+      }
+    },
+    " / %lld IN MY BOOK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " / %lld W MOIM ALBUMIE"
+          }
+        }
+      }
+    },
+    "%@ %@, line %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ %2$@, line %3$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ %2$@, linia %3$@"
+          }
+        }
+      }
+    },
+    "%@ / %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ / %2$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / %@"
+          }
+        }
+      }
+    },
+    "%@ BATCH": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DOSTAWA %@"
+          }
+        }
+      }
+    },
+    "%@ IS YOUR PATCH": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ TO TWOJA MIEJSCÓWKA"
+          }
+        }
+      }
+    },
+    "%@ OFF": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: WYŁ."
+          }
+        }
+      }
+    },
+    "%@ ON": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: WŁ."
+          }
+        }
+      }
+    },
+    "%@ Trying again every 15 seconds.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Próbuję ponownie co 15 sekund."
+          }
+        }
+      }
+    },
+    "%@ different vehicles": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ różnych pojazdów"
+          }
+        }
+      }
+    },
+    "%@ · %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ · %2$lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · %lld"
+          }
+        }
+      }
+    },
+    "%@ · %lld BATCHES": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ · %2$lld BATCHES"
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$@ · %2$lld DOSTAWY"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$@ · %2$lld DOSTAW"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$@ · %2$lld DOSTAWA"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%1$@ · %2$lld DOSTAW"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%@, %lld out now": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@, %2$lld out now"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, na trasie: %2$lld"
+          }
+        }
+      }
+    },
+    "%lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld"
+          }
+        }
+      }
+    },
+    "%lld / %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld / %2$lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld / %lld"
+          }
+        }
+      }
+    },
+    "%lld BADGES UNLOCKED": {
+      "localizations": {
+        "pl": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "ODBLOKOWANO %lld ODZNAKI"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "ODBLOKOWANO %lld ODZNAK"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "ODBLOKOWANO %lld ODZNAKĘ"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "ODBLOKOWANO %lld ODZNAK"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld EXIST": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld EXISTS"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld EXIST"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "ISTNIEJĄ %lld"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "ISTNIEJE %lld"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "ISTNIEJE %lld"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "ISTNIEJE %lld"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld HERE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld TUTAJ"
+          }
+        }
+      }
+    },
+    "%lld OF %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld OF %2$lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Z %lld"
+          }
+        }
+      }
+    },
+    "%lld OUT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld NA TRASIE"
+          }
+        }
+      }
+    },
+    "%lld OUT NOW": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld NA TRASIE"
+          }
+        }
+      }
+    },
+    "%lld OUT · NEAREST %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld OUT · NEAREST %2$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld NA TRASIE · NAJBLIŻEJ %2$@"
+          }
+        }
+      }
+    },
+    "%lld PINS": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld PIN"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld PINS"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld PINEZKI"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld PINEZEK"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld PINEZKA"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld PINEZEK"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld VEHICLES HAVE THIS NUMBER — PICK ONE": {
+      "localizations": {
+        "pl": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld POJAZDY MAJĄ TEN NUMER — WYBIERZ JEDEN"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld POJAZDÓW MA TEN NUMER — WYBIERZ JEDEN"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld POJAZD MA TEN NUMER — WYBIERZ"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld POJAZDÓW MA TEN NUMER — WYBIERZ JEDEN"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld WITHIN 3 KM": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld W PROMIENIU 3 KM"
+          }
+        }
+      }
+    },
+    "%lld catches with a cut-out sticker": {
+      "localizations": {
+        "pl": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld naklejki z wyciętym pojazdem"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld naklejek z wyciętym pojazdem"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld naklejka z wyciętym pojazdem"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld naklejek z wyciętym pojazdem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld different trams in one day": {
+      "localizations": {
+        "pl": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld różne tramwaje jednego dnia"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld różnych tramwajów jednego dnia"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld tramwaj jednego dnia"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld różnych tramwajów jednego dnia"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld left in the %@ batch, %lld %@ to find overall.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld left in the %2$@ batch, %3$lld %4$@ to find overall."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Z dostawy %2$@ brakuje jeszcze %1$lld, a z całego modelu %4$@ — %3$lld."
+          }
+        }
+      }
+    },
+    "%lld more to find.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do znalezienia jeszcze: %lld."
+          }
+        }
+      }
+    },
+    "%lld of %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld of %2$lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld z %lld"
+          }
+        }
+      }
+    },
+    "%lld of %lld %@\nin your book": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld of %2$lld %3$@\nin your book"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld z %2$lld · %3$@\nw twoim albumie"
+          }
+        }
+      }
+    },
+    "%lld of %lld %@ caught — %lld still to find.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld of %2$lld %3$@ caught — %4$lld still to find."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Masz %1$lld z %2$lld pojazdów modelu %3$@ — brakuje jeszcze %4$lld."
+          }
+        }
+      }
+    },
+    "%lld vehicles here, zoom in": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pojazdy tutaj: %lld, przybliż"
+          }
+        }
+      }
+    },
+    "%lld%% of Warsaw's fleet": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%% warszawskiego taboru"
+          }
+        }
+      }
+    },
+    "%lld/%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld/%2$lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld/%lld"
+          }
+        }
+      }
+    },
+    "%lldy": {
+      "comment": "Vehicle age in years, short",
+      "localizations": {
+        "pl": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld lata"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld lat"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld rok"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld roku"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/%lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/%lld"
+          }
+        }
+      }
+    },
+    "0000": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "0000"
+          }
+        }
+      }
+    },
+    "1971 · YUTONG U12 · TAP TO CATCH": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1971 · YUTONG U12 · STUKNIJ I ZŁAP"
+          }
+        }
+      }
+    },
+    "3 KM": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3 KM"
+          }
+        }
+      }
+    },
+    "5 different lines caught on one street": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 różnych linii na jednej ulicy"
+          }
+        }
+      }
+    },
+    "A BUS NUMBER · YOU'RE IN TRAM MODE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NUMER AUTOBUSU · TRYB: TRAMWAJ"
+          }
+        }
+      }
+    },
+    "A COLLECTING GAME FOR WARSAW": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WARSZAWSKA GRA KOLEKCJONERSKA"
+          }
+        }
+      }
+    },
+    "A LEGENDARY, GOLD, RARE and COMMON in one day": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LEGENDARNY, ZŁOTY, RZADKI i POSPOLITY jednego dnia"
+          }
+        }
+      }
+    },
+    "A TRAM NUMBER · YOU'RE IN BUS MODE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NUMER TRAMWAJU · TRYB: AUTOBUS"
+          }
+        }
+      }
+    },
+    "A bus and a tram with the same number": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autobus i tramwaj o tym samym numerze"
+          }
+        }
+      }
+    },
+    "A catch at 30 °C or hotter": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złap coś przy 30 °C lub cieplej"
+          }
+        }
+      }
+    },
+    "A catch at −10 °C or colder": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złap coś przy −10 °C lub zimniej"
+          }
+        }
+      }
+    },
+    "A catch during a thunderstorm": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złap coś podczas burzy"
+          }
+        }
+      }
+    },
+    "A catch in all %lld districts of Warsaw": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złap coś we wszystkich %lld dzielnicach Warszawy"
+          }
+        }
+      }
+    },
+    "A catch in the rain": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złap coś w deszczu"
+          }
+        }
+      }
+    },
+    "A catch in winter, spring, summer and autumn": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złap coś zimą, wiosną, latem i jesienią"
+          }
+        }
+      }
+    },
+    "A catch on Christmas Day": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złap coś w Boże Narodzenie"
+          }
+        }
+      }
+    },
+    "A catch on New Year's Day": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złap coś w Nowy Rok"
+          }
+        }
+      }
+    },
+    "A catch one year to the day after your first": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złap coś dokładnie rok po swoim pierwszym złapaniu"
+          }
+        }
+      }
+    },
+    "A catch outside Warsaw": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złap coś poza Warszawą"
+          }
+        }
+      }
+    },
+    "A catch while it's snowing": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złap coś, gdy pada śnieg"
+          }
+        }
+      }
+    },
+    "A fleet number ending in 00": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Numer taborowy kończący się na 00"
+          }
+        }
+      }
+    },
+    "A fleet number that reads the same backwards": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Numer taborowy, który czyta się tak samo wspak"
+          }
+        }
+      }
+    },
+    "A vehicle delivered the year you caught it": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pojazd złapany w roku swojej dostawy"
+          }
+        }
+      }
+    },
+    "A vehicle from all %lld operators": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pojazd każdego z %lld przewoźników"
+          }
+        }
+      }
+    },
+    "A vehicle still in service at 20 years old": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pojazd, który wciąż jeździ po 20 latach"
+          }
+        }
+      }
+    },
+    "A vintage bus — it only comes out on tourist lines. Nice timing.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zabytkowy autobus — wyjeżdża tylko na linie turystyczne. Dobre wyczucie czasu."
+          }
+        }
+      }
+    },
+    "A vintage tram — it only comes out on tourist lines. Nice timing.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zabytkowy tramwaj — wyjeżdża tylko na linie turystyczne. Dobre wyczucie czasu."
+          }
+        }
+      }
+    },
+    "ALL": {
+      "comment": "Book filter",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WSZYSTKO"
+          }
+        }
+      }
+    },
+    "ALL UNCAUGHT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WSZYSTKIE NIEZŁAPANE"
+          }
+        }
+      }
+    },
+    "ALLOW CAMERA": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZEZWÓL NA APARAT"
+          }
+        }
+      }
+    },
+    "ALLOW LOCATION": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZEZWÓL NA LOKALIZACJĘ"
+          }
+        }
+      }
+    },
+    "ALSO A %@ · FIX IT AFTER THE SHOT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MOŻE TO TEŻ %@ · POPRAWISZ PO ZDJĘCIU"
+          }
+        }
+      }
+    },
+    "ANY": {
+      "comment": "Vehicle kind: bus or tram",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DOWOLNY"
+          }
+        }
+      }
+    },
+    "AROUND THE MAP CENTRE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WOKÓŁ ŚRODKA MAPY"
+          }
+        }
+      }
+    },
+    "AUTO": {
+      "comment": "Camera mode: bus or tram, whichever it reads",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AUTO"
+          }
+        }
+      }
+    },
+    "AWAY": {
+      "comment": "Short: vehicle moving away from you",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ODJEŻDŻA"
+          }
+        }
+      }
+    },
+    "Added %lld sightings to your book.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Added %lld sighting to your book."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Added %lld sightings to your book."
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Dodano %lld obserwacje do albumu."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Dodano %lld obserwacji do albumu."
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Dodano %lld obserwację do albumu."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Dodano %lld obserwacji do albumu."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "All %lld gold": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystkie złote (%lld)"
+          }
+        }
+      }
+    },
+    "All %lld legendary": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystkie legendarne (%lld)"
+          }
+        }
+      }
+    },
+    "All %lld rare": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystkie rzadkie (%lld)"
+          }
+        }
+      }
+    },
+    "Anniversary": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rocznica"
+          }
+        }
+      }
+    },
+    "BACK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WSTECZ"
+          }
+        }
+      }
+    },
+    "BADGE UNLOCKED": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWA ODZNAKA"
+          }
+        }
+      }
+    },
+    "BADGE UNLOCKED · %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWA ODZNAKA · %@"
+          }
+        }
+      }
+    },
+    "BADGES": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ODZNAKI"
+          }
+        }
+      }
+    },
+    "BETA · %@ (%@)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "BETA · %1$@ (%2$@)"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BETA · %@ (%@)"
+          }
+        }
+      }
+    },
+    "BOOK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BOOK"
+          }
+        }
+      }
+    },
+    "BRONZE": {
+      "comment": "Badge medal",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BRĄZ"
+          }
+        }
+      }
+    },
+    "BUILT %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ROCZNIK %@"
+          }
+        }
+      }
+    },
+    "BUS": {
+      "comment": "Vehicle kind tag",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AUTOBUS"
+          }
+        }
+      }
+    },
+    "BUSES": {
+      "comment": "Book filter",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AUTOBUSY"
+          }
+        }
+      }
+    },
+    "BUSES ONLY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TYLKO AUTOBUSY"
+          }
+        }
+      }
+    },
+    "Back to 3 kilometres around you": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wróć do 3 kilometrów wokół ciebie"
+          }
+        }
+      }
+    },
+    "Backup": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopia zapasowa"
+          }
+        }
+      }
+    },
+    "Built in · …%@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wbudowany · …%@"
+          }
+        }
+      }
+    },
+    "Buses only, %lld out now": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tylko autobusy, na trasie: %lld"
+          }
+        }
+      }
+    },
+    "Busy street": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruchliwa ulica"
+          }
+        }
+      }
+    },
+    "CAMERA ACCESS IS OFF": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DOSTĘP DO APARATU JEST WYŁĄCZONY"
+          }
+        }
+      }
+    },
+    "CANCEL": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ANULUJ"
+          }
+        }
+      }
+    },
+    "CATCH": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CATCH"
+          }
+        }
+      }
+    },
+    "CATCH IT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZŁAP GO"
+          }
+        }
+      }
+    },
+    "CAUGHT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZŁAPANE"
+          }
+        }
+      }
+    },
+    "CAUGHT · %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZŁAPANY · %@"
+          }
+        }
+      }
+    },
+    "COMING": {
+      "comment": "Short: vehicle heading towards you",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JEDZIE"
+          }
+        }
+      }
+    },
+    "COMING YOUR WAY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JEDZIE W TWOJĄ STRONĘ"
+          }
+        }
+      }
+    },
+    "COMMON": {
+      "comment": "Rarity tier",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "POSPOLITY"
+          }
+        }
+      }
+    },
+    "CONFIRM": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "POTWIERDŹ"
+          }
+        }
+      }
+    },
+    "CONNECTING": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ŁĄCZENIE"
+          }
+        }
+      }
+    },
+    "CUTTING IT OUT…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WYCINANIE…"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anuluj"
+          }
+        }
+      }
+    },
+    "Catch": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złap"
+          }
+        }
+      }
+    },
+    "Catch a vehicle": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złap pojazd"
+          }
+        }
+      }
+    },
+    "Catch every bus and tram in Warsaw.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złap każdy autobus i tramwaj w Warszawie."
+          }
+        }
+      }
+    },
+    "Caught on %lld different lines": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Na %lld różnych liniach"
+          }
+        }
+      }
+    },
+    "Caught on its trial run — it's only in Warsaw for a few weeks. Nice timing.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złapany na jazdach testowych — jest w Warszawie tylko przez kilka tygodni. Dobre wyczucie czasu."
+          }
+        }
+      }
+    },
+    "Check now": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprawdź teraz"
+          }
+        }
+      }
+    },
+    "Checking…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprawdzanie…"
+          }
+        }
+      }
+    },
+    "Christmas spirit": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Magia świąt"
+          }
+        }
+      }
+    },
+    "Clear": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyczyść"
+          }
+        }
+      }
+    },
+    "Clear the filter": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyczyść filtr"
+          }
+        }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zamknij"
+          }
+        }
+      }
+    },
+    "Collector": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kolekcjoner"
+          }
+        }
+      }
+    },
+    "Complete set": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Komplet"
+          }
+        }
+      }
+    },
+    "Couldn't check: %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się sprawdzić: %@"
+          }
+        }
+      }
+    },
+    "Couldn't export: %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się wyeksportować: %@"
+          }
+        }
+      }
+    },
+    "Couldn't import: %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się zaimportować: %@"
+          }
+        }
+      }
+    },
+    "DATE": {
+      "comment": "Sort stickers by",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DATA"
+          }
+        }
+      }
+    },
+    "DAY STREAK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DNI Z RZĘDU"
+          }
+        }
+      }
+    },
+    "DEBUG": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DEBUG"
+          }
+        }
+      }
+    },
+    "DEPOTS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZAJEZDNIE"
+          }
+        }
+      }
+    },
+    "DRAG TO SPIN": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PRZECIĄGNIJ, BY OBRÓCIĆ"
+          }
+        }
+      }
+    },
+    "Debug": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Debugowanie"
+          }
+        }
+      }
+    },
+    "Debug mode": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tryb debugowania"
+          }
+        }
+      }
+    },
+    "Deep freeze": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siarczysty mróz"
+          }
+        }
+      }
+    },
+    "Delete": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń"
+          }
+        }
+      }
+    },
+    "Delete #%@ from your book?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usunąć #%@ z albumu?"
+          }
+        }
+      }
+    },
+    "Delete %lld shots": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Delete %lld shot"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Delete %lld shots"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Usuń %lld zdjęcia"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Usuń %lld zdjęć"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Usuń %lld zdjęcie"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Usuń %lld zdjęć"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Delete all %lld catches?": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Delete your %lld catch?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Delete all %lld catches?"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Usunąć wszystkie %lld złapane pojazdy?"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Usunąć wszystkie %lld złapanych pojazdów?"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Usunąć %lld złapany pojazd?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Usunąć wszystkie %lld złapanych pojazdów?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Delete all %lld sightings": {
+      "localizations": {
+        "pl": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Usuń wszystkie %lld obserwacje"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Usuń wszystkie %lld obserwacji"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Usuń %lld obserwację"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Usuń wszystkie %lld obserwacji"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Delete all catches": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń wszystkie złapane pojazdy"
+          }
+        }
+      }
+    },
+    "Delete all debug data?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usunąć wszystkie dane debugowania?"
+          }
+        }
+      }
+    },
+    "Delete debug data": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń dane debugowania"
+          }
+        }
+      }
+    },
+    "Delete everything in the book": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń cały album"
+          }
+        }
+      }
+    },
+    "Delete from book": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń z albumu"
+          }
+        }
+      }
+    },
+    "Delete it": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń"
+          }
+        }
+      }
+    },
+    "Delete sighting": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń obserwację"
+          }
+        }
+      }
+    },
+    "Delete this sighting?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usunąć tę obserwację?"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gotowe"
+          }
+        }
+      }
+    },
+    "Double life": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podwójne życie"
+          }
+        }
+      }
+    },
+    "Download fleet updates": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pobieraj aktualizacje taboru"
+          }
+        }
+      }
+    },
+    "Déjà vu": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déjà vu"
+          }
+        }
+      }
+    },
+    "EARNED": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZDOBYTA"
+          }
+        }
+      }
+    },
+    "EDIT DETAILS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EDYTUJ SZCZEGÓŁY"
+          }
+        }
+      }
+    },
+    "Earned, %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zdobyta, %@"
+          }
+        }
+      }
+    },
+    "Edit": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edytuj"
+          }
+        }
+      }
+    },
+    "Edit sighting": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edytuj obserwację"
+          }
+        }
+      }
+    },
+    "Every bus model at the depot": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Każdy model autobusu z tej zajezdni"
+          }
+        }
+      }
+    },
+    "Every bus running around here is already in your book.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Każdy autobus jeżdżący w okolicy masz już w albumie."
+          }
+        }
+      }
+    },
+    "Every district": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Każda dzielnica"
+          }
+        }
+      }
+    },
+    "Every model has a page and every vehicle a slot. Rarity goes by how many exist, so a legendary is one of a dozen or fewer. Badges come along the way.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Każdy model ma swoją stronę, a każdy pojazd — swoje miejsce. Rzadkość zależy od tego, ile ich jeździ: legendarnych jest najwyżej tuzin. Po drodze zdobywasz odznaki."
+          }
+        }
+      }
+    },
+    "Every operator": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Każdy przewoźnik"
+          }
+        }
+      }
+    },
+    "Every sighting, photo, sticker and hand-picked model goes. Shots already saved to your Photos stay. This can't be undone.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Znikną wszystkie obserwacje, zdjęcia, naklejki i ręcznie wybrane modele. Ujęcia zapisane już w Zdjęciach zostaną. Tego nie da się cofnąć."
+          }
+        }
+      }
+    },
+    "Every tram model at the depot": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Każdy model tramwaju z tej zajezdni"
+          }
+        }
+      }
+    },
+    "Every tram running around here is already in your book.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Każdy tramwaj jeżdżący w okolicy masz już w albumie."
+          }
+        }
+      }
+    },
+    "Every vehicle of one delivery batch": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystkie pojazdy z jednej dostawy"
+          }
+        }
+      }
+    },
+    "Every vehicle of one delivery. Closest: %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystkie pojazdy z jednej dostawy. Najbliżej: %@"
+          }
+        }
+      }
+    },
+    "Every vehicle of one model": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystkie pojazdy jednego modelu"
+          }
+        }
+      }
+    },
+    "Every vehicle of one model. Closest: %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystkie pojazdy jednego modelu. Najbliżej: %@"
+          }
+        }
+      }
+    },
+    "Every vehicle running around here is already in your book.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Każdy pojazd jeżdżący w okolicy masz już w albumie."
+          }
+        }
+      }
+    },
+    "Everything in that backup is already in your book.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystko z tej kopii masz już w albumie."
+          }
+        }
+      }
+    },
+    "Everything running around here is a model you have. Switch to ALL UNCAUGHT for more of them.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystko, co jeździ w okolicy, to modele, które już masz. Przełącz na WSZYSTKIE NIEZŁAPANE, żeby zobaczyć więcej."
+          }
+        }
+      }
+    },
+    "Explorer": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odkrywca"
+          }
+        }
+      }
+    },
+    "Export catches": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eksportuj album"
+          }
+        }
+      }
+    },
+    "FILTER": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FILTR"
+          }
+        }
+      }
+    },
+    "FIRST SEEN": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PIERWSZY RAZ"
+          }
+        }
+      }
+    },
+    "FLEET NUMBER": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NUMER TABOROWY"
+          }
+        }
+      }
+    },
+    "Fill the book, model by model.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wypełnij album, model po modelu."
+          }
+        }
+      }
+    },
+    "Filter": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtr"
+          }
+        }
+      }
+    },
+    "Filter the hunt": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtruj łowy"
+          }
+        }
+      }
+    },
+    "Filter, %lld picked": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtr, wybrano: %lld"
+          }
+        }
+      }
+    },
+    "Finding what's running…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szukam, co jeździ…"
+          }
+        }
+      }
+    },
+    "Fix number, model or line": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Popraw numer, model lub linię"
+          }
+        }
+      }
+    },
+    "Fix the catch": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Popraw"
+          }
+        }
+      }
+    },
+    "Fleet data": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dane o taborze"
+          }
+        }
+      }
+    },
+    "Fleet data couldn't be loaded. Check for an update, or reinstall TABOR.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się wczytać danych o taborze. Sprawdź aktualizacje albo zainstaluj TABOR ponownie."
+          }
+        }
+      }
+    },
+    "Fleet share": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kawałek taboru"
+          }
+        }
+      }
+    },
+    "Four seasons": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cztery pory roku"
+          }
+        }
+      }
+    },
+    "Fresh off the line": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prosto z fabryki"
+          }
+        }
+      }
+    },
+    "Front, side or back, with its fleet number somewhere in view. TABOR finds the number, knows the model and cuts the vehicle out as your sticker. The rarer it is, the bigger the reveal.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przód, bok albo tył — byle numer taborowy był gdzieś widoczny. TABOR odczyta numer, rozpozna model i wytnie pojazd jako twoją naklejkę. Im rzadszy, tym efektowniej się odsłania."
+          }
+        }
+      }
+    },
+    "Full batch": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pełna dostawa"
+          }
+        }
+      }
+    },
+    "GEOTAG": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LOKALIZACJA"
+          }
+        }
+      }
+    },
+    "GEOTAG A CATCH TO START YOUR MAP": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZŁAP COŚ Z LOKALIZACJĄ, BY ZACZĄĆ MAPĘ"
+          }
+        }
+      }
+    },
+    "GET THE WHOLE VEHICLE IN FRAME": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZRÓB ZDJĘCIE CAŁEGO POJAZDU"
+          }
+        }
+      }
+    },
+    "GOING PAST": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PRZEJEŻDŻA OBOK"
+          }
+        }
+      }
+    },
+    "GOLD": {
+      "comment": "Rarity tier",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZŁOTY"
+          }
+        }
+      }
+    },
+    "GOT IT — HIT THE SHUTTER": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MAM — NACIŚNIJ MIGAWKĘ"
+          }
+        }
+      }
+    },
+    "Geotag catches": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapisuj lokalizację"
+          }
+        }
+      }
+    },
+    "Get the whole bus in the shot.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmieść cały autobus w kadrze."
+          }
+        }
+      }
+    },
+    "HUNT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HUNT"
+          }
+        }
+      }
+    },
+    "HUNT and the camera use Warsaw's open-data feed of live bus and tram positions (api.um.warszawa.pl) — only while they're on screen. Leave the key empty to use the one built into the app; get your own free key at api.um.warszawa.pl.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HUNT i aparat korzystają z otwartych danych Warszawy o pozycjach autobusów i tramwajów na żywo (api.um.warszawa.pl) — tylko gdy są na ekranie. Zostaw klucz pusty, by użyć wbudowanego; własny darmowy klucz dostaniesz na api.um.warszawa.pl."
+          }
+        }
+      }
+    },
+    "HUNT maps every bus and tram running near you that isn't in your book yet, and which way it's going. Location is only used while TABOR is open.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HUNT pokazuje na mapie każdy pobliski autobus i tramwaj, którego nie masz jeszcze w albumie, i dokąd jedzie. Lokalizacja jest używana tylko, gdy TABOR jest otwarty."
+          }
+        }
+      }
+    },
+    "HUNT needs a free api.um.warszawa.pl key. Add yours in ME › Settings › Live data.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HUNT potrzebuje darmowego klucza api.um.warszawa.pl. Dodaj go w ME › Ustawienia › Dane na żywo."
+          }
+        }
+      }
+    },
+    "Happy New Year": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szczęśliwego Nowego Roku"
+          }
+        }
+      }
+    },
+    "Haptics": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wibracje"
+          }
+        }
+      }
+    },
+    "Haptics lab": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haptics lab"
+          }
+        }
+      }
+    },
+    "Heatwave": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upał"
+          }
+        }
+      }
+    },
+    "Hold to stick it in the book": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przytrzymaj, by wkleić do albumu"
+          }
+        }
+      }
+    },
+    "I caught %@ #%@ in %@ on %@!": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "I caught %1$@ #%2$@ in %3$@ on %4$@!"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złapane: %1$@ #%2$@ · %3$@ · %4$@!"
+          }
+        }
+      }
+    },
+    "I caught %@ #%@ in %@ today!": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "I caught %1$@ #%2$@ in %3$@ today!"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złapane dziś: %1$@ #%2$@ · %3$@!"
+          }
+        }
+      }
+    },
+    "I caught %@ #%@ on %@!": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "I caught %1$@ #%2$@ on %3$@!"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złapane: %1$@ #%2$@ · %3$@!"
+          }
+        }
+      }
+    },
+    "I caught %@ #%@ today!": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "I caught %1$@ #%2$@ today!"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złapane dziś: %1$@ #%2$@!"
+          }
+        }
+      }
+    },
+    "IMPORT A PHOTO INSTEAD": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZAMIAST TEGO WCZYTAJ ZDJĘCIE"
+          }
+        }
+      }
+    },
+    "IMPORT A SHOT TO CATCH IT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WCZYTAJ ZDJĘCIE, BY ZŁAPAĆ"
+          }
+        }
+      }
+    },
+    "IN THE ZTM DATABASE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W BAZIE ZTM"
+          }
+        }
+      }
+    },
+    "Import a backup…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importuj kopię…"
+          }
+        }
+      }
+    },
+    "Import a photo": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wczytaj zdjęcie"
+          }
+        }
+      }
+    },
+    "It's your only sighting of %@, so it leaves your book. Its photo and sticker go too.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To twoja jedyna obserwacja #%@, więc zniknie z albumu. Razem ze zdjęciem i naklejką."
+          }
+        }
+      }
+    },
+    "Its photo and sticker go too. Shots already saved to your Photos stay.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zdjęcie i naklejka też znikną. Ujęcia zapisane już w Zdjęciach zostaną."
+          }
+        }
+      }
+    },
+    "Its photos and sticker go too; the rest of your book stays. Shots saved to Photos stay. This can't be undone.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zdjęcia i naklejka też znikną; reszta albumu zostaje. Ujęcia zapisane w Zdjęciach zostaną. Tego nie da się cofnąć."
+          }
+        }
+      }
+    },
+    "Keep catching. This one shows itself the moment you earn it.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Łap dalej. Ta odkryje się, gdy tylko ją zdobędziesz."
+          }
+        }
+      }
+    },
+    "Keep holding…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trzymaj…"
+          }
+        }
+      }
+    },
+    "Key": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klucz"
+          }
+        }
+      }
+    },
+    "LEGENDARY": {
+      "comment": "Rarity tier",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LEGENDARNY"
+          }
+        }
+      }
+    },
+    "LET'S GO": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZACZYNAMY"
+          }
+        }
+      }
+    },
+    "LEVEL %lld OF %lld · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "LEVEL %1$lld OF %2$lld · %3$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "POZIOM %1$lld Z %2$lld · %3$@"
+          }
+        }
+      }
+    },
+    "LEVEL UP · %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWY POZIOM · %@"
+          }
+        }
+      }
+    },
+    "LINE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LINIA"
+          }
+        }
+      }
+    },
+    "LINE %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LINIA %@"
+          }
+        }
+      }
+    },
+    "LIVE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NA ŻYWO"
+          }
+        }
+      }
+    },
+    "LOCKED": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZABLOKOWANA"
+          }
+        }
+      }
+    },
+    "Line hopper": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Łowca linii"
+          }
+        }
+      }
+    },
+    "Live data": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dane na żywo"
+          }
+        }
+      }
+    },
+    "Live positions are off": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pozycje na żywo są wyłączone"
+          }
+        }
+      }
+    },
+    "Location is off": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokalizacja jest wyłączona"
+          }
+        }
+      }
+    },
+    "Locked": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zablokowana"
+          }
+        }
+      }
+    },
+    "Logged shots": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapisane ujęcia"
+          }
+        }
+      }
+    },
+    "MATCH · %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PASUJE · %@"
+          }
+        }
+      }
+    },
+    "MATCHING YOUR FILTER": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PASUJĄCE DO FILTRA"
+          }
+        }
+      }
+    },
+    "MAXED": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MAKSIMUM"
+          }
+        }
+      }
+    },
+    "ME": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ME"
+          }
+        }
+      }
+    },
+    "MISSING": {
+      "comment": "Book filter: models you have under a quarter of",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BRAKI"
+          }
+        }
+      }
+    },
+    "MODEL": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MODEL"
+          }
+        }
+      }
+    },
+    "MODEL YOU HAVE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MODEL, KTÓRY MASZ"
+          }
+        }
+      }
+    },
+    "MODELS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MODELE"
+          }
+        }
+      }
+    },
+    "MOVING AWAY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ODDALA SIĘ"
+          }
+        }
+      }
+    },
+    "Model not in the fleet data": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelu nie ma w danych o taborze"
+          }
+        }
+      }
+    },
+    "Models": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modele"
+          }
+        }
+      }
+    },
+    "NEW": {
+      "comment": "Reveal tile: a model new to you\nVehicle age: built this year",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWY"
+          }
+        }
+      }
+    },
+    "NEW BUS MODELS NEARBY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWE MODELE AUTOBUSÓW W POBLIŻU"
+          }
+        }
+      }
+    },
+    "NEW BUS · YOUR %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWY AUTOBUS · TWÓJ %@"
+          }
+        }
+      }
+    },
+    "NEW MODEL": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWY MODEL"
+          }
+        }
+      }
+    },
+    "NEW MODELS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWE MODELE"
+          }
+        }
+      }
+    },
+    "NEW MODELS NEARBY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWE MODELE W POBLIŻU"
+          }
+        }
+      }
+    },
+    "NEW SPECIES · YOUR %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWY GATUNEK · TWÓJ %@"
+          }
+        }
+      }
+    },
+    "NEW TRAM MODELS NEARBY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWE MODELE TRAMWAJÓW W POBLIŻU"
+          }
+        }
+      }
+    },
+    "NEW TRAM · YOUR %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWY TRAMWAJ · TWÓJ %@"
+          }
+        }
+      }
+    },
+    "NEXT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DALEJ"
+          }
+        }
+      }
+    },
+    "NO CAMERA ON THIS DEVICE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TO URZĄDZENIE NIE MA APARATU"
+          }
+        }
+      }
+    },
+    "NO KEY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BRAK KLUCZA"
+          }
+        }
+      }
+    },
+    "NO MODEL MATCHES “%@”": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ŻADEN MODEL NIE PASUJE DO „%@”"
+          }
+        }
+      }
+    },
+    "NO PHOTO YET": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JESZCZE BEZ ZDJĘCIA"
+          }
+        }
+      }
+    },
+    "NONE OUT NOW": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TERAZ ŻADEN NIE JEŹDZI"
+          }
+        }
+      }
+    },
+    "NOT CAUGHT YET — GO FIND IT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JESZCZE NIEZŁAPANY — IDŹ GO SZUKAĆ"
+          }
+        }
+      }
+    },
+    "NOT IN THE ZTM DATABASE · PICK THE MODEL AFTER": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NIE MA W BAZIE ZTM · WYBIERZESZ MODEL PO ZDJĘCIU"
+          }
+        }
+      }
+    },
+    "NOT IN THE ZTM DATABASE — PICK THE MODEL YOURSELF": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NIE MA W BAZIE ZTM — WYBIERZ MODEL SAMODZIELNIE"
+          }
+        }
+      }
+    },
+    "NOT IN ZTM DATABASE · ADDED BY YOU": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SPOZA BAZY ZTM · DODANE PRZEZ CIEBIE"
+          }
+        }
+      }
+    },
+    "NOTHING ELSE YET — GO FIND IT AGAIN": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NA RAZIE TO WSZYSTKO — ZNAJDŹ GO ZNOWU"
+          }
+        }
+      }
+    },
+    "NOTHING ON THE SHELF YET": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PÓŁKA JEST JESZCZE PUSTA"
+          }
+        }
+      }
+    },
+    "NUMBER": {
+      "comment": "Sort stickers by",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NUMER"
+          }
+        }
+      }
+    },
+    "NUMBER NEEDED": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "POTRZEBNY NUMER"
+          }
+        }
+      }
+    },
+    "NUMBER NOT READ": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NIE ODCZYTANO NUMERU"
+          }
+        }
+      }
+    },
+    "New deliveries show up without an app update: TABOR checks GitHub for a fresher ZTM snapshot once a day.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nowe dostawy pojawiają się bez aktualizacji aplikacji: raz dziennie TABOR sprawdza na GitHubie, czy jest nowszy stan bazy ZTM."
+          }
+        }
+      }
+    },
+    "No key": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak klucza"
+          }
+        }
+      }
+    },
+    "No new bus models within 3 km": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak nowych modeli autobusów w promieniu 3 km"
+          }
+        }
+      }
+    },
+    "No new models within 3 km": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak nowych modeli w promieniu 3 km"
+          }
+        }
+      }
+    },
+    "No new tram models within 3 km": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak nowych modeli tramwajów w promieniu 3 km"
+          }
+        }
+      }
+    },
+    "No uncaught buses within 3 km": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak niezłapanych autobusów w promieniu 3 km"
+          }
+        }
+      }
+    },
+    "No uncaught trams within 3 km": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak niezłapanych tramwajów w promieniu 3 km"
+          }
+        }
+      }
+    },
+    "No uncaught vehicles within 3 km": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak niezłapanych pojazdów w promieniu 3 km"
+          }
+        }
+      }
+    },
+    "None": {
+      "comment": "No API key",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak"
+          }
+        }
+      }
+    },
+    "None of it is a new model for you. Switch to ALL UNCAUGHT, or widen the filter.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Żaden z nich nie jest dla ciebie nowym modelem. Przełącz na WSZYSTKIE NIEZŁAPANE albo poszerz filtr."
+          }
+        }
+      }
+    },
+    "Not in your book yet — catching it opens a new page.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jeszcze go nie masz — złapanie otworzy nową stronę albumu."
+          }
+        }
+      }
+    },
+    "Not now": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie teraz"
+          }
+        }
+      }
+    },
+    "Nothing on your filter that you haven't caught is running right now. It shows up here the moment one is.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nic niezłapanego z twojego filtra teraz nie jeździ. Pojawi się tu, gdy tylko wyjedzie."
+          }
+        }
+      }
+    },
+    "Nothing out that matches": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nic pasującego nie jeździ"
+          }
+        }
+      }
+    },
+    "OF FLEET": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TABORU"
+          }
+        }
+      }
+    },
+    "OFFLINE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BEZ SIECI"
+          }
+        }
+      }
+    },
+    "OK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "ON TEST": {
+      "comment": "Rarity tier: vehicles on a trial run",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NA TESTACH"
+          }
+        }
+      }
+    },
+    "ON TRIAL FOR A FEW WEEKS · NOT PART OF THE FLEET %": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NA TESTACH PRZEZ KILKA TYGODNI · NIE LICZY SIĘ DO % TABORU"
+          }
+        }
+      }
+    },
+    "OPEN MAP": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OTWÓRZ MAPĘ"
+          }
+        }
+      }
+    },
+    "Off": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wył."
+          }
+        }
+      }
+    },
+    "Old friend": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stary znajomy"
+          }
+        }
+      }
+    },
+    "On": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wł."
+          }
+        }
+      }
+    },
+    "One more — %@ — and every %@ is yours.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "One more — %1$@ — and every %2$@ is yours."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jeszcze jeden — #%1$@ — i masz wszystkie pojazdy modelu %2$@."
+          }
+        }
+      }
+    },
+    "One more — %@ — and the %@ batch is done.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "One more — %1$@ — and the %2$@ batch is done."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jeszcze jeden — #%1$@ — i dostawa %2$@ jest kompletna."
+          }
+        }
+      }
+    },
+    "One of every GOLD model": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Po jednym z każdego ZŁOTEGO modelu"
+          }
+        }
+      }
+    },
+    "One of every LEGENDARY model": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Po jednym z każdego LEGENDARNEGO modelu"
+          }
+        }
+      }
+    },
+    "One of every RARE model": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Po jednym z każdego RZADKIEGO modelu"
+          }
+        }
+      }
+    },
+    "Open %@ in the book": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz %@ w albumie"
+          }
+        }
+      }
+    },
+    "Open Settings": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz Ustawienia"
+          }
+        }
+      }
+    },
+    "Open the camera to catch it": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz aparat, by go złapać"
+          }
+        }
+      }
+    },
+    "Opens TABOR straight to the camera.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwiera TABOR od razu na aparacie."
+          }
+        }
+      }
+    },
+    "PASSING": {
+      "comment": "Short: vehicle going past you",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MIJA"
+          }
+        }
+      }
+    },
+    "PICK THE MODEL": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WYBIERZ MODEL"
+          }
+        }
+      }
+    },
+    "PLATINUM": {
+      "comment": "Badge medal",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PLATYNA"
+          }
+        }
+      }
+    },
+    "Packing…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pakowanie…"
+          }
+        }
+      }
+    },
+    "Palindrome": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Palindrom"
+          }
+        }
+      }
+    },
+    "Paste your key": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wklej swój klucz"
+          }
+        }
+      }
+    },
+    "Photo: J2 kolej, CC BY-SA 4.0, via Wikimedia Commons": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zdjęcie: J2 kolej, CC BY-SA 4.0, Wikimedia Commons"
+          }
+        }
+      }
+    },
+    "Photographer": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fotograf"
+          }
+        }
+      }
+    },
+    "Pick the model": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wybierz model"
+          }
+        }
+      }
+    },
+    "RARE": {
+      "comment": "Rarity tier",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RZADKI"
+          }
+        }
+      }
+    },
+    "RARITY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RZADKOŚĆ"
+          }
+        }
+      }
+    },
+    "READ": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ODCZYT"
+          }
+        }
+      }
+    },
+    "READ IT OFF THE FRONT, SIDE OR BACK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PRZEPISZ GO Z PRZODU, BOKU LUB TYŁU"
+          }
+        }
+      }
+    },
+    "READING THE NUMBER…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ODCZYTUJĘ NUMER…"
+          }
+        }
+      }
+    },
+    "RETAKE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PONÓW"
+          }
+        }
+      }
+    },
+    "RETRYING": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PONAWIAM"
+          }
+        }
+      }
+    },
+    "Rain or shine": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deszcz czy słońce"
+          }
+        }
+      }
+    },
+    "Rainbow day": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tęczowy dzień"
+          }
+        }
+      }
+    },
+    "Remove %@ from the filter": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń %@ z filtra"
+          }
+        }
+      }
+    },
+    "Round number": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okrągły numer"
+          }
+        }
+      }
+    },
+    "SAVE TO PHOTOS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZAPIS W ZDJĘCIACH"
+          }
+        }
+      }
+    },
+    "SECRET": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SEKRETNA"
+          }
+        }
+      }
+    },
+    "SECRET BADGE FOUND": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZNALEZIONO SEKRETNĄ ODZNAKĘ"
+          }
+        }
+      }
+    },
+    "SEEN AGAIN": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WIDZIANY PONOWNIE"
+          }
+        }
+      }
+    },
+    "SEEN AGAIN · SIGHTING #%lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WIDZIANY PONOWNIE · OBSERWACJA NR %lld"
+          }
+        }
+      }
+    },
+    "SEEN ON LINES": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WIDZIANY NA LINIACH"
+          }
+        }
+      }
+    },
+    "SETTINGS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "USTAWIENIA"
+          }
+        }
+      }
+    },
+    "SHARE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UDOSTĘPNIJ"
+          }
+        }
+      }
+    },
+    "SHOT": {
+      "comment": "Reveal tile: the date an imported photo was taken",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZDJĘCIE"
+          }
+        }
+      }
+    },
+    "SHOW ALL %lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "POKAŻ WSZYSTKIE (%lld)"
+          }
+        }
+      }
+    },
+    "SHOW FEWER": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "POKAŻ MNIEJ"
+          }
+        }
+      }
+    },
+    "SILVER": {
+      "comment": "Badge medal",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SREBRO"
+          }
+        }
+      }
+    },
+    "SKIP": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "POMIŃ"
+          }
+        }
+      }
+    },
+    "SOMETHING ELSE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "COŚ INNEGO"
+          }
+        }
+      }
+    },
+    "SORT: %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SORTUJ: %@"
+          }
+        }
+      }
+    },
+    "SPOTTING": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SPOTTING"
+          }
+        }
+      }
+    },
+    "START CATCHING": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZACZNIJ ŁAPAĆ"
+          }
+        }
+      }
+    },
+    "STOPPED": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "STOI"
+          }
+        }
+      }
+    },
+    "STREAK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SERIA"
+          }
+        }
+      }
+    },
+    "SWIPE TO EDIT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PRZESUŃ, BY EDYTOWAĆ"
+          }
+        }
+      }
+    },
+    "Save catches to Photos": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapisuj ujęcia w Zdjęciach"
+          }
+        }
+      }
+    },
+    "Saves every shot — failed reads and retakes included — with what the OCR and sticker cutter saw. Also in Files › On My iPhone › TABOR › Debug.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapisuje każde ujęcie — także nieudane odczyty i powtórki — z tym, co widziały OCR i wycinanie naklejek. Także w Pliki › Na moim iPhonie › TABOR › Debug."
+          }
+        }
+      }
+    },
+    "Search models": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szukaj modeli"
+          }
+        }
+      }
+    },
+    "Secret": {
+      "comment": "A secret badge's name until earned",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sekret"
+          }
+        }
+      }
+    },
+    "Secret badge": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sekretna odznaka"
+          }
+        }
+      }
+    },
+    "See what you haven't caught, live.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zobacz na żywo, czego jeszcze nie masz."
+          }
+        }
+      }
+    },
+    "Seen it before — that's sighting #%lld of %@. It still counts toward your streak.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Seen it before — that's sighting #%1$lld of %2$@. It still counts toward your streak."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Już go masz — to twoja %1$lld. obserwacja #%2$@. Do serii i tak się liczy."
+          }
+        }
+      }
+    },
+    "Settings": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ustawienia"
+          }
+        }
+      }
+    },
+    "Share as ZIP": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Udostępnij jako ZIP"
+          }
+        }
+      }
+    },
+    "Show the intro again": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż wprowadzenie ponownie"
+          }
+        }
+      }
+    },
+    "Snap one and it becomes a sticker in your book. Some models run by the hundred; a few, only a handful. %@ vehicles to find.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zrób zdjęcie, a pojazd trafi do twojego albumu jako naklejka. Niektórych modeli jeżdżą setki, innych ledwie kilka sztuk. Pojazdów do znalezienia: %@."
+          }
+        }
+      }
+    },
+    "Snapshot from %@ downloaded — it's used next time you open TABOR.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pobrano stan z %@ — zadziała przy następnym otwarciu TABORU."
+          }
+        }
+      }
+    },
+    "Snow spotter": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Śnieżny spotter"
+          }
+        }
+      }
+    },
+    "Something broken, or a bus it got wrong? Take a screenshot and tap Share Beta Feedback, or just tell me.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coś nie działa albo autobus rozpoznany źle? Zrób zrzut ekranu i wyślij opinię przez TestFlight albo po prostu mi napisz."
+          }
+        }
+      }
+    },
+    "Status": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status"
+          }
+        }
+      }
+    },
+    "Stick it in the book": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wklej do albumu"
+          }
+        }
+      }
+    },
+    "Storm chaser": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Łowca burz"
+          }
+        }
+      }
+    },
+    "Suburbanite": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Za miastem"
+          }
+        }
+      }
+    },
+    "TABOR": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TABOR"
+          }
+        }
+      }
+    },
+    "TAP TO CATCH": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "STUKNIJ I ZŁAP"
+          }
+        }
+      }
+    },
+    "THIS NUMBER EXISTS ON": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TEN NUMER MAJĄ"
+          }
+        }
+      }
+    },
+    "TIMES SEEN": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ILE RAZY"
+          }
+        }
+      }
+    },
+    "TOURIST LINE 100 & EVENTS · SUMMER WEEKENDS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LINIA TURYSTYCZNA 100 I WYDARZENIA · LETNIE WEEKENDY"
+          }
+        }
+      }
+    },
+    "TOURIST LINES ON SUMMER WEEKENDS · NOT PART OF THE FLEET %": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LINIE TURYSTYCZNE W LETNIE WEEKENDY · NIE LICZY SIĘ DO % TABORU"
+          }
+        }
+      }
+    },
+    "TOURIST LINES T & 36 · SUMMER WEEKENDS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LINIE TURYSTYCZNE T I 36 · LETNIE WEEKENDY"
+          }
+        }
+      }
+    },
+    "TRAM": {
+      "comment": "Vehicle kind tag",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TRAMWAJ"
+          }
+        }
+      }
+    },
+    "TRAMS": {
+      "comment": "Book filter",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TRAMWAJE"
+          }
+        }
+      }
+    },
+    "TRAMS ONLY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TYLKO TRAMWAJE"
+          }
+        }
+      }
+    },
+    "TYPE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RODZAJ"
+          }
+        }
+      }
+    },
+    "Tap each one a few times. Tell Claude which feel wrong and what they remind you of — too buzzy, too weak, too long, late, like a phone ringing…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap each one a few times. Tell Claude which feel wrong and what they remind you of — too buzzy, too weak, too long, late, like a phone ringing…"
+          }
+        }
+      }
+    },
+    "Thank you for testing TABOR 💛": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dzięki za testowanie TABORU 💛"
+          }
+        }
+      }
+    },
+    "That completes the %@ batch of %@. %lld left in other batches.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "That completes the %1$@ batch of %2$@. %3$lld left in other batches."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dostawa %1$@ modelu %2$@ jest kompletna. W innych dostawach brakuje jeszcze %3$lld."
+          }
+        }
+      }
+    },
+    "That file isn't a TABOR backup.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten plik nie jest kopią zapasową TABORU."
+          }
+        }
+      }
+    },
+    "That's all of them.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To już wszystkie."
+          }
+        }
+      }
+    },
+    "That's every %@ in Warsaw. Model complete.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Masz wszystkie pojazdy modelu %@ w Warszawie. Model kompletny."
+          }
+        }
+      }
+    },
+    "The city's feed didn't answer.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Miejski serwer nie odpowiedział."
+          }
+        }
+      }
+    },
+    "The city's feed is down": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Miejskie dane nie działają"
+          }
+        }
+      }
+    },
+    "The city's feed sent something unreadable.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Miejski serwer przysłał coś nieczytelnego."
+          }
+        }
+      }
+    },
+    "The downloaded data was broken.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pobrane dane były uszkodzone."
+          }
+        }
+      }
+    },
+    "The only vehicle of its kind in Warsaw": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jedyny taki pojazd w Warszawie"
+          }
+        }
+      }
+    },
+    "The same vehicle seen 10 times": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten sam pojazd 10 razy"
+          }
+        }
+      }
+    },
+    "The same vehicle twice in one day": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten sam pojazd dwa razy jednego dnia"
+          }
+        }
+      }
+    },
+    "The server didn't answer.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serwer nie odpowiedział."
+          }
+        }
+      }
+    },
+    "This backup was made by a newer version of TABOR. Update the app first.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tę kopię zrobiła nowsza wersja TABORU. Najpierw zaktualizuj aplikację."
+          }
+        }
+      }
+    },
+    "Torch": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Latarka"
+          }
+        }
+      }
+    },
+    "Tram day": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dzień tramwajowy"
+          }
+        }
+      }
+    },
+    "Trams only, %lld out now": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tylko tramwaje, na trasie: %lld"
+          }
+        }
+      }
+    },
+    "Trophy shelf": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Półka z trofeami"
+          }
+        }
+      }
+    },
+    "Turn it on to see what's running around you — or pan the map to look anywhere.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Włącz ją, by zobaczyć, co jeździ wokół ciebie — albo przesuń mapę, by rozejrzeć się gdzie indziej."
+          }
+        }
+      }
+    },
+    "Twins": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bliźniaki"
+          }
+        }
+      }
+    },
+    "Two back-to-back fleet numbers of the same model": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dwa kolejne numery taborowe tego samego modelu"
+          }
+        }
+      }
+    },
+    "Two catches 15 km apart on the same day": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dwa pojazdy złapane jednego dnia 15 km od siebie"
+          }
+        }
+      }
+    },
+    "Type the number": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wpisz numer"
+          }
+        }
+      }
+    },
+    "UNCAUGHT BUSES NEARBY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NIEZŁAPANE AUTOBUSY W POBLIŻU"
+          }
+        }
+      }
+    },
+    "UNCAUGHT NEARBY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NIEZŁAPANE W POBLIŻU"
+          }
+        }
+      }
+    },
+    "UNCAUGHT TRAMS NEARBY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NIEZŁAPANE TRAMWAJE W POBLIŻU"
+          }
+        }
+      }
+    },
+    "UNCAUGHT, OUT NOW": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NIEZŁAPANE, TERAZ NA TRASIE"
+          }
+        }
+      }
+    },
+    "Unicorn": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jednorożec"
+          }
+        }
+      }
+    },
+    "Unknown model": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieznany model"
+          }
+        }
+      }
+    },
+    "Use your own key instead": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Użyj własnego klucza"
+          }
+        }
+      }
+    },
+    "VEHICLE AGE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WIEK POJAZDU"
+          }
+        }
+      }
+    },
+    "VINTAGE": {
+      "comment": "Rarity tier: tourist/museum vehicles",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZABYTKOWY"
+          }
+        }
+      }
+    },
+    "Vehicles": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pojazdy"
+          }
+        }
+      }
+    },
+    "Veteran": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weteran"
+          }
+        }
+      }
+    },
+    "WAKING THE CAMERA": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BUDZĘ APARAT"
+          }
+        }
+      }
+    },
+    "WARSAW ROLLING STOCK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WARSZAWSKI TABOR"
+          }
+        }
+      }
+    },
+    "WARSZAWA": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WARSZAWA"
+          }
+        }
+      }
+    },
+    "WATCHING WHICH WAY IT GOES…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SPRAWDZAM, DOKĄD JEDZIE…"
+          }
+        }
+      }
+    },
+    "WHERE YOU SPOT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GDZIE ŁAPIESZ"
+          }
+        }
+      }
+    },
+    "WRONG NUMBER?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZŁY NUMER?"
+          }
+        }
+      }
+    },
+    "Warsaw rolling stock": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warszawski tabor"
+          }
+        }
+      }
+    },
+    "Weather comes from Open-Meteo: TABOR sends each geotagged catch's time and rough location (to about 1 km). Nothing else leaves your phone.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pogoda pochodzi z Open-Meteo: TABOR wysyła czas i przybliżone miejsce (z dokładnością do ok. 1 km) każdego złapania z lokalizacją. Nic więcej nie opuszcza telefonu."
+          }
+        }
+      }
+    },
+    "Weather for badges": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pogoda do odznak"
+          }
+        }
+      }
+    },
+    "What did you catch?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Co udało się złapać?"
+          }
+        }
+      }
+    },
+    "Which model is it?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jaki to model?"
+          }
+        }
+      }
+    },
+    "Working (last call failed)": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Działa (ostatnie zapytanie nie powiodło się)"
+          }
+        }
+      }
+    },
+    "Working · %lld vehicles": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Working · %lld vehicle"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Working · %lld vehicles"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Działa · pojazdów: %lld"
+          }
+        }
+      }
+    },
+    "YEAR ?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ROCZNIK ?"
+          }
+        }
+      }
+    },
+    "YEAR UNKNOWN": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ROCZNIK NIEZNANY"
+          }
+        }
+      }
+    },
+    "YOUR": {
+      "comment": "Reveal tile: your Nth of this model",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TWÓJ"
+          }
+        }
+      }
+    },
+    "YOUR %lld RAREST OF %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "YOUR %1$lld RAREST OF %2$lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TWOJE NAJRZADSZE: %1$lld Z %2$lld"
+          }
+        }
+      }
+    },
+    "YOUR BOOK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TWÓJ ALBUM"
+          }
+        }
+      }
+    },
+    "YOUR RAREST CATCHES LIVE HERE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TU STANĄ TWOJE NAJRZADSZE ZDOBYCZE"
+          }
+        }
+      }
+    },
+    "YOUR SIGHTINGS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TWOJE OBSERWACJE"
+          }
+        }
+      }
+    },
+    "You have %lld of %lld. This one isn't among them.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "You have %1$lld of %2$lld. This one isn't among them."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Masz %lld z %lld. Tego jeszcze nie."
+          }
+        }
+      }
+    },
+    "You have the latest fleet data.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Masz najnowsze dane o taborze."
+          }
+        }
+      }
+    },
+    "You're offline.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak połączenia z internetem."
+          }
+        }
+      }
+    },
+    "Your book lives on this phone — deleting TABOR deletes it. Export a ZIP now and then: it keeps every sighting, photo and sticker. Importing only adds what's missing.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twój album jest tylko na tym telefonie — usunięcie TABORU usunie też album. Co jakiś czas eksportuj ZIP: zachowa każdą obserwację, zdjęcie i naklejkę. Import dodaje tylko to, czego brakuje."
+          }
+        }
+      }
+    },
+    "Your first %@. %lld more of them are out there.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Your first %1$@. %2$lld more of them are out there."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twój pierwszy pojazd modelu %1$@. Do złapania zostało jeszcze: %2$lld."
+          }
+        }
+      }
+    },
+    "Your own · …%@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Własny · …%@"
+          }
+        }
+      }
+    },
+    "ZTM no longer lists this model, so it has no page in the book. Your catches of it are still saved.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZTM nie ma już tego modelu w bazie, więc nie ma on strony w albumie. Twoje złapane pojazdy tego modelu są nadal zapisane."
+          }
+        }
+      }
+    },
+    "Zipping…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pakowanie…"
+          }
+        }
+      }
+    },
+    "Zoom %@ times": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Powiększenie %@ razy"
+          }
+        }
+      }
+    },
+    "and %lld more. See them all on your shelf.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "i jeszcze %lld. Wszystkie są na twojej półce."
+          }
+        }
+      }
+    },
+    "built %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "rocznik %@"
+          }
+        }
+      }
+    },
+    "caption.days.few": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "days"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dni"
+          }
+        }
+      }
+    },
+    "caption.days.many": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "days"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dni"
+          }
+        }
+      }
+    },
+    "caption.days.one": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "day"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dzień"
+          }
+        }
+      }
+    },
+    "caption.sightings.few": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "sightings"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "obserwacje"
+          }
+        }
+      }
+    },
+    "caption.sightings.many": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "sightings"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "obserwacji"
+          }
+        }
+      }
+    },
+    "caption.sightings.one": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "sighting"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "obserwacja"
+          }
+        }
+      }
+    },
+    "filter.bus": {
+      "comment": "Book filter: buses only",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "BUS"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AUTOBUSY"
+          }
+        }
+      }
+    },
+    "filter.tram": {
+      "comment": "Book filter: trams only",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "TRAM"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TRAMWAJE"
+          }
+        }
+      }
+    },
+    "line %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "linia %@"
+          }
+        }
+      }
+    },
+    "location off": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bez lokalizacji"
+          }
+        }
+      }
+    },
+    "medal.gold": {
+      "comment": "Badge medal (the tier GOLD is a separate key)",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "GOLD"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZŁOTO"
+          }
+        }
+      }
+    },
+    "mode.bus": {
+      "comment": "Camera mode, keep short",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "BUS"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BUS"
+          }
+        }
+      }
+    },
+    "mode.tram": {
+      "comment": "Camera mode, keep short",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "TRAM"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TRAM"
+          }
+        }
+      }
+    },
+    "not caught yet": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "jeszcze niezłapany"
+          }
+        }
+      }
+    },
+    "of %lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "z %lld"
+          }
+        }
+      }
+    },
+    "ordinal.nd": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "nd"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "."
+          }
+        }
+      }
+    },
+    "ordinal.rd": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "rd"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "."
+          }
+        }
+      }
+    },
+    "ordinal.st": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "st"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "."
+          }
+        }
+      }
+    },
+    "ordinal.th": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "th"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "."
+          }
+        }
+      }
+    },
+    "species": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "gatunek"
+          }
+        }
+      }
+    },
+    "thousands.separator": {
+      "comment": "Digit group separator in badge goals, e.g. 1,000",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": ","
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " "
+          }
+        }
+      }
+    },
+    "vehicle": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pojazd"
+          }
+        }
+      }
+    },
+    "year unknown": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "rocznik nieznany"
+          }
+        }
+      }
+    },
+    "×%lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "×%lld"
+          }
+        }
+      }
+    },
+    "—": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "—"
+          }
+        }
+      }
+    },
+    "← %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "← %@"
+          }
+        }
+      }
+    },
+    "← ALL MODELS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "← WSZYSTKIE MODELE"
+          }
+        }
+      }
+    },
+    "← BACK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "← WSTECZ"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

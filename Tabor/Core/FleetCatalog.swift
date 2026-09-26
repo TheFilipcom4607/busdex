@@ -29,6 +29,7 @@ public struct FleetCatalog: Sendable {
     public let models: [VehicleModel]
     public let depots: [Depot]
     public let source: String
+    public let sourcePl: String?
     /// ISO date of the ZTM snapshot, e.g. "2026-09-22".
     public let fetched: String?
     private let byId: [String: VehicleModel]
@@ -38,6 +39,7 @@ public struct FleetCatalog: Sendable {
         models = data.models
         depots = data.depots
         source = data.source
+        sourcePl = data.sourcePl
         fetched = data.fetched
         byId = Dictionary(uniqueKeysWithValues: data.models.map { ($0.id, $0) })
         var index: [Int: [VehicleModel]] = [:]
@@ -50,6 +52,9 @@ public struct FleetCatalog: Sendable {
     public init(json: Data) throws {
         self.init(data: try JSONDecoder().decode(FleetData.self, from: json))
     }
+
+    /// The credit line in the app's language.
+    public var sourceDisplay: String { AppLanguage.polish ? sourcePl ?? source : source }
 
     /// No fleet data at all: the app still opens, with an empty book.
     public static let empty = FleetCatalog(data: FleetData(source: "", fetched: nil, models: [], depots: []))

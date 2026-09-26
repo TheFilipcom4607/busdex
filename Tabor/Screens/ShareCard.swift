@@ -15,13 +15,20 @@ struct CatchShare {
         renderer.scale = 3 // 360×450 pt → 1080×1350 px, Instagram's portrait size.
         guard let image = renderer.uiImage else { return nil }
 
-        let name = model?.name ?? "vehicle"
+        let name = model?.name ?? String(localized: "vehicle")
+        let n = String(number)
         let emoji = model?.kind == .tram ? "🚋" : "🚌"
         let place = sighting.district ?? sighting.street
-        let when = Calendar.current.isDateInToday(sighting.date) ? "today"
-            : "on \(ShareCard.day.string(from: sighting.date))"
-        let message = "I caught \(name) #\(number)\(place.map { " in \($0)" } ?? "") \(when)! \(emoji) — TABOR"
-        return CatchShare(image: image, title: "\(name) #\(number)", message: message)
+        let today = Calendar.current.isDateInToday(sighting.date)
+        let day = ShareCard.day.string(from: sighting.date)
+        // Whole sentences, not glued pieces, so each language can order them its own way.
+        let caught = switch (place, today) {
+        case (let place?, true): String(localized: "I caught \(name) #\(n) in \(place) today!")
+        case (let place?, false): String(localized: "I caught \(name) #\(n) in \(place) on \(day)!")
+        case (nil, true): String(localized: "I caught \(name) #\(n) today!")
+        case (nil, false): String(localized: "I caught \(name) #\(n) on \(day)!")
+        }
+        return CatchShare(image: image, title: "\(name) #\(n)", message: "\(caught) \(emoji) — TABOR")
     }
 }
 
@@ -59,14 +66,14 @@ struct ShareCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 7) {
                     if let model {
-                        Mono(model.kind.rawValue, size: 9.5, weight: 700, spacing: 0.12, color: Palette.sub)
+                        Mono(model.kind.name, size: 9.5, weight: 700, spacing: 0.12, color: Palette.sub)
                             .padding(.vertical, 3)
                             .padding(.horizontal, 6)
                             .background(Palette.track, in: RoundedRectangle(cornerRadius: 4))
                         TierPill(tier: model.tier, fleet: model.fleet)
                     }
                 }
-                Text(model?.name ?? "Unknown model")
+                Text(model?.name ?? String(localized: "Unknown model"))
                     .font(TaborFont.grotesk(28, 700))
                     .em(-0.03, size: 28)
                     .foregroundStyle(Palette.ink)
@@ -153,7 +160,7 @@ struct ShareCard: View {
 
     /// "MOKOTÓW · RAKOWIECKA · LINE 117", whatever we know.
     private var whereLine: String? {
-        [sighting.district, sighting.street, sighting.line.map { "LINE \($0)" }]
+        [sighting.district, sighting.street, sighting.line.map { String(localized: "LINE \($0)") }]
             .compactMap { $0?.uppercased() }
             .joined(separator: " · ")
             .nonEmpty
@@ -161,7 +168,8 @@ struct ShareCard: View {
 
     static let day: DateFormatter = {
         let f = DateFormatter()
-        f.dateFormat = "d MMM yyyy"
+        f.locale = .app
+        f.setLocalizedDateFormatFromTemplate("dMMMyyyy")
         return f
     }()
 }

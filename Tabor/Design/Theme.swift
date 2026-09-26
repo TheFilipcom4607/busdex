@@ -42,6 +42,14 @@ enum Palette {
     static let hairline = Color.white.opacity(0.07)
 }
 
+extension Locale {
+    /// The language the app is showing (English or Polish), for dates and numbers, so a
+    /// Polish-region phone running the app in English doesn't get "26 wrz" in an English line.
+    static var app: Locale {
+        Locale(identifier: Bundle.main.preferredLocalizations.first ?? "en")
+    }
+}
+
 extension Color {
     init(hex: UInt32, opacity: Double = 1) {
         self.init(.sRGB,
@@ -113,15 +121,26 @@ extension View {
     func em(_ value: CGFloat, size: CGFloat) -> some View { tracking(value * size) }
 }
 
-/// Monospaced caps label — the design's most common text style.
+/// Monospaced caps label — the design's most common text style. Like `Text`, a literal
+/// is looked up in the string catalog and a `String` value is shown as it is.
 struct Mono: View {
-    let text: String
+    let text: Text
     var size: CGFloat = 12
     var weight: CGFloat = 400
     var spacing: CGFloat = 0.1
     var color: Color = Palette.dim
 
-    init(_ text: String, size: CGFloat = 12, weight: CGFloat = 400, spacing: CGFloat = 0.1, color: Color = Palette.dim) {
+    init(_ key: LocalizedStringKey, size: CGFloat = 12, weight: CGFloat = 400, spacing: CGFloat = 0.1, color: Color = Palette.dim) {
+        self.init(text: Text(key), size: size, weight: weight, spacing: spacing, color: color)
+    }
+
+    // Disfavoured, as on `Text`, so a bare literal picks the localized init above.
+    @_disfavoredOverload
+    init<S: StringProtocol>(_ string: S, size: CGFloat = 12, weight: CGFloat = 400, spacing: CGFloat = 0.1, color: Color = Palette.dim) {
+        self.init(text: Text(string), size: size, weight: weight, spacing: spacing, color: color)
+    }
+
+    init(text: Text, size: CGFloat, weight: CGFloat, spacing: CGFloat, color: Color) {
         self.text = text
         self.size = size
         self.weight = weight
@@ -130,7 +149,7 @@ struct Mono: View {
     }
 
     var body: some View {
-        Text(text)
+        text
             .font(TaborFont.mono(size, weight))
             .em(spacing, size: size)
             .foregroundStyle(color)

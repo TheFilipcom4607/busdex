@@ -3,6 +3,13 @@ import SwiftUI
 
 enum StickerSort: String {
     case number = "NUMBER", date = "DATE"
+
+    var name: String {
+        switch self {
+        case .number: String(localized: "NUMBER", comment: "Sort stickers by")
+        case .date: String(localized: "DATE", comment: "Sort stickers by")
+        }
+    }
 }
 
 struct ModelPageView: View {
@@ -34,7 +41,7 @@ struct ModelPageView: View {
                 Button { dismiss() } label: { Mono("← BACK", size: 12, spacing: 0.16) }
                     .buttonStyle(.plain)
             } trailing: { EmptyView() }
-            ScreenTitle(text: "Model not in the fleet data")
+            ScreenTitle(text: String(localized: "Model not in the fleet data"))
                 .padding(.top, 16)
                 .padding(.horizontal, 22)
             Text("ZTM no longer lists this model, so it has no page in the book. Your catches of it are still saved.")
@@ -60,7 +67,7 @@ struct ModelPageView: View {
                     Haptics.shared.tick()
                     withAnimation(.snappy) { sort = sort == .number ? .date : .number }
                 } label: {
-                    Mono("SORT: \(sort.rawValue)", size: 12)
+                    Mono("SORT: \(sort.name)", size: 12)
                 }
                 .buttonStyle(.plain)
             }
@@ -109,7 +116,7 @@ struct ModelPageView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(model.batches.enumerated()), id: \.offset) { i, batch in
-                        batchHeader(batch, have: batch.numbers.filter { ownedByNumber[$0] != nil }.count, trial: model.trial)
+                        batchHeader(batch, have: batch.numbers.filter { ownedByNumber[$0] != nil }.count, trial: model.trialDisplay)
                             .padding(.top, i == 0 ? 6 : 18)
                             .padding(.bottom, 10)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -163,7 +170,7 @@ struct ModelPageView: View {
         }
         .taborScreen()
         // String(n): a fleet number is an id, never "1,075".
-        .confirmationDialog(Text(verbatim: deleting.map { "Delete #\(String($0)) from your book?" } ?? ""),
+        .confirmationDialog(deleting.map { Text("Delete #\(String($0)) from your book?") } ?? Text(verbatim: ""),
                             isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
                             titleVisibility: .visible) {
             if let n = deleting {
@@ -213,7 +220,7 @@ struct ModelPageView: View {
 
     /// "2022 BATCH · R-3 MOKOTÓW · 4209—4282" with how much of it you have; green once complete.
     private func batchHeader(_ b: Batch, have: Int, trial: String?) -> some View {
-        let year = b.year.map { "\($0) BATCH" } ?? trial ?? "YEAR UNKNOWN"
+        let year = b.year.map { String(localized: "\(String($0)) BATCH") } ?? trial ?? String(localized: "YEAR UNKNOWN")
         let done = have == b.numbers.count
         return HStack(spacing: 8) {
             Mono([year, b.depotDisplay, b.rangeDisplay].filter { !$0.isEmpty }.joined(separator: " · "),

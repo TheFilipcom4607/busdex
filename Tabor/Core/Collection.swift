@@ -109,40 +109,53 @@ public enum Streak {
 }
 
 public enum Ordinal {
+    /// "3rd" in English, "3." in Polish: the suffix is looked up, so a language without
+    /// English's st/nd/rd just maps them all to one.
     public static func string(_ n: Int) -> String {
         let tens = (n / 10) % 10, ones = n % 10
-        let suffix = tens == 1 ? "th" : ones == 1 ? "st" : ones == 2 ? "nd" : ones == 3 ? "rd" : "th"
+        let suffix = tens == 1 ? String(localized: "ordinal.th", defaultValue: "th")
+            : ones == 1 ? String(localized: "ordinal.st", defaultValue: "st")
+            : ones == 2 ? String(localized: "ordinal.nd", defaultValue: "nd")
+            : ones == 3 ? String(localized: "ordinal.rd", defaultValue: "rd")
+            : String(localized: "ordinal.th", defaultValue: "th")
         return "\(n)\(suffix)"
     }
 }
 
 public enum RevealHint {
     /// The green hint line on the reveal screen. `owned` includes the new catch.
+    /// Model names are kept after the word "model" in the sentences, so languages that
+    /// decline nouns never have to bend a name like "Solaris Urbino 18".
     public static func text(model: VehicleModel, number: Int, owned: Set<Int>,
                             isNewVehicle: Bool, timesSeen: Int) -> String {
+        let name = model.name
         guard isNewVehicle else {
-            return "Seen it before — that's sighting #\(timesSeen) of \(number). It still counts toward your streak."
+            return String(localized: "Seen it before — that's sighting #\(timesSeen) of \(String(number)). It still counts toward your streak.")
         }
         if model.vintage {
             let left = model.numbers.filter { !owned.contains($0) }.count
-            let more = left == 0 ? "That's all of them." : "\(left) more to find."
-            return "A vintage \(model.kind.rawValue.lowercased()) — it only comes out on tourist lines. Nice timing. \(more)"
+            let intro = model.kind == .tram
+                ? String(localized: "A vintage tram — it only comes out on tourist lines. Nice timing.")
+                : String(localized: "A vintage bus — it only comes out on tourist lines. Nice timing.")
+            let more = left == 0 ? String(localized: "That's all of them.") : String(localized: "\(left) more to find.")
+            return "\(intro) \(more)"
         }
         if model.onTest {
-            return "Caught on its trial run — it's only in Warsaw for a few weeks. Nice timing."
+            return String(localized: "Caught on its trial run — it's only in Warsaw for a few weeks. Nice timing.")
         }
         let modelLeft = model.numbers.filter { !owned.contains($0) }
-        if modelLeft.isEmpty { return "That's every \(model.name) in Warsaw. Model complete." }
+        if modelLeft.isEmpty { return String(localized: "That's every \(name) in Warsaw. Model complete.") }
         if let batch = model.batch(containing: number), model.batches.count > 1, let year = batch.year {
             let left = batch.numbers.filter { !owned.contains($0) }
+            let y = String(year)
             switch left.count {
-            case 0: return "That completes the \(year) batch of \(model.name). \(modelLeft.count) left in other batches."
-            case 1: return "One more — \(left[0]) — and the \(year) batch is done."
-            default: return "\(left.count) left in the \(year) batch, \(modelLeft.count) \(model.name) to find overall."
+            case 0: return String(localized: "That completes the \(y) batch of \(name). \(modelLeft.count) left in other batches.")
+            case 1: return String(localized: "One more — \(String(left[0])) — and the \(y) batch is done.")
+            default: return String(localized: "\(left.count) left in the \(y) batch, \(modelLeft.count) \(name) to find overall.")
             }
         }
-        if modelLeft.count == 1 { return "One more — \(modelLeft[0]) — and every \(model.name) is yours." }
-        if owned.count == 1 { return "Your first \(model.name). \(modelLeft.count) more of them are out there." }
-        return "\(owned.count) of \(model.fleet) \(model.name) caught — \(modelLeft.count) still to find."
+        if modelLeft.count == 1 { return String(localized: "One more — \(String(modelLeft[0])) — and every \(name) is yours.") }
+        if owned.count == 1 { return String(localized: "Your first \(name). \(modelLeft.count) more of them are out there.") }
+        return String(localized: "\(owned.count) of \(model.fleet) \(name) caught — \(modelLeft.count) still to find.")
     }
 }
