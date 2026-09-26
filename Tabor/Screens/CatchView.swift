@@ -34,6 +34,8 @@ struct CatchView: View {
     @AppStorage("saveToGallery") private var saveToGallery = true
     @AppStorage("geotag") private var geotag = true
     @AppStorage(DebugRecord.enabledKey) private var debugMode = false
+    @AppStorage(CatchControlTip.seenKey) private var controlTipSeen = false
+    @State private var showControlHowTo = false
 
     private let camera = CameraModel.shared
     private let live = LiveFleetService.shared
@@ -180,6 +182,7 @@ struct CatchView: View {
                 pickerItem = nil
             }
         }
+        .sheet(isPresented: $showControlHowTo) { CatchControlHowTo() }
         .fullScreenCover(item: $draft, onDismiss: {
             camera.resetReading()
             if visible { Task { await camera.start() } }
@@ -283,6 +286,13 @@ struct CatchView: View {
                                     removal: .opacity))
             .id(n)
             .animation(.spring(response: 0.45, dampingFraction: 0.72), value: n)
+        } else if !controlTipSeen, sightings.count >= CatchControlTip.afterCatches {
+            CatchControlTipCard {
+                showControlHowTo = true
+                controlTipSeen = true
+            } dismiss: {
+                withAnimation(.snappy) { controlTipSeen = true }
+            }
         }
     }
 

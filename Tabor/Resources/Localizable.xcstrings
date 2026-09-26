@@ -1042,6 +1042,16 @@
         }
       }
     },
+    "Action button": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przycisk czynności"
+          }
+        }
+      }
+    },
     "Added %lld sightings to your book.": {
       "localizations": {
         "en": {
@@ -1243,6 +1253,16 @@
         }
       }
     },
+    "BUSES DON'T WAIT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AUTOBUS NIE CZEKA"
+          }
+        }
+      }
+    },
     "BUSES ONLY": {
       "localizations": {
         "pl": {
@@ -1329,6 +1349,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "CATCH"
+          }
+        }
+      }
+    },
+    "CATCH FASTER": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ŁAP SZYBCIEJ"
           }
         }
       }
@@ -1465,6 +1495,26 @@
         }
       }
     },
+    "Catch from the Lock Screen": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Łap z ekranu blokady"
+          }
+        }
+      }
+    },
+    "Catch straight from the Lock Screen": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Łap prosto z ekranu blokady"
+          }
+        }
+      }
+    },
     "Caught on %lld different lines": {
       "localizations": {
         "pl": {
@@ -1561,6 +1611,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Komplet"
+          }
+        }
+      }
+    },
+    "Control Center": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Centrum sterowania"
           }
         }
       }
@@ -1910,6 +1970,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Usunąć tę obserwację?"
+          }
+        }
+      }
+    },
+    "Dismiss": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zamknij"
           }
         }
       }
@@ -2816,6 +2886,16 @@
         }
       }
     },
+    "Lock Screen": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekran blokady"
+          }
+        }
+      }
+    },
     "Locked": {
       "localizations": {
         "pl": {
@@ -3421,6 +3501,16 @@
         }
       }
     },
+    "On iPhones that have one: Settings › Action Button.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Na iPhone’ach, które go mają: Ustawienia › Przycisk czynności."
+          }
+        }
+      }
+    },
     "One more — %@ — and every %@ is yours.": {
       "localizations": {
         "en": {
@@ -3479,6 +3569,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Po jednym z każdego RZADKIEGO modelu"
+          }
+        }
+      }
+    },
+    "One tap, camera on": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jedno stuknięcie i aparat gotowy"
           }
         }
       }
@@ -3948,6 +4048,16 @@
         }
       }
     },
+    "Search for TABOR and pick Catch a vehicle.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyszukaj TABOR i wybierz Złap pojazd."
+          }
+        }
+      }
+    },
     "Search models": {
       "localizations": {
         "pl": {
@@ -4115,12 +4225,42 @@
         }
       }
     },
+    "Swipe down from the top-right corner.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przesuń palcem w dół od prawego górnego rogu."
+          }
+        }
+      }
+    },
+    "Swipe to Controls, then choose Catch a vehicle.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przewiń do sterowania i wybierz Złap pojazd."
+          }
+        }
+      }
+    },
     "TABOR": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "TABOR"
+          }
+        }
+      }
+    },
+    "TABOR has a Catch button for your Lock Screen, Control Center and Action button. It opens straight to the camera, even from a locked phone.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TABOR ma przycisk Złap na ekran blokady, do centrum sterowania i pod przycisk czynności. Od razu otwiera aparat, nawet na zablokowanym telefonie."
           }
         }
       }
@@ -4227,12 +4367,32 @@
         }
       }
     },
+    "Tap + at the top left, then Add a Control.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stuknij + w lewym górnym rogu, a potem Dodaj element sterujący."
+          }
+        }
+      }
+    },
     "Tap each one a few times. Tell Claude which feel wrong and what they remind you of — too buzzy, too weak, too long, late, like a phone ringing…": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "Tap each one a few times. Tell Claude which feel wrong and what they remind you of — too buzzy, too weak, too long, late, like a phone ringing…"
+          }
+        }
+      }
+    },
+    "Tap one of the buttons at the bottom, or − to clear one first.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stuknij jeden z przycisków na dole albo najpierw zwolnij miejsce, stukając −."
           }
         }
       }
@@ -4389,6 +4549,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Latarka"
+          }
+        }
+      }
+    },
+    "Touch and hold the Lock Screen, then tap Customize.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przytrzymaj palec na ekranie blokady i stuknij Dostosuj."
           }
         }
       }

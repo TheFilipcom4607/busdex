@@ -294,6 +294,7 @@ struct SettingsSheet: View {
     @State private var backingUp = false
     @State private var importing = false
     @State private var backupMessage: String?
+    @State private var showControlHowTo = false
     @Query private var allSightings: [Sighting]
     @Query private var manual: [ManualAssignment]
     @Environment(\.modelContext) private var context
@@ -395,6 +396,7 @@ struct SettingsSheet: View {
                     }
                 }
                 Section {
+                    Button("Catch from the Lock Screen") { showControlHowTo = true }
                     Button("Show the intro again") { showIntro = true }
                 } footer: { betaNote }
             }
@@ -409,6 +411,7 @@ struct SettingsSheet: View {
         .onAppear { debugCount = DebugRecord.count }
         .sheet(item: $exportURL) { url in ShareSheet(items: [url]) }
         .fullScreenCover(isPresented: $showIntro) { OnboardingView { showIntro = false } }
+        .sheet(isPresented: $showControlHowTo) { CatchControlHowTo() }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.zip]) { result in
             if case .success(let url) = result { importBackup(url) }
         }

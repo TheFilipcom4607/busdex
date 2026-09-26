@@ -93,6 +93,8 @@ struct RootView: View {
         // The Lock Screen / Control Center control lands here.
         .onReceive(NotificationCenter.default.publisher(for: .taborOpenCatch)) { _ in
             router.tab = .catchTab
+            // They've found the control on their own: no need to tip them off about it.
+            UserDefaults.standard.set(true, forKey: CatchControlTip.seenKey)
         }
         .overlay(alignment: .top) {
             if let unlock = badges.current {
