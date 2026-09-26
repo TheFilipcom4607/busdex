@@ -5,6 +5,12 @@
       "comment": "Permission prompt",
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TABOR reads the fleet number off buses and trams you point it at."
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -17,6 +23,12 @@
       "comment": "Permission prompt",
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shows the buses and trams running near you on HUNT, and geotags your catches for your spotting map."
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -29,6 +41,12 @@
       "comment": "Permission prompt",
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save the full-resolution shot of each catch to your Photos."
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
