@@ -392,6 +392,7 @@ struct SettingsSheet: View {
                         Text("New deliveries show up without an app update: TABOR checks GitHub for a fresher ZTM snapshot once a day.")
                     }
                 }
+                Section {} footer: { betaNote }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -473,6 +474,24 @@ extension SettingsSheet {
 }
 
 extension SettingsSheet {
+    /// Signs off the bottom of Settings while TABOR is in beta, with the build to quote.
+    var betaNote: some View {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return VStack(spacing: 6) {
+            Text("Thank you for testing TABOR 💛")
+                .font(TaborFont.grotesk(15, 600))
+                .foregroundStyle(Palette.ink)
+            Text("Something broken, or a bus it got wrong? Take a screenshot and tap Share Beta Feedback, or just tell me.")
+                .multilineTextAlignment(.center)
+            Mono("BETA · \(version) (\(build))", size: 10, spacing: 0.12, color: Palette.faint)
+                .padding(.top, 4)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 8)
+    }
+
     func exportBackup() {
         backingUp = true
         let manifest = BackupService.manifest(sightings: allSightings, manual: manual)
