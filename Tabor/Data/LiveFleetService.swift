@@ -2,8 +2,8 @@ import CoreLocation
 import Foundation
 
 /// Live GPS for every ZTM bus and tram, from Warsaw's open-data API. Polls every 15 s while
-/// something on screen shows it (the HUNT map, the camera), and every 30 s while the app is
-/// merely open, so trails are already drawn when you get to HUNT. Never in the background.
+/// the HUNT map is up, and every 30 s otherwise (the camera, or the app merely open), so
+/// trails are already drawn when you get to HUNT. Never in the background.
 /// Without an API key everything live is quietly off.
 @Observable @MainActor
 final class LiveFleetService {
@@ -17,6 +17,9 @@ final class LiveFleetService {
     static let idleInterval: Duration = .seconds(30)
     /// The client the app registers while it's in the foreground, whatever the tab.
     static let appClient = "app"
+    /// Screens that want the fast rate. The camera only uses the feed to nudge OCR and fill
+    /// in the line, which 30 s old positions do fine; every poll keeps the radio awake.
+    static let fastClients: Set<String> = ["hunt"]
 
     enum Status: Equatable {
         case noKey, idle, loading, live
@@ -63,24 +66,22 @@ final class LiveFleetService {
 
     // MARK: - Who's watching
 
-    /// Whether a screen that shows live data is up (as opposed to just the app being open).
-    private var watching: Bool { clients.contains { $0 != Self.appClient } }
+    private var fast: Bool { !clients.isDisjoint(with: Self.fastClients) }
 
     /// The app client only keeps the feed (and trails) going; it doesn't ask for location.
     func start(_ client: String) {
-        let wasWatching = watching
         clients.insert(client)
         if client != Self.appClient { LocationService.shared.startUpdating("live-\(client)") }
         guard poller == nil else {
-            // A live screen opening mid-way through a slow wait gets a fresh snapshot now;
-            // the poller picks up the faster rate after its current sleep.
-            if watching, !wasWatching, fresh(maxAge: 15) == nil { Task { await refresh() } }
+            // A live screen opening mid-way through a slow wait gets a fresh snapshot now if
+            // it's due; the poller picks up the screen's rate after its current sleep.
+            if client != Self.appClient, fresh(maxAge: fast ? 15 : 30) == nil { Task { await refresh() } }
             return
         }
         poller = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.refresh()
-                let interval = self?.watching == true ? Self.interval : Self.idleInterval
+                let interval = self?.fast == true ? Self.interval : Self.idleInterval
                 try? await Task.sleep(for: interval)
             }
         }

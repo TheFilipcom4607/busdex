@@ -78,7 +78,8 @@ struct EmptySlot: View {
 /// Diagonal white sheen: CSS `gloss 4.2s` — translateX(-120% → 320%) over the first 55%.
 struct GlossSweep: View {
     var body: some View {
-        TimelineView(.animation) { ctx in
+        // 30 fps is smooth for a soft sheen and half the redraws on a 60 Hz screen.
+        TimelineView(.animation(minimumInterval: 1 / 30)) { ctx in
             let t = ctx.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 4.2) / 4.2
             let p = min(t / 0.55, 1)
             let eased = p < 0.5 ? 2 * p * p : 1 - pow(-2 * p + 2, 2) / 2

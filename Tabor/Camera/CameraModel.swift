@@ -38,7 +38,17 @@ final class CameraModel: NSObject, @unchecked Sendable {
     @ObservationIgnored private var _mode: CatchMode = .auto
     @ObservationIgnored private var voter = NumberVoter(window: 6, needed: 3)
     @ObservationIgnored private var lastOCR = Date.distantPast
+    /// When live OCR last saw a plausible number; until then it reads at the idle rate.
+    @ObservationIgnored private var lastCandidate = Date.distantPast
     @ObservationIgnored private var busy = false
+    /// Built once and reused frame after frame on the vision queue.
+    @ObservationIgnored private let textRequest: VNRecognizeTextRequest = {
+        let r = VNRecognizeTextRequest()
+        r.recognitionLevel = .fast
+        r.usesLanguageCorrection = false
+        r.minimumTextHeight = 0.02
+        return r
+    }()
     @ObservationIgnored private var configured = false
     @ObservationIgnored private var device: AVCaptureDevice?
     @ObservationIgnored private var photoContinuation: CheckedContinuation<Data?, Never>?
@@ -46,6 +56,13 @@ final class CameraModel: NSObject, @unchecked Sendable {
     @ObservationIgnored private var rotation: AVCaptureDevice.RotationCoordinator?
     @ObservationIgnored private var rotationObservation: NSKeyValueObservation?
     @ObservationIgnored private var _captureAngle: CGFloat = 90
+    @ObservationIgnored private var pressureObservation: NSKeyValueObservation?
+    /// The phone is running hot: fewer frames, fewer reads. Guarded by `lock`.
+    @ObservationIgnored private var _hot = false
+    @ObservationIgnored private var _pressure = "nominal"
+    /// The viewfinder and its brackets in screen points. Guarded by `lock`.
+    @ObservationIgnored private var _ocrFrame: (view: CGSize, brackets: CGRect)?
+    @ObservationIgnored private var _ocrInfo: String?
 
     @ObservationIgnored private var _lastFrame: [TextObservation] = []
     @ObservationIgnored private var _nearby: [NearbyVehicle] = []
@@ -62,6 +79,14 @@ final class CameraModel: NSObject, @unchecked Sendable {
     }
     /// Why the last `capture()` came back empty, if it did.
     var lastCaptureError: String? { lock.withLock { _lastCaptureError } }
+    /// Frame size and region the last live read used, plus the heat level (for debug mode).
+    var ocrInfo: String? { lock.withLock { _ocrInfo.map { "\($0) · pressure \(_pressure)" } } }
+
+    /// Held upright, live OCR reads only inside the brackets: the rest of the frame is
+    /// either cropped off screen or outside what you're aiming at, and reading it costs power.
+    func setOCRFrame(view: CGSize, brackets: CGRect) {
+        lock.withLock { _ocrFrame = (view, brackets) }
+    }
 
     // MARK: - Lifecycle
 
@@ -153,9 +178,36 @@ final class CameraModel: NSObject, @unchecked Sendable {
         }
         rotation = coordinator
 
+        // Apple's advice for a hot camera is fewer frames; the viewfinder stays usable at 15.
+        pressureObservation = cam.observe(\.systemPressureState, options: [.initial, .new]) { [weak self] d, _ in
+            let level = d.systemPressureState.level
+            self?.sessionQueue.async { self?.throttle(level) }
+        }
+
         device = cam
         configured = true
         return true
+    }
+
+    /// Called on sessionQueue.
+    private func throttle(_ level: AVCaptureDevice.SystemPressureState.Level) {
+        let hot = level == .serious || level == .critical || level == .shutdown
+        let changed = lock.withLock {
+            _pressure = level.rawValue
+            defer { _hot = hot }
+            return _hot != hot
+        }
+        guard changed, let d = device, (try? d.lockForConfiguration()) != nil else { return }
+        let fps: Int32 = 15
+        if hot, d.activeFormat.videoSupportedFrameRateRanges.contains(where: { $0.minFrameRate <= Double(fps) }) {
+            d.activeVideoMinFrameDuration = CMTime(value: 1, timescale: fps)
+            d.activeVideoMaxFrameDuration = CMTime(value: 1, timescale: fps)
+        } else {
+            // Invalid restores the format's default frame rate.
+            d.activeVideoMinFrameDuration = .invalid
+            d.activeVideoMaxFrameDuration = .invalid
+        }
+        d.unlockForConfiguration()
     }
 
     // MARK: - Controls
@@ -240,24 +292,42 @@ final class CameraModel: NSObject, @unchecked Sendable {
 
 extension CameraModel: AVCaptureVideoDataOutputSampleBufferDelegate {
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        // ~5 reads a second is plenty and keeps the phone cool.
+        // ~5 reads a second while numbers are in view; 2 when there's nothing to read
+        // (a wall, the pavement) or the phone is hot. Plenty either way, and far cooler.
         let now = Date()
-        guard !busy, now.timeIntervalSince(lastOCR) > 0.2,
+        let (angle, hot, frame) = lock.withLock { (_captureAngle, _hot, _ocrFrame) }
+        let active = !hot && now.timeIntervalSince(lastCandidate) < 2
+        guard !busy, now.timeIntervalSince(lastOCR) > (active ? 0.2 : 0.5),
               let pixels = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         busy = true
         lastOCR = now
         defer { busy = false }
 
-        let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .fast
-        request.usesLanguageCorrection = false
-        request.minimumTextHeight = 0.02
-        let handler = VNImageRequestHandler(cvPixelBuffer: pixels, orientation: .init(bufferAngle: captureAngle))
-        try? handler.perform([request])
+        // The buffer is the sensor's landscape; upright, its width runs down the screen.
+        let upright = CGSize(width: CVPixelBufferGetHeight(pixels), height: CVPixelBufferGetWidth(pixels))
+        var region = CGRect(x: 0, y: 0, width: 1, height: 1)
+        if angle == 90, let frame {
+            let b = frame.brackets
+            // A little slack past the brackets, like the still crop.
+            if let r = Viewfinder.region(of: b.insetBy(dx: -b.width * 0.06, dy: -b.height * 0.1),
+                                         in: frame.view, imageSize: upright) {
+                region = r
+            }
+        }
+        // Vision's region is bottom-left based.
+        textRequest.regionOfInterest = CGRect(x: region.minX, y: 1 - region.maxY, width: region.width, height: region.height)
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixels, orientation: .init(bufferAngle: angle))
+        try? handler.perform([textRequest])
 
-        let observations = TextReader.observations(from: request.results ?? [])
-        lock.withLock { _lastFrame = observations }
+        let observations = TextReader.observations(from: textRequest.results ?? [], scale: region.height)
+        let info = String(format: "%d×%d, read %.2f,%.2f %.2f×%.2f", Int(upright.width), Int(upright.height),
+                          region.minX, region.minY, region.width, region.height)
+        lock.withLock {
+            _lastFrame = observations
+            _ocrInfo = info
+        }
         let candidates = NumberExtractor.candidates(in: observations, mode: mode, catalog: Fleet.catalog)
+        if !candidates.isEmpty { lastCandidate = now }
         let best = LiveHints.adjust(candidates, nearby: nearby).candidates.max { $0.score < $1.score }?.number
         let stable = voter.push(best)
         Task { @MainActor in
@@ -282,10 +352,12 @@ extension CameraModel: AVCapturePhotoCaptureDelegate {
 // MARK: - Still images
 
 enum TextReader {
-    static func observations(from results: [VNRecognizedTextObservation]) -> [TextObservation] {
+    /// `scale` turns heights relative to a region of interest back into heights relative to
+    /// the whole frame, which is what number scoring expects.
+    static func observations(from results: [VNRecognizedTextObservation], scale: CGFloat = 1) -> [TextObservation] {
         results.flatMap { obs in
             obs.topCandidates(2).map {
-                TextObservation(text: $0.string, confidence: $0.confidence, height: Double(obs.boundingBox.height))
+                TextObservation(text: $0.string, confidence: $0.confidence, height: Double(obs.boundingBox.height * scale))
             }
         }
     }

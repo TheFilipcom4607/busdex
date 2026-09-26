@@ -21,6 +21,10 @@ final class Haptics {
 
     private var engine: CHHapticEngine?
     private var engineRunning = false
+    /// Stops the engine once nothing has played for a while.
+    private var sleepTask: Task<Void, Never>?
+    /// Long enough to cover a catch from number lock to sticking it in the book.
+    private let awakeFor: Duration = .seconds(20)
     private let supported = CHHapticEngine.capabilitiesForHardware().supportsHaptics
     /// Last ratchet step played by the hold-to-stick gesture.
     private var holdStep = -1
@@ -33,38 +37,49 @@ final class Haptics {
         prepare()
     }
 
-    /// Keeps the engine warm: auto-shutdown adds a noticeable lag to the first tap after
-    /// a pause, which makes every haptic feel late. The system stops it in the background;
-    /// the next `play` restarts it.
+    /// A running engine keeps the Taptic Engine hardware powered, so it only runs around
+    /// the moments that use it: `warmUp()` before them (a cold start makes the first tap feel
+    /// late) and it sleeps again after `awakeFor` of quiet. The system also stops it in the
+    /// background; the next `play` restarts it.
     func prepare() {
         guard supported, engine == nil else { return }
         do {
             let e = try CHHapticEngine()
             e.playsHapticsOnly = true
-            e.isAutoShutdownEnabled = false
             e.resetHandler = { [weak self] in
-                Task { @MainActor in
-                    self?.engineRunning = false
-                    self?.startEngine()
-                }
+                Task { @MainActor in self?.engineRunning = false }
             }
             e.stoppedHandler = { [weak self] _ in
                 Task { @MainActor in self?.engineRunning = false }
             }
             engine = e
-            startEngine()
         } catch {
             engine = nil
         }
     }
 
+    /// Starts the engine ahead of a moment that will play something soon.
+    func warmUp() {
+        guard enabled else { return }
+        startEngine()
+    }
+
     private func startEngine() {
-        guard let engine, !engineRunning else { return }
-        do {
-            try engine.start()
-            engineRunning = true
-        } catch {
-            engineRunning = false
+        guard let engine else { return }
+        if !engineRunning {
+            do {
+                try engine.start()
+                engineRunning = true
+            } catch {
+                engineRunning = false
+            }
+        }
+        sleepTask?.cancel()
+        sleepTask = Task { [weak self, awakeFor] in
+            try? await Task.sleep(for: awakeFor)
+            guard !Task.isCancelled, let self, let engine = self.engine else { return }
+            engine.stop(completionHandler: nil)
+            self.engineRunning = false
         }
     }
 

@@ -144,6 +144,21 @@ private func sampleModel() -> VehicleModel {
     #expect(v.push(1974) == 1974)
 }
 
+@Test func viewfinderRegionMatchesAspectFill() {
+    // A 3:4 upright frame filling a phone screen: the sides are cut off.
+    let view = CGSize(width: 402, height: 874), image = CGSize(width: 3024, height: 4032)
+    let whole = Viewfinder.region(of: CGRect(origin: .zero, size: view), in: view, imageSize: image)!
+    #expect(abs(whole.minY) < 1e-9 && abs(whole.height - 1) < 1e-9)
+    #expect(abs(whole.width - 402.0 / (3024 * 874.0 / 4032)) < 1e-9)
+    #expect(abs(whole.midX - 0.5) < 1e-9)
+    // Brackets in the middle land in the middle, and anything past the edge is clipped.
+    let brackets = Viewfinder.region(of: CGRect(x: 20, y: 316, width: 362, height: 241), in: view, imageSize: image)!
+    #expect(abs(brackets.midX - 0.5) < 1e-9 && abs(brackets.midY - 436.5 / 874) < 1e-9)
+    let spill = Viewfinder.region(of: CGRect(x: -50, y: 800, width: 100, height: 200), in: view, imageSize: image)!
+    #expect(spill.maxY == 1)
+    #expect(Viewfinder.region(of: CGRect(x: 0, y: 900, width: 10, height: 10), in: view, imageSize: image) == nil)
+}
+
 // MARK: - Collection
 
 @Test func streakCountsConsecutiveDays() {

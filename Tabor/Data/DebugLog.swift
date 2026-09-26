@@ -77,6 +77,8 @@ final class DebugRecord: @unchecked Sendable {
         /// Raw text from the last live frame before the shutter.
         var liveFrame: [Obs]?
         var captureAngle: Double?
+        /// Live OCR's frame size, the region it read (normalised) and the camera's heat level.
+        var liveOCR: String?
         /// How the shot was cropped to the viewfinder brackets.
         var crop: String?
         var torch: Bool?

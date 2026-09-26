@@ -79,7 +79,10 @@ struct CatchView: View {
                     }
                 }
                 .clipped()
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { finderFrame = $0 }
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
+                    finderFrame = $0
+                    updateOCRFrame()
+                }
                 .ignoresSafeArea(edges: .top)
 
             LinearGradient(stops: [
@@ -106,7 +109,10 @@ struct CatchView: View {
                 ViewfinderBrackets(locked: camera.reading != nil)
                     .opacity(camera.status == .running ? 1 : 0)
                     .aspectRatio(3 / 2, contentMode: .fit)
-                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { bracketGlobal = $0 }
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
+                        bracketGlobal = $0
+                        updateOCRFrame()
+                    }
                     .padding(.horizontal, 20)
                     .allowsHitTesting(false)
 
@@ -127,7 +133,10 @@ struct CatchView: View {
                 .allowsHitTesting(false)
         }
         .background(Color.black.ignoresSafeArea())
-        .onAppear { visible = true }
+        .onAppear {
+            visible = true
+            Haptics.shared.warmUp()
+        }
         .task {
             camera.mode = mode
             live.start("camera")
@@ -242,7 +251,6 @@ struct CatchView: View {
                 Button { Task { await shoot() } } label: {
                 HStack(spacing: 9) {
                     Mono("READ", size: 9.5, weight: 700, spacing: 0.14, color: Palette.bg)
-                        .phaseAnimator([0.55, 1]) { v, p in v.opacity(p) } animation: { _ in .easeInOut(duration: 0.9) }
                     Text(String(n))
                         .font(TaborFont.mono(18, 700))
                         .em(0.04, size: 18)
@@ -318,11 +326,13 @@ struct CatchView: View {
         let locked = camera.reading != nil && toast == nil
         let text = toast ?? hint(match)
         return HStack(spacing: 7) {
-            Circle()
-                .fill(locked ? Palette.yellow : .white)
-                .frame(width: 5, height: 5)
+            // A symbol effect pulses on the render server; a SwiftUI loop here re-rendered
+            // the view every frame for as long as the camera was open.
+            Image(systemName: "circle.fill")
+                .font(.system(size: 5.5))
+                .foregroundStyle(locked ? Palette.yellow : .white)
                 .shadow(color: locked ? Palette.yellow : .clear, radius: 4)
-                .phaseAnimator([0.35, 1]) { v, p in v.opacity(locked ? 1 : p) } animation: { _ in .easeInOut(duration: 0.8) }
+                .symbolEffect(.pulse, isActive: !locked)
             Text(text)
                 .font(TaborFont.mono(10.5, 500))
                 .em(0.12, size: 10.5)
@@ -509,12 +519,20 @@ struct CatchView: View {
         live.nearby.first { $0.vehicle.number == n && $0.vehicle.kind == kind }?.vehicle.line.nonEmpty
     }
 
+    private func updateOCRFrame() {
+        guard finderFrame.width > 0, bracketGlobal.width > 0 else { return }
+        camera.setOCRFrame(view: finderFrame.size,
+                           brackets: bracketGlobal.offsetBy(dx: -finderFrame.minX, dy: -finderFrame.minY))
+    }
+
     // MARK: - Actions
 
     private func shoot() async {
         guard !capturing else { return }
         capturing = true
         defer { capturing = false }
+        // The feed polls slowly on this screen; top it up for the next shot if it's aging.
+        if live.fresh(maxAge: 20) == nil { Task { await live.refresh() } }
         Haptics.shared.shutter()
         withAnimation(.easeOut(duration: 0.06)) { flash = true }
         let live = camera.reading
@@ -522,12 +540,13 @@ struct CatchView: View {
         let data = await camera.capture()
         withAnimation(.easeOut(duration: 0.35)) { flash = false }
         let record = DebugRecord.begin(source: "camera", mode: mode)
-        let angle = Double(camera.captureAngle), torch = camera.torchOn
+        let angle = Double(camera.captureAngle), torch = camera.torchOn, ocrInfo = camera.ocrInfo
         record?.update {
             $0.liveReading = live
             $0.liveFrame = DebugRecord.obs(frame)
             $0.captureAngle = angle
             $0.torch = torch
+            $0.liveOCR = ocrInfo
         }
         guard var data else {
             let why = camera.lastCaptureError ?? "unknown"
@@ -649,7 +668,10 @@ private struct ShutterStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .onChange(of: configuration.isPressed) { _, down in pressed = down }
+            .onChange(of: configuration.isPressed) { _, down in
+                pressed = down
+                if down { Haptics.shared.warmUp() }
+            }
     }
 }
 

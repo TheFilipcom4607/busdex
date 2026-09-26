@@ -74,11 +74,8 @@ enum PhotoStore {
         ]
         guard let upright = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) else { return nil }
         let iw = CGFloat(upright.width), ih = CGFloat(upright.height)
-        let scale = max(viewSize.width / iw, viewSize.height / ih)
-        let offX = (viewSize.width - iw * scale) / 2, offY = (viewSize.height - ih * scale) / 2
-        let rect = CGRect(x: (frame.minX - offX) / scale, y: (frame.minY - offY) / scale,
-                          width: frame.width / scale, height: frame.height / scale)
-            .intersection(CGRect(x: 0, y: 0, width: iw, height: ih)).integral
+        guard let r = Viewfinder.region(of: frame, in: viewSize, imageSize: CGSize(width: iw, height: ih)) else { return nil }
+        let rect = CGRect(x: r.minX * iw, y: r.minY * ih, width: r.width * iw, height: r.height * ih).integral
         guard rect.width > 100, rect.height > 100, let cut = upright.cropping(to: rect) else { return nil }
 
         var meta = props

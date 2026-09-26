@@ -177,7 +177,10 @@ struct RevealView: View {
         }
         // One key, so fixing number and model together replays the reveal once.
         .onChange(of: "\(draft.number ?? -1)|\(draft.modelId ?? "")") { _, _ in edited() }
-        .task { await playReveal(run: 0) }
+        .task {
+            Haptics.shared.warmUp()
+            await playReveal(run: 0)
+        }
     }
 
     // MARK: - Stage
@@ -204,11 +207,12 @@ struct RevealView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(maxWidth: 330, maxHeight: 170)
+                        // Shadow before the sheen: under it, the blur was redrawn every frame.
+                        .shadow(color: .black.opacity(0.6), radius: 14, y: 16)
                         .overlay {
                             GlossSweep()
                                 .mask(Image(uiImage: img).resizable().scaledToFit())
                         }
-                        .shadow(color: .black.opacity(0.6), radius: 14, y: 16)
                         .overlay(alignment: .topTrailing) {
                             if isNew { newBadge }
                         }
