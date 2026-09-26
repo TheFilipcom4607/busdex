@@ -303,6 +303,7 @@
 				DEVELOPMENT_TEAM = 4FGGTM5838;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				CODE_SIGN_ENTITLEMENTS = Tabor/Tabor.entitlements;
 				INFOPLIST_FILE = Tabor/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TABOR;
@@ -340,6 +341,7 @@
 				DEVELOPMENT_TEAM = 4FGGTM5838;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				CODE_SIGN_ENTITLEMENTS = Tabor/Tabor.entitlements;
 				INFOPLIST_FILE = Tabor/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TABOR;
@@ -375,6 +377,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4FGGTM5838;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				CODE_SIGN_ENTITLEMENTS = TaborControls/TaborControls.entitlements;
 				INFOPLIST_FILE = TaborControls/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TABOR;
@@ -401,6 +404,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4FGGTM5838;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				CODE_SIGN_ENTITLEMENTS = TaborControls/TaborControls.entitlements;
 				INFOPLIST_FILE = TaborControls/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TABOR;
