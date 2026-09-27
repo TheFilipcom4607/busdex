@@ -7,8 +7,19 @@ struct TaborApp: App {
         WindowGroup {
             LaunchGate()
                 .preferredColorScheme(.dark)
+                .windowControlsClearance()
         }
         .modelContainer(TaborStore.container)
+    }
+}
+
+extension View {
+    /// On an iPad, TABOR runs as an iPhone app in a phone-shaped window whose controls (the
+    /// three dots) sit over its top-left corner, right where every screen's header is. The
+    /// safe area there starts too high, so push it down; iPhones are untouched. Full-screen
+    /// covers don't inherit it, so they call this too.
+    func windowControlsClearance() -> some View {
+        safeAreaPadding(.top, UIDevice.current.model.hasPrefix("iPad") ? 26 : 0)
     }
 }
 

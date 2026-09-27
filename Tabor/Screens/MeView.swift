@@ -95,6 +95,7 @@ struct MeView: View {
                 .padding(.leading, 18)
                 .padding(.top, 8)
             }
+            .windowControlsClearance()
             .preferredColorScheme(.dark)
         }
     }
@@ -414,7 +415,7 @@ struct SettingsSheet: View {
         .presentationDetents([.medium, .large])
         .onAppear { debugCount = DebugRecord.count }
         .sheet(item: $exportURL) { url in ShareSheet(items: [url]) }
-        .fullScreenCover(isPresented: $showIntro) { OnboardingView { showIntro = false } }
+        .fullScreenCover(isPresented: $showIntro) { OnboardingView { showIntro = false }.windowControlsClearance() }
         .sheet(isPresented: $showControlHowTo) { CatchControlHowTo() }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.zip]) { result in
             if case .success(let url) = result { importBackup(url) }

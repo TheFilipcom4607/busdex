@@ -188,6 +188,7 @@ struct CatchView: View {
             if visible { Task { await camera.start() } }
         }) { d in
             RevealView(draft: d)
+                .windowControlsClearance()
         }
     }
 
