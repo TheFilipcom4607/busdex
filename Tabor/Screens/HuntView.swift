@@ -28,6 +28,8 @@ struct HuntView: View {
     /// Rarities and models picked in the filter sheet; empty shows everything.
     @AppStorage("huntTargets") private var targets = HuntTargets()
     @State private var showFilters = false
+    /// Satellite photos (with street names) instead of the plain dark map.
+    @AppStorage("huntSatellite") private var satellite = false
 
     private let live = LiveFleetService.shared
     private let location = LocationService.shared
@@ -76,12 +78,15 @@ struct HuntView: View {
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
                 Spacer()
-                if offDefaultView {
-                    resetButton
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                        .padding(.horizontal, 14)
-                        .transition(.scale(scale: 0.8, anchor: .trailing).combined(with: .opacity))
+                HStack(spacing: 8) {
+                    Spacer()
+                    if offDefaultView {
+                        resetButton
+                            .transition(.scale(scale: 0.8, anchor: .trailing).combined(with: .opacity))
+                    }
+                    mapStyleButton
                 }
+                .padding(.horizontal, 14)
                 bottomCard(shown: shown, selected: selected)
                     .padding(.horizontal, 14)
                     .padding(.bottom, 10)
@@ -170,7 +175,9 @@ struct HuntView: View {
                 }
             }
         }
-        .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
+        .mapStyle(satellite
+                  ? .hybrid(elevation: .flat, pointsOfInterest: .excludingAll, showsTraffic: false)
+                  : .standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
         .mapControls {}
         .environment(\.colorScheme, .dark)
         .onMapCameraChange(frequency: .continuous) { ctx in mapHeading = ctx.camera.heading }
@@ -370,6 +377,24 @@ struct HuntView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Back to 3 kilometres around you")
+    }
+
+    /// Flips between the plain map and satellite; shows the one you'd switch to.
+    private var mapStyleButton: some View {
+        Button {
+            Haptics.shared.tick()
+            satellite.toggle()
+        } label: {
+            Image(systemName: satellite ? "map.fill" : "globe.europe.africa.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.85))
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: 36, height: 36)
+                .glass(Circle())
+                .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(satellite ? "Show the map" : "Show satellite")
     }
 
     /// The default view: you in the middle, the 3 km the list covers around you.

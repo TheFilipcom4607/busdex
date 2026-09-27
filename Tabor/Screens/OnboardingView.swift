@@ -1,4 +1,5 @@
 import AVFoundation
+import MapKit
 import SwiftUI
 
 /// First launch: what TABOR is and why you'd play it, then how, each permission asked for
@@ -324,11 +325,10 @@ private struct Brackets: Shape {
     }
 }
 
-/// A little HUNT map: you in the middle, uncaught vehicles around you in their rarity colours.
+/// A little HUNT map on the real city: you at Centrum, uncaught vehicles on the streets
+/// around you in their rarity colours. It's a picture, not a map to use, so it doesn't
+/// take touches (and the page still swipes over it).
 private struct HuntPage: View {
-    @State private var bob = false
-    @State private var pulse = false
-
     private struct MockPin: Identifiable {
         let id: Int
         let tier: Tier
@@ -336,44 +336,72 @@ private struct HuntPage: View {
         let tram: Bool
         let arrow: String
         let filled: Bool
-        let x: CGFloat, y: CGFloat
+        let at: CLLocationCoordinate2D
     }
 
+    /// Rondo Dmowskiego, where Marszałkowska crosses Aleje Jerozolimskie.
+    private static let here = CLLocationCoordinate2D(latitude: 52.2302, longitude: 21.0117)
+    private static let camera = MapCameraPosition.region(
+        MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 52.2304, longitude: 21.0117),
+                           latitudinalMeters: 1100, longitudinalMeters: 1100))
+
     private let pins = [
-        MockPin(id: 0, tier: .legendary, line: "514", tram: false, arrow: "arrow.up.right", filled: true, x: -82, y: -58),
-        MockPin(id: 1, tier: .gold, line: "18", tram: true, arrow: "arrow.left", filled: false, x: 78, y: -34),
-        MockPin(id: 2, tier: .rare, line: "157", tram: false, arrow: "arrow.down", filled: true, x: 58, y: 52),
-        MockPin(id: 3, tier: .common, line: "9", tram: true, arrow: "arrow.right", filled: false, x: -92, y: 46),
+        MockPin(id: 0, tier: .legendary, line: "128", tram: false, arrow: "arrow.up", filled: true,
+                at: CLLocationCoordinate2D(latitude: 52.2326, longitude: 21.0105)),
+        MockPin(id: 1, tier: .gold, line: "25", tram: true, arrow: "arrow.left", filled: false,
+                at: CLLocationCoordinate2D(latitude: 52.2309, longitude: 21.0150)),
+        MockPin(id: 2, tier: .rare, line: "175", tram: false, arrow: "arrow.right", filled: true,
+                at: CLLocationCoordinate2D(latitude: 52.2295, longitude: 21.0080)),
+        MockPin(id: 3, tier: .common, line: "18", tram: true, arrow: "arrow.down", filled: false,
+                at: CLLocationCoordinate2D(latitude: 52.2280, longitude: 21.0128)),
+        MockPin(id: 4, tier: .common, line: "507", tram: false, arrow: "arrow.right", filled: true,
+                at: CLLocationCoordinate2D(latitude: 52.2320, longitude: 21.0195)),
+        MockPin(id: 5, tier: .gold, line: "160", tram: false, arrow: "arrow.left", filled: true,
+                at: CLLocationCoordinate2D(latitude: 52.2284, longitude: 21.0040)),
     ]
 
     var body: some View {
         PageLayout(kicker: String(localized: "HUNT"),
                    title: String(localized: "See what you haven't caught, live."),
                    text: String(localized: "HUNT maps every bus and tram running near you that isn't in your book yet, and which way it's going. Location is only used while TABOR is open.")) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Palette.mapBg)
-                Streets()
-                    .stroke(Color.white.opacity(0.07), lineWidth: 7)
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                Circle()
-                    .fill(Palette.radar.opacity(0.25))
-                    .frame(width: pulse ? 70 : 18, height: pulse ? 70 : 18)
-                    .opacity(pulse ? 0 : 1)
-                Circle()
-                    .fill(Palette.radar)
-                    .frame(width: 14, height: 14)
-                    .overlay(Circle().stroke(.white, lineWidth: 2.5))
+            Map(initialPosition: Self.camera, interactionModes: []) {
+                Annotation("", coordinate: Self.here) {
+                    ZStack {
+                        // Animated from inside the annotation: one started outside the map
+                        // doesn't carry into it.
+                        Circle()
+                            .fill(Palette.radar.opacity(0.3))
+                            .phaseAnimator([false, true]) { c, out in
+                                c.scaleEffect(out ? 1 : 0.25).opacity(out ? 0 : 1)
+                            } animation: { out in out ? .easeOut(duration: 1.8) : nil }
+                            .frame(width: 70, height: 70)
+                        Circle()
+                            .fill(Palette.radar)
+                            .frame(width: 14, height: 14)
+                            .overlay(Circle().stroke(.white, lineWidth: 2.5))
+                    }
+                    .frame(width: 70, height: 70)
+                }
+                .annotationTitles(.hidden)
                 ForEach(pins) { p in
-                    tag(p)
-                        .offset(x: p.x, y: p.y + (bob ? -3 : 3) * (p.id.isMultiple(of: 2) ? 1 : -1))
+                    Annotation("", coordinate: p.at, anchor: .bottom) {
+                        tag(p)
+                            .phaseAnimator([false, true]) { t, up in
+                                t.offset(y: (up ? -3 : 3) * (p.id.isMultiple(of: 2) ? 1 : -1))
+                            } animation: { _ in .easeInOut(duration: 1.4) }
+                    }
+                    .annotationTitles(.hidden)
                 }
             }
-            .frame(width: 300, height: 220)
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) { bob = true }
-            withAnimation(.easeOut(duration: 1.8).repeatForever(autoreverses: false)) { pulse = true }
+            .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
+            .mapControls {}
+            .environment(\.colorScheme, .dark)
+            // Shown before the tiles load, or if they can't.
+            .background(Palette.mapBg)
+            .allowsHitTesting(false)
+            .frame(maxWidth: 360, maxHeight: 280)
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color.white.opacity(0.08)))
         }
     }
 
@@ -394,17 +422,5 @@ private struct HuntPage: View {
         .background(p.filled ? color : Palette.bg.opacity(0.88), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous).strokeBorder(color, lineWidth: p.filled ? 0 : 1.5))
         .shadow(color: color.opacity(0.45), radius: 6)
-    }
-}
-
-/// A few crossing streets behind the mock map.
-private struct Streets: Shape {
-    func path(in r: CGRect) -> Path {
-        var p = Path()
-        p.move(to: CGPoint(x: r.minX, y: r.height * 0.3)); p.addLine(to: CGPoint(x: r.maxX, y: r.height * 0.55))
-        p.move(to: CGPoint(x: r.minX, y: r.height * 0.82)); p.addLine(to: CGPoint(x: r.maxX, y: r.height * 0.7))
-        p.move(to: CGPoint(x: r.width * 0.35, y: r.minY)); p.addLine(to: CGPoint(x: r.width * 0.45, y: r.maxY))
-        p.move(to: CGPoint(x: r.width * 0.78, y: r.minY)); p.addLine(to: CGPoint(x: r.width * 0.68, y: r.maxY))
-        return p
     }
 }
