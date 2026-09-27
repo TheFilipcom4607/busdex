@@ -98,13 +98,35 @@ const SAMPLE = `
     WHERE r->>'Time' >= ?5 AND CAST(r->>'VehicleNumber' AS INTEGER) > 0
       AND CAST(r->>'VehicleNumber' AS INTEGER) || '' = r->>'VehicleNumber'),
   -- A vehicle now and then appears twice; SQLite takes the other columns from its newest row.
-  live AS (SELECT kind, number, line, lat, lon, max(time) FROM fresh WHERE lat AND lon GROUP BY kind, number)
-  INSERT OR REPLACE INTO samples (ts, day, minute, ok, v)
-  SELECT ?6, ?7, ?8,
-         -- A list with nothing live in it means that part of the feed has stalled.
-         (EXISTS (SELECT 1 FROM live WHERE kind = 1)) | ((EXISTS (SELECT 1 FROM live WHERE kind = 2)) << 1),
-         coalesce((SELECT json_group_array(json_array(number, kind, line, lat, lon)) FROM live), '[]')
+  live AS (SELECT kind, number, line, lat, lon, max(time) FROM fresh WHERE lat AND lon GROUP BY kind, number),
+  -- One pass builds the list and its counts together: D1 counts every JSON element SQLite
+  -- reads as a row read (5 million a day on the free plan), so nothing reads the list twice.
+  summary AS (SELECT json_group_array(json_array(number, kind, line, lat, lon)) AS v,
+                     coalesce(sum(kind = 1), 0) AS buses, coalesce(sum(kind = 2), 0) AS trams FROM live)
+  INSERT OR REPLACE INTO samples (ts, day, minute, ok, v, buses, trams)
+  -- A list with nothing live in it means that part of the feed has stalled.
+  SELECT ?6, ?7, ?8, (buses > 0) | ((trams > 0) << 1), v, buses, trams FROM summary
   RETURNING ok, json_array_length(v) AS vehicles`;
+
+// Today so far, one row per day: [kind, number, snapshots, first, last, last line] for every
+// vehicle seen. The dashboard reads that row instead of unpacking the whole day's snapshots on
+// every visit, which would cost ~400k reads. Every 15 minutes the good snapshots since `upto`
+// are folded in: each fold reads the whole row again, so folding every snapshot would cost
+// three times as much. Stacked and grouped rather than joined: a join reads each list again.
+// The last line is the line from the vehicle's latest snapshot (the minute is zero-padded so
+// max() of "minute|line" picks it); all its lines arrive with the nightly rollup.
+const FOLD_EVERY = 15;
+const FOLD = `
+  INSERT OR REPLACE INTO running (day, v, upto)
+  SELECT ?1, json_group_array(json_array(k, n, c, a, b, substr(bl, 5))), ?2 FROM (
+    SELECT k, n, sum(c) AS c, min(a) AS a, max(b) AS b, max(printf('%04d', b) || l) AS bl FROM (
+      SELECT j.value->>0 AS k, j.value->>1 AS n, j.value->>2 AS c, j.value->>3 AS a, j.value->>4 AS b, j.value->>5 AS l
+      FROM running r, json_each(r.v) j WHERE r.day = ?1
+      UNION ALL
+      SELECT j.value->>1, j.value->>0, 1, s.minute, s.minute, j.value->>2
+      FROM samples s, json_each(s.v) j
+      WHERE s.day = ?1 AND s.ok = 3 AND s.ts <= ?2 AND s.ts > coalesce((SELECT upto FROM running WHERE day = ?1), 0))
+    GROUP BY k, n)`;
 
 async function sample(env) {
   await ensureFleet(env);
@@ -112,10 +134,15 @@ async function sample(env) {
   const local = warsaw(now);
   const [buses, trams] = await Promise.all([fetchCity(1, env), fetchCity(2, env)]);
   const minute = +local.slice(11, 13) * 60 + +local.slice(14, 16);
-  const result = await env.DB.prepare(SAMPLE).bind(
-    buses?.text ?? '[]', buses?.path ?? '$', trams?.text ?? '[]', trams?.path ?? '$',
-    warsaw(new Date(now - MAX_AGE_MS)), Math.floor(now / 1000), local.slice(0, 10), minute,
-  ).first();
+  const ts = Math.floor(now / 1000), day = local.slice(0, 10);
+  const [inserted] = await env.DB.batch([
+    env.DB.prepare(SAMPLE).bind(
+      buses?.text ?? '[]', buses?.path ?? '$', trams?.text ?? '[]', trams?.path ?? '$',
+      warsaw(new Date(now - MAX_AGE_MS)), ts, day, minute,
+    ),
+    ...(minute % FOLD_EVERY === 0 ? [env.DB.prepare(FOLD).bind(day, ts)] : []),
+  ]);
+  const result = inserted.results[0];
   if (result.ok !== 3) console.log(`sample ${local}: ${result.ok === 0 ? 'no answer' : result.ok === 1 ? 'no trams' : 'no buses'}`);
   return { local, ...result, sources: [buses?.source, trams?.source] };
 }
@@ -162,7 +189,10 @@ async function nightly(env) {
     'SELECT DISTINCT day FROM samples WHERE day < ? AND day NOT IN (SELECT day FROM days) ORDER BY day LIMIT 3',
   ).bind(today).all();
   for (const { day } of results) await rollup(env, day);
-  await env.DB.prepare('DELETE FROM samples WHERE day < ?').bind(daysBefore(today, KEEP_SAMPLE_DAYS)).run();
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM samples WHERE day < ?').bind(daysBefore(today, KEEP_SAMPLE_DAYS)),
+    env.DB.prepare('DELETE FROM running WHERE day < ?').bind(daysBefore(today, 3)),
+  ]);
   return { rolled: results.map((r) => r.day) };
 }
 
@@ -176,12 +206,15 @@ const EXPAND = `x AS (
 // every snapshot: D1 counts every row it reads.
 const VD = 'JOIN vehicle_day vd ON vd.day = ?1 AND vd.kind = g.kind AND vd.number = g.number';
 
+// Monday of the day's week: the per-model map is kept by week, which is ~5 times smaller.
+const weekOf = (day) => daysBefore(day, (new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7);
+
+// Only ever runs for a day not yet in `days`, and the batch is all or nothing, so there's
+// nothing to clear first.
 async function rollup(env, day) {
   const db = env.DB;
   const q = (sql) => db.prepare(sql).bind(day);
   await db.batch([
-    ...['days', 'day_hour', 'vehicle_day', 'tier_hour', 'model_hour', 'line_day', 'cell_day', 'tier_day', 'model_day']
-      .map((t) => q(`DELETE FROM ${t} WHERE day = ?1`)),
     q(`INSERT INTO days (day, samples, failed, peak_out, peak_minute)
        SELECT ?1, sum(ok = 3), sum(ok <> 3), coalesce(max(CASE WHEN ok = 3 THEN json_array_length(v) END), 0),
               (SELECT minute FROM samples WHERE day = ?1 AND ok = 3 ORDER BY json_array_length(v) DESC LIMIT 1)
@@ -205,6 +238,10 @@ async function rollup(env, day) {
        INSERT INTO line_day SELECT ?1, g.line, vd.model, count(*), sum(g.n) FROM g ${VD} WHERE vd.model IS NOT NULL GROUP BY 2, 3`),
     q(`WITH ${EXPAND}, g AS (SELECT kind, number, lat / 100 AS la, lon / 150 AS lo, count(*) n FROM x GROUP BY 1, 2, 3, 4)
        INSERT INTO cell_day SELECT ?1, coalesce(vd.tier, 'UNKNOWN'), g.la, g.lo, sum(g.n) FROM g ${VD} GROUP BY 2, 3, 4`),
+    db.prepare(`WITH ${EXPAND}, g AS (SELECT kind, number, lat / 100 AS la, lon / 150 AS lo, count(*) n FROM x GROUP BY 1, 2, 3, 4)
+       INSERT INTO model_week (model, week, lat, lon, vsamples)
+       SELECT vd.model, ?2, g.la, g.lo, sum(g.n) FROM g ${VD} WHERE vd.model IS NOT NULL GROUP BY 1, 3, 4
+       ON CONFLICT (model, week, lat, lon) DO UPDATE SET vsamples = vsamples + excluded.vsamples`).bind(day, weekOf(day)),
   ]);
   console.log(`rolled up ${day}`);
 }
@@ -219,27 +256,23 @@ const since = (params) => {
   const days = Math.max(0, Math.min(3650, Number(params.get('days')) || 0));
   return days ? daysBefore(warsaw(new Date()).slice(0, 10), days) : '0000';
 };
-const TODAY_X = `SELECT s.minute m, j.value->>0 n, j.value->>1 k, j.value->>2 l
-                 FROM samples s, json_each(s.v) j WHERE s.day = ?1 AND s.ok = 3`;
 
 const API = {
   // The newest snapshot and today so far.
   async '/api/live'(env) {
     const today = warsaw(new Date()).slice(0, 10);
     const db = env.DB;
+    // All cheap: one snapshot, one running row, and the day's counts. Nothing is unpacked.
     const [latest, vehicles, curve, counts] = await Promise.all([
       db.prepare('SELECT ts, minute, v FROM samples ORDER BY ts DESC LIMIT 1').first(),
-      list(db, 'k, n, c, a, b, lines',
-        `SELECT k, n, count(*) c, min(m) a, max(m) b, group_concat(DISTINCT l) lines FROM (${TODAY_X}) GROUP BY k, n`, today),
-      list(db, 'minute, ok, b, t',
-        `SELECT s.minute, s.ok, sum(j.value->>1 = 1) b, sum(j.value->>1 = 2) t
-         FROM samples s LEFT JOIN json_each(s.v) j WHERE s.day = ?1 GROUP BY s.ts ORDER BY s.ts`, today),
+      db.prepare('SELECT v FROM running WHERE day = ?1').bind(today).first('v'),
+      list(db, 'minute, ok, buses, trams', 'SELECT minute, ok, buses, trams FROM samples WHERE day = ?1 ORDER BY ts', today),
       db.prepare('SELECT count(*) n, coalesce(sum(ok = 3), 0) good FROM samples WHERE day = ?1').bind(today).first(),
     ]);
     const latestJson = latest ? `{"ts":${latest.ts},"minute":${latest.minute},"v":${latest.v}}` : 'null';
     return {
       seconds: 60,
-      body: `{"today":"${today}","latest":${latestJson},"vehicles":${vehicles},"curve":${curve},"samples":${counts.n},"good":${counts.good}}`,
+      body: `{"today":"${today}","latest":${latestJson},"vehicles":${vehicles ?? '[]'},"curve":${curve},"samples":${counts.n},"good":${counts.good}}`,
     };
   },
 
@@ -274,6 +307,14 @@ const API = {
     const hours = await list(env.DB, 'wd, hour, vs', `SELECT CAST(strftime('%w', day) AS INT) wd, hour, sum(vsamples) vs
       FROM model_hour WHERE model = ?1 AND day >= ?2 GROUP BY 1, 2`, params.get('id') ?? '', since(params));
     return { seconds: 1800, body: `{"hours":${hours}}` };
+  },
+
+  // One model's map squares, from whole weeks: the rollup keeps models by week.
+  async '/api/cells'(env, params) {
+    const from = since(params);
+    const cells = await list(env.DB, 'lat, lon, vs', `SELECT lat, lon, sum(vsamples) vs FROM model_week
+      WHERE model = ?1 AND week >= ?2 GROUP BY 1, 2`, params.get('model') ?? '', from === '0000' ? from : weekOf(from));
+    return { seconds: 1800, body: `{"cells":${cells}}` };
   },
 
   // The catalogue the numbers are matched against, and how the collector is doing.

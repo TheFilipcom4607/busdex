@@ -6,17 +6,31 @@
 -- and the nightly rollup boils each day down into the small tables below.
 -- Kinds are the feed's types: 1 bus, 2 tram. Days and minutes are Warsaw wall-clock time.
 
+-- D1 also counts every JSON element SQLite reads as a row read (5 million a day on the free
+-- plan), so nothing on the dashboard's path unpacks a whole day of snapshots.
+
 -- One snapshot every 5 minutes, kept for four weeks.
 -- v: [[number, kind, line, lat×1e4, lon×1e4], …], only rows fresher than 3 minutes.
--- ok: 1 buses answered, 2 trams answered, 3 both, 0 neither.
+-- ok: 1 buses answered, 2 trams answered, 3 both, 0 neither. buses/trams: how many were out.
 CREATE TABLE IF NOT EXISTS samples (
   ts INTEGER PRIMARY KEY,
   day TEXT NOT NULL,
   minute INTEGER NOT NULL,
   ok INTEGER NOT NULL,
-  v TEXT NOT NULL
+  v TEXT NOT NULL,
+  buses INTEGER,
+  trams INTEGER
 );
 CREATE INDEX IF NOT EXISTS samples_day ON samples (day);
+
+-- Today so far, folded in every 15 minutes:
+-- v: [[kind, number, snapshots, first minute, last minute, last line], …]; upto: the newest
+-- snapshot (ts) folded in. Kept 3 days.
+CREATE TABLE IF NOT EXISTS running (
+  day TEXT PRIMARY KEY,
+  v TEXT NOT NULL,
+  upto INTEGER
+) WITHOUT ROWID;
 
 -- fleet.json, flattened; reloaded when its `fetched` date changes.
 CREATE TABLE IF NOT EXISTS models (
@@ -127,4 +141,14 @@ CREATE TABLE IF NOT EXISTS model_day (
   vehicles INTEGER NOT NULL,
   vsamples INTEGER NOT NULL,
   PRIMARY KEY (day, model)
+) WITHOUT ROWID;
+
+-- One model's map, by week (the Monday): per day it would be ~10,000 rows a day.
+CREATE TABLE IF NOT EXISTS model_week (
+  model TEXT NOT NULL,
+  week TEXT NOT NULL,
+  lat INTEGER NOT NULL,
+  lon INTEGER NOT NULL,
+  vsamples INTEGER NOT NULL,
+  PRIMARY KEY (model, week, lat, lon)
 ) WITHOUT ROWID;

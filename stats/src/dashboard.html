@@ -140,8 +140,11 @@ details.tbl table { font-size: 12.5px; }
 .callout b { font-weight: 600; }
 .meter { height: 8px; border-radius: 4px; background: var(--track); overflow: hidden; margin-top: 10px; }
 .meter i { display: block; height: 100%; background: var(--sub); }
-input.search { background: var(--slot); border: 1px solid var(--hair); color: var(--ink); border-radius: 10px; padding: 9px 12px;
+input.search, select.search { background-color: var(--slot); border: 1px solid var(--hair); color: var(--ink); border-radius: 10px; padding: 9px 12px;
   font: 16px var(--mono); width: 100%; max-width: 260px; }
+select.search { appearance: none; -webkit-appearance: none; padding-right: 30px; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--dim) 50%), linear-gradient(135deg, var(--dim) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
 details.more summary { cursor: pointer; color: var(--sub); font-size: 14px; padding: 8px 0; }
 
 .gate { max-width: 380px; margin: 18vh auto 0; padding: 0 16px; text-align: center; }
@@ -468,7 +471,7 @@ const state = {
   key: localStorage.getItem('taborStatsKey') ?? '',
   range: Number(localStorage.getItem('taborStatsRange') ?? 30),
   huntTier: 'LEGENDARY', mapTier: 'LEGENDARY', kindFilter: 0,
-  modelSort: { key: 'util', desc: true }, allModels: false, model: null, modelHours: null, lineQuery: '',
+  modelSort: { key: 'util', desc: true }, allModels: false, model: null, mapModel: null, modelCells: {}, modelHours: null, lineQuery: '',
   fleet: null, live: null, hist: null, error: null, loading: false,
 };
 
@@ -635,11 +638,11 @@ function renderToday() {
           xMin: 0, xMax: 1440, xTicks: ticks, xLabel: (x) => hhmm(x), height: 240, whole: true,
           table: tableView(['Time', 'Buses', 'Trams', 'Total'], curve.map((c) => [hhmm(c[0]), fmt(c[2]), fmt(c[3]), fmt(c[2] + c[3])])),
         })),
-      card('s12', `The rare ones today (${rare.length})`, 'Every legendary, vintage and on-test vehicle seen today, and for how long.',
+      card('s12', `The rare ones today (${rare.length})`, 'Every legendary, vintage and on-test vehicle seen today, the line it was last on, and how long it has been out.',
         rare.length ? h('div', { class: 'list' }, rare.map((r) => h('div', { class: 'row', style: { flexWrap: 'wrap', rowGap: '6px' } },
           tierDot(r.tier), h('span', { class: 'grow', style: { whiteSpace: 'normal' } }, r.m.name, h('span', { class: 'muted' }, ` #${r.n}`)),
           h('div', { style: { flexBasis: '100%', paddingLeft: '19px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 12px' } },
-            h('span', {}, r.lines.sort(lineSort).map((l) => h('span', { class: 'pill' }, l))),
+            r.lines[0] ? h('span', { class: 'muted' }, 'last on ', h('span', { class: 'pill' }, r.lines[0])) : null,
             h('span', { class: 'r' }, `${hhmm(r.a)}–${hhmm(r.b)} · ${dur(r.c * SAMPLE_MIN)} out`)))))
           : h('div', { class: 'empty' }, 'None yet today.'))));
 }
@@ -793,7 +796,13 @@ function modelPage(a) {
   }
   return card('s12', null, null,
     h('div', { class: 'mono' }, `${TIER[m.tier].label} · ${KIND[m.kind]} · ${fmt(m.fleet)} in the fleet`),
-    h('h2', { style: { margin: '6px 0 14px', fontSize: '24px' } }, m.name),
+    h('div', { style: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '10px', margin: '6px 0 14px' } },
+      h('h2', { style: { margin: 0, fontSize: '24px' } }, m.name),
+      h('button', { class: 'chip', onclick: () => {
+        state.mapModel = m.id;
+        render();
+        document.getElementById('where')?.scrollIntoView({ behavior: 'smooth' });
+      } }, 'Show on the map')),
     h('div', { class: 'grid' },
       tile('Out a day', fmt(a.avgOut, 1), `on average · ${pct(a.util)} of the fleet`, 's3'),
       tile('Seen', `${fmt(seen.size)} / ${fmt(m.fleet)}`, `different vehicles in this range`, 's3'),
@@ -860,19 +869,59 @@ function renderLines() {
 function renderWhere() {
   const days = D.validDays;
   if (!days.length) return noHistory('where', 'Where', 'The map');
-  const tier = state.mapTier;
-  const cells = state.hist.cells.filter((c) => tier === 'ALL' || c[0] === tier);
-  const merged = new Map();
-  for (const [, lat, lon, vs] of cells) merged.set(lat * 1e5 + lon, [lat, lon, (merged.get(lat * 1e5 + lon)?.[2] ?? 0) + vs]);
-  const color = tier === 'ALL' ? '#FFCE00' : TIER[tier].color;
+  const model = state.mapModel && D.models.get(state.mapModel);
+  let cells, color, note;
+  if (model) {
+    // A model's squares come from their own endpoint, kept by week.
+    const got = state.modelCells[`${model.id}:${state.range}`];
+    if (!got) loadCells(model.id);
+    cells = got ?? [];
+    color = mapColor(model.tier);
+    note = got ? (got.length ? `${model.name}: whole weeks, so the edges of the range are approximate.` : `${model.name} hasn't been seen in this range.`) : 'Loading…';
+  } else {
+    const tier = state.mapTier;
+    const merged = new Map();
+    for (const [t, lat, lon, vs] of state.hist.cells) {
+      if (tier !== 'ALL' && t !== tier) continue;
+      const k = lat * 1e5 + lon;
+      merged.set(k, [lat, lon, (merged.get(k)?.[2] ?? 0) + vs]);
+    }
+    cells = [...merged.values()];
+    color = tier === 'ALL' ? '#FFCE00' : mapColor(tier);
+  }
   const box = h('div', { class: 'map' });
-  requestAnimationFrame(() => heatMap(box, [...merged.values()], color, days.length));
+  requestAnimationFrame(() => heatMap(box, cells, color, days.length));
+  const byTier = TIERS.map((t) => [t, [...D.models.values()].filter((m) => m.tier === t.id).sort((a, b) => a.name.localeCompare(b.name))]);
+  const picker = h('select', { class: 'search', 'aria-label': 'One model', onchange: (e) => { state.mapModel = e.target.value || null; render(); } },
+    h('option', { value: '' }, 'Or one model…'),
+    byTier.filter(([, ms]) => ms.length).map(([t, ms]) => h('optgroup', { label: t.label },
+      ms.map((m) => h('option', { value: m.id, selected: m.id === state.mapModel }, `${m.name}${m.kind === 2 ? ' (tram)' : ''}`)))));
   return section('where', `Where · ${days.length} day${days.length > 1 ? 's' : ''}`, 'The map',
-    'Time spent in each square kilometre, averaged per day. Brighter means more.',
-    chipRow([['LEGENDARY', 'Legendary'], ['GOLD', 'Gold'], ['RARE', 'Rare'], ['VINTAGE', 'Vintage'], ['ON TEST', 'On test'], ['COMMON', 'Common'], ['ALL', 'Everything']],
-      tier, (v) => { state.mapTier = v; render(); }, (v) => v === 'ALL' ? '#FFCE00' : TIER[v].color),
-    h('div', { class: 'grid', style: { marginTop: '12px' } }, card('s12', null, null, box,
+    'Time spent in each square kilometre, averaged per day. Brighter means more. Pick a tier, or one model.',
+    h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' } },
+      chipRow([['LEGENDARY', 'Legendary'], ['GOLD', 'Gold'], ['RARE', 'Rare'], ['VINTAGE', 'Vintage'], ['ON TEST', 'On test'], ['COMMON', 'Common'], ['ALL', 'Everything']],
+        model ? null : state.mapTier, (v) => { state.mapTier = v; state.mapModel = null; render(); }, (v) => v === 'ALL' ? '#FFCE00' : TIER[v].color),
+      picker),
+    h('div', { class: 'grid', style: { marginTop: '12px' } }, card('s12', null, note, box,
       h('div', { class: 'scale' }, h('span', {}, 'less'), h('i', { style: { background: `linear-gradient(90deg, ${color}1f, ${color})` } }), h('span', {}, 'more')))));
+}
+
+// Common's grey all but vanishes on the dark map; HUNT in the app uses a lighter one there too.
+const mapColor = (tier) => tier === 'COMMON' ? '#C9CDD3' : TIER[tier].color;
+
+const pendingCells = new Set();
+async function loadCells(id) {
+  const key = `${id}:${state.range}`;
+  if (pendingCells.has(key)) return;
+  pendingCells.add(key);
+  try {
+    const { cells } = await api(`/api/cells?model=${encodeURIComponent(id)}&days=${state.range}`);
+    state.modelCells[key] = cells;
+  } catch (e) {
+    state.modelCells[key] = [];
+  }
+  pendingCells.delete(key);
+  render();
 }
 
 function heatMap(box, cells, color, nDays) {
