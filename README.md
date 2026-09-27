@@ -57,16 +57,18 @@ Set your own team under Signing & Capabilities for both the `Tabor` and
 `TaborControls` targets. A free personal team works; that's also why there's no
 iCloud sync (see [Your book](#your-book)).
 
-The live map and the live-assisted number reading need a key for Warsaw's open
-data API. It's free from [api.um.warszawa.pl](https://api.um.warszawa.pl). Put it
-in a new, gitignored file next to `Config/Tabor.xcconfig`:
+The live map and the live-assisted number reading use Warsaw's open data API.
+The app doesn't carry a key: it asks TABOR's proxy (`proxy/`, a Cloudflare
+Worker), which holds the key, caches the feed for 10 seconds so every phone
+shares one call to the city, and gzips it. Builds from this repo use that proxy
+as they are. To go direct instead, paste a free key from
+[api.um.warszawa.pl](https://api.um.warszawa.pl) into Settings › Live data. To
+run your own proxy, change the domain in `proxy/wrangler.toml` and
+`TABOR_LIVE_PROXY` in `Config/Tabor.xcconfig`, then:
 
 ```bash
-echo 'TABOR_UM_KEY = your-key-here' > Config/Secrets.xcconfig
+cd proxy && npx wrangler secret put UM_KEY && npx wrangler deploy
 ```
-
-Without a key the app still builds and catches work. HUNT stays empty until you
-paste a key into Settings › Live data.
 
 ---
 

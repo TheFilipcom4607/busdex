@@ -1293,16 +1293,6 @@
         }
       }
     },
-    "Built in · …%@": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wbudowany · …%@"
-          }
-        }
-      }
-    },
     "Buses only, %lld out now": {
       "localizations": {
         "pl": {
@@ -2515,12 +2505,12 @@
         }
       }
     },
-    "HUNT and the camera use Warsaw's open-data feed of live bus and tram positions (api.um.warszawa.pl) — only while they're on screen. Leave the key empty to use the one built into the app; get your own free key at api.um.warszawa.pl.": {
+    "HUNT and the camera use Warsaw's open-data feed of live bus and tram positions (api.um.warszawa.pl) — only while they're on screen. Leave the key empty to go through TABOR's server, or get your own free key at api.um.warszawa.pl.": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "HUNT i aparat korzystają z otwartych danych Warszawy o pozycjach autobusów i tramwajów na żywo (api.um.warszawa.pl) — tylko gdy są na ekranie. Zostaw klucz pusty, by użyć wbudowanego; własny darmowy klucz dostaniesz na api.um.warszawa.pl."
+            "value": "HUNT i aparat korzystają z otwartych danych Warszawy o pozycjach autobusów i tramwajów na żywo (api.um.warszawa.pl) — tylko gdy są na ekranie. Zostaw klucz pusty, by łączyć się przez serwer TABOR, albo zdobądź własny darmowy klucz na api.um.warszawa.pl."
           }
         }
       }
@@ -4261,6 +4251,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "TABOR ma przycisk Złap na ekran blokady, do centrum sterowania i pod przycisk akcji. Od razu otwiera aparat, nawet na zablokowanym telefonie."
+          }
+        }
+      }
+    },
+    "TABOR's server": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serwer TABOR"
           }
         }
       }

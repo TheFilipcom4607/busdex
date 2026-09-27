@@ -351,7 +351,7 @@ struct SettingsSheet: View {
                             Text(liveStatus.text).foregroundStyle(liveStatus.color)
                         }
                     }
-                    TextField(LiveFleetService.builtInKey == nil ? "Paste your key" : "Use your own key instead", text: $umKey)
+                    TextField(LiveFleetService.proxy == nil ? "Paste your key" : "Use your own key instead", text: $umKey)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .font(.system(.body, design: .monospaced))
@@ -361,12 +361,12 @@ struct SettingsSheet: View {
                             guard !Task.isCancelled else { return }
                             let live = LiveFleetService.shared
                             live.keyChanged()
-                            if live.fresh() == nil, LiveFleetService.key != nil { await live.refresh() }
+                            if live.fresh() == nil, LiveFleetService.source != nil { await live.refresh() }
                         }
                 } header: {
                     Text("Live data")
                 } footer: {
-                    Text("HUNT and the camera use Warsaw's open-data feed of live bus and tram positions (api.um.warszawa.pl) — only while they're on screen. Leave the key empty to use the one built into the app; get your own free key at api.um.warszawa.pl.")
+                    Text("HUNT and the camera use Warsaw's open-data feed of live bus and tram positions (api.um.warszawa.pl) — only while they're on screen. Leave the key empty to go through TABOR's server, or get your own free key at api.um.warszawa.pl.")
                 }
                 Section {
                     Button(backingUp ? "Packing…" : "Export catches") { exportBackup() }
@@ -471,7 +471,7 @@ extension SettingsSheet {
     /// Which key is in use, without showing all of it.
     var keySource: String {
         if let own = LiveFleetService.overrideKey { return String(localized: "Your own · …\(String(own.suffix(4)))") }
-        if let baked = LiveFleetService.builtInKey { return String(localized: "Built in · …\(String(baked.suffix(4)))") }
+        if LiveFleetService.proxy != nil { return String(localized: "TABOR's server") }
         return String(localized: "None", comment: "No API key")
     }
 }

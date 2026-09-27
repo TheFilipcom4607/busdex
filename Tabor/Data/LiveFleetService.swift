@@ -4,12 +4,13 @@ import Foundation
 /// Live GPS for every ZTM bus and tram, from Warsaw's open-data API. Polls every 15 s while
 /// the HUNT map is up, and every 30 s otherwise (the camera, or the app merely open), so
 /// trails are already drawn when you get to HUNT. Never in the background.
-/// Without an API key everything live is quietly off.
+/// It comes through TABOR's proxy (proxy/ in the repo), which holds the city key, unless
+/// you've typed your own key into Settings. With neither, everything live is quietly off.
 @Observable @MainActor
 final class LiveFleetService {
     static let shared = LiveFleetService()
 
-    /// Settings can override the key baked in at build time.
+    /// A key typed into Settings goes straight to the city instead of through the proxy.
     static let keyOverrideKey = "umApiKey"
     static let interval: Duration = .seconds(15)
     /// With only the app itself watching: half the rate, since each poll is ~180 KB
@@ -35,14 +36,20 @@ final class LiveFleetService {
 
     @ObservationIgnored private var clients: Set<String> = []
     @ObservationIgnored private var poller: Task<Void, Never>?
-    /// The key the current snapshot was fetched with.
-    @ObservationIgnored private var usedKey: String?
+    /// Where the current snapshot came from.
+    @ObservationIgnored private var usedSource: Source?
 
     private init() {
-        status = Self.key == nil ? .noKey : .idle
+        status = Self.source == nil ? .noKey : .idle
     }
 
-    static var key: String? { overrideKey ?? builtInKey }
+    /// Your own key, straight to the city, or TABOR's proxy.
+    enum Source: Equatable {
+        case own(String)
+        case proxy(URL)
+    }
+
+    static var source: Source? { overrideKey.map(Source.own) ?? proxy.map(Source.proxy) }
 
     /// A key typed into Settings.
     static var overrideKey: String? {
@@ -50,12 +57,12 @@ final class LiveFleetService {
         return override?.isEmpty == false ? override : nil
     }
 
-    /// The key from Config/Secrets.xcconfig, baked in at build time.
-    static var builtInKey: String? {
-        let baked = (Bundle.main.object(forInfoDictionaryKey: "TaborUMKey") as? String)?.trimmingCharacters(in: .whitespaces)
+    /// The proxy's host from Config/Tabor.xcconfig (just the host: `//` starts a comment there).
+    static var proxy: URL? {
+        let host = (Bundle.main.object(forInfoDictionaryKey: "TaborLiveProxy") as? String)?.trimmingCharacters(in: .whitespaces)
         // An unset build setting comes through empty (or as the literal "$(…)" in odd setups).
-        guard let baked, !baked.isEmpty, !baked.hasPrefix("$(") else { return nil }
-        return baked
+        guard let host, !host.isEmpty, !host.hasPrefix("$(") else { return nil }
+        return URL(string: "https://\(host)/v1/vehicles")
     }
 
     /// The snapshot, if it's recent enough to act on.
@@ -97,24 +104,24 @@ final class LiveFleetService {
 
     /// The key may have changed in Settings; starts over only if it really did.
     func keyChanged() {
-        guard Self.key != usedKey else { return }
+        guard Self.source != usedSource else { return }
         snapshot = nil
         nearby = []
-        status = Self.key == nil ? .noKey : .idle
+        status = Self.source == nil ? .noKey : .idle
         if !clients.isEmpty { Task { await refresh() } }
     }
 
     // MARK: - Fetching
 
     func refresh() async {
-        guard let key = Self.key else {
+        guard let source = Self.source else {
             status = .noKey
             return
         }
         if snapshot == nil { status = .loading }
-        usedKey = key
-        async let buses = Self.fetch(.bus, key: key)
-        async let trams = Self.fetch(.tram, key: key)
+        usedSource = source
+        async let buses = Self.fetch(.bus, from: source)
+        async let trams = Self.fetch(.tram, from: source)
         let results: [(VehicleKind, Result<[LiveVehicle], Error>)] = [(.bus, await buses), (.tram, await trams)]
         var vehicles: [LiveVehicle] = []
         var failure: Error?
@@ -147,13 +154,22 @@ final class LiveFleetService {
         nearby = snapshot.nearby(lat: here.coordinate.latitude, lon: here.coordinate.longitude, within: LiveHints.boostRadius)
     }
 
-    private static func fetch(_ kind: VehicleKind, key: String) async -> Result<[LiveVehicle], Error> {
-        var c = URLComponents(string: "https://api.um.warszawa.pl/api/action/busestrams_get/")!
-        c.queryItems = [
-            URLQueryItem(name: "resource_id", value: "f2e5503e-927d-4ad3-9500-4ab9e55deb59"),
-            URLQueryItem(name: "type", value: kind == .bus ? "1" : "2"),
-            URLQueryItem(name: "apikey", value: key),
-        ]
+    private static func fetch(_ kind: VehicleKind, from source: Source) async -> Result<[LiveVehicle], Error> {
+        let type = URLQueryItem(name: "type", value: kind == .bus ? "1" : "2")
+        // The proxy answers with the city's own JSON, so both parse the same way.
+        var c: URLComponents
+        switch source {
+        case .proxy(let url):
+            c = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+            c.queryItems = [type]
+        case .own(let key):
+            c = URLComponents(string: "https://api.um.warszawa.pl/api/action/busestrams_get/")!
+            c.queryItems = [
+                URLQueryItem(name: "resource_id", value: "f2e5503e-927d-4ad3-9500-4ab9e55deb59"),
+                type,
+                URLQueryItem(name: "apikey", value: key),
+            ]
+        }
         let request = URLRequest(url: c.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
