@@ -46,8 +46,11 @@ score.
 
 ## Install
 
-There's no App Store build (yet 👀). Open the project in Xcode 27 and run it on
-your phone:
+**Try the beta on TestFlight:** [testflight.apple.com/join/rt5RfQJ1](https://testflight.apple.com/join/rt5RfQJ1)
+(iPhone, iOS 18 or later). Screenshots with TestFlight's feedback are the best
+bug reports, and issues here work too.
+
+Or build it yourself. Open the project in Xcode 27 and run it on your phone:
 
 ```bash
 open Tabor.xcodeproj
@@ -147,7 +150,7 @@ every 15 seconds while the map is on screen, and never in the background.
   around the vehicles, so they don't jump about every 15 seconds as the buses move. They
   only regroup when you really zoom.
 - **Which way it's going.** The feed only says where a vehicle is. So TABOR
-  keeps the last five minutes of positions and draws an arrow once a vehicle has
+  keeps the last ten minutes of positions and draws an arrow once a vehicle has
   gone 30 m. The card says whether it's coming your way, going past, heading
   away or stopped.
 - **A wanted list.** The filter takes whole tiers or particular models. While it's on,
