@@ -1,6 +1,7 @@
 # The live-feed proxy (see src/index.js). Deploy from this folder:
 #   npx wrangler login
-#   npx wrangler secret put UM_KEY     # paste the api.um.warszawa.pl key
+#   npx wrangler secret put DANE_TOKEN # the dane.um.warszawa.pl token (dane.um.warszawa.pl/en/key-api)
+#   npx wrangler secret put UM_KEY     # the old api.um.warszawa.pl key, until the city switches it off
 #   npx wrangler deploy
 name = "tabor-live"
 main = "src/index.js"

@@ -62,12 +62,12 @@ The app doesn't carry a key: it asks TABOR's proxy (`proxy/`, a Cloudflare
 Worker), which holds the key, caches the feed for 10 seconds so every phone
 shares one call to the city, and gzips it. Builds from this repo use that proxy
 as they are. To go direct instead, paste a free key from
-[api.um.warszawa.pl](https://api.um.warszawa.pl) into Settings › Live data. To
+[dane.um.warszawa.pl](https://dane.um.warszawa.pl/en/key-api) into Settings › Live data. To
 run your own proxy, change the domain in `proxy/wrangler.toml` and
 `TABOR_LIVE_PROXY` in `Config/Tabor.xcconfig`, then:
 
 ```bash
-cd proxy && npx wrangler secret put UM_KEY && npx wrangler deploy
+cd proxy && npx wrangler secret put DANE_TOKEN && npx wrangler deploy
 ```
 
 ---

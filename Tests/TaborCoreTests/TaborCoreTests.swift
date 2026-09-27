@@ -559,6 +559,15 @@ private func nearby(_ vehicles: [LiveVehicle]) -> [NearbyVehicle] {
     #expect(parsed?.map(\.number) == [1294])
 }
 
+@Test func liveFeedParsesTheNewCityService() throws {
+    // dane.um.warszawa.pl sends the rows as a bare list, and errors under "message".
+    let rows = Data(#"[{"Brigade":"1","Lines":"9","Lat":52.2,"Lon":21.0,"Time":"2026-09-25 19:23:30","VehicleNumber":"1294"}]"#.utf8)
+    #expect(try LiveFeed.parse(rows, kind: .tram, now: fixtureNow).map(\.number) == [1294])
+    #expect(throws: LiveFeed.Failure.message("Service unavailable")) {
+        try LiveFeed.parse(Data(#"{"message":"Service unavailable"}"#.utf8), kind: .tram)
+    }
+}
+
 @Test func distanceAndNearby() {
     // Plac Defilad → Rondo ONZ is about 700 m.
     let d = Geo.km((52.2319, 21.0067), (52.2330, 20.9965)) * 1000

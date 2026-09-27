@@ -576,7 +576,7 @@ struct HuntView: View {
         switch live.status {
         case .noKey:
             return MessageCard(icon: "key.fill", title: String(localized: "Live positions are off"),
-                               text: String(localized: "HUNT needs a free api.um.warszawa.pl key. Add yours in ME › Settings › Live data."))
+                               text: String(localized: "HUNT needs a free dane.um.warszawa.pl key. Add yours in ME › Settings › Live data."))
         case .error(let why) where live.fresh(maxAge: 120) == nil:
             return MessageCard(icon: "antenna.radiowaves.left.and.right.slash", title: String(localized: "The city's feed is down"),
                                text: String(localized: "\(why) Trying again every 15 seconds."))

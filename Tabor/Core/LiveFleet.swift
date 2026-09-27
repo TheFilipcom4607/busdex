@@ -40,17 +40,27 @@ public enum LiveFeed {
     public static let maxAge: TimeInterval = 180
 
     public enum Failure: Error, Equatable {
-        /// The API answers 200 with `"result": "<message>"` for a bad key, overload, etc.
+        /// The old API answers 200 with `"result": "<message>"` for a bad key, overload, etc.;
+        /// the new one sends `"message"`.
         case message(String)
         case malformed
     }
 
-    /// Parses one `busestrams_get` reply. Non-numeric fleet numbers ("d. 35154") and stale
-    /// rows are dropped.
+    /// Parses one reply: the old `busestrams_get` shape (`{"result": [...]}`, which the proxy
+    /// also sends) or the new dane.um.warszawa.pl one (the bare list). Non-numeric fleet
+    /// numbers ("d. 35154") and stale rows are dropped.
     public static func parse(_ data: Data, kind: VehicleKind, now: Date = Date()) throws -> [LiveVehicle] {
-        guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { throw Failure.malformed }
-        if let message = root["result"] as? String { throw Failure.message(message) }
-        guard let rows = root["result"] as? [[String: Any]] else { throw Failure.malformed }
+        let json = try? JSONSerialization.jsonObject(with: data)
+        let rows: [[String: Any]]
+        if let list = json as? [[String: Any]] {
+            rows = list
+        } else if let root = json as? [String: Any] {
+            if let message = (root["result"] ?? root["message"]) as? String { throw Failure.message(message) }
+            guard let list = root["result"] as? [[String: Any]] else { throw Failure.malformed }
+            rows = list
+        } else {
+            throw Failure.malformed
+        }
         return rows.compactMap { row in
             guard let raw = row["VehicleNumber"] as? String, let number = Int(raw), number > 0,
                   let lat = double(row["Lat"]), let lon = double(row["Lon"]),

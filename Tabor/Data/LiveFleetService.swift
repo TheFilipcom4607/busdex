@@ -155,22 +155,23 @@ final class LiveFleetService {
     }
 
     private static func fetch(_ kind: VehicleKind, from source: Source) async -> Result<[LiveVehicle], Error> {
-        let type = URLQueryItem(name: "type", value: kind == .bus ? "1" : "2")
-        // The proxy answers with the city's own JSON, so both parse the same way.
-        var c: URLComponents
+        let type = kind == .bus ? 1 : 2
+        var request: URLRequest
         switch source {
         case .proxy(let url):
-            c = URLComponents(url: url, resolvingAgainstBaseURL: false)!
-            c.queryItems = [type]
-        case .own(let key):
-            c = URLComponents(string: "https://api.um.warszawa.pl/api/action/busestrams_get/")!
-            c.queryItems = [
-                URLQueryItem(name: "resource_id", value: "f2e5503e-927d-4ad3-9500-4ab9e55deb59"),
-                type,
-                URLQueryItem(name: "apikey", value: key),
-            ]
+            var c = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+            c.queryItems = [URLQueryItem(name: "type", value: "\(type)")]
+            request = URLRequest(url: c.url!)
+        case .own(let token):
+            // Straight to the city's new service (keys from dane.um.warszawa.pl/key-api).
+            request = URLRequest(url: URL(string: "https://dane.um.warszawa.pl/api/action/get_ztm_lokalizacja_pojazdow")!)
+            request.httpMethod = "POST"
+            request.setValue(token, forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = Data(#"{"type": \#(type)}"#.utf8)
         }
-        let request = URLRequest(url: c.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 20
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }

@@ -7,8 +7,11 @@
 //
 // The body is the city's own JSON, untouched, so the app parses it exactly as before.
 
-const UPSTREAM = 'https://api.um.warszawa.pl/api/action/busestrams_get/';
-const RESOURCE = 'f2e5503e-927d-4ad3-9500-4ab9e55deb59';
+// The city is moving its open data from api.um.warszawa.pl to dane.um.warszawa.pl and will
+// switch the old one off. The new one comes first; the old one covers for it until then.
+const DANE = 'https://dane.um.warszawa.pl/api/action/get_ztm_lokalizacja_pojazdow';
+const OLD = 'https://api.um.warszawa.pl/api/action/busestrams_get/';
+const OLD_RESOURCE = 'f2e5503e-927d-4ad3-9500-4ab9e55deb59';
 // The city moves vehicles every ~10 s and phones poll every 15 s: fresher is wasted.
 const FRESH_SECONDS = 10;
 // When the city stumbles (it drops calls under load), a copy this old still beats nothing;
@@ -36,13 +39,17 @@ export default {
     const hit = await cache.match(freshKey);
     if (hit) return reply(await hit.text(), 'HIT');
 
-    const body = await fetchCity(type, env.UM_KEY);
+    let body = await fetchDane(type, env.DANE_TOKEN);
+    const source = body ? 'dane' : 'old';
+    body ??= await fetchOld(type, env.UM_KEY);
     if (body) {
       ctx.waitUntil(Promise.all([
         cache.put(freshKey, cached(body, FRESH_SECONDS)),
         cache.put(goodKey, cached(body, FALLBACK_SECONDS)),
       ]));
-      return reply(body, 'MISS');
+      // Which city service answered, for the logs: once it's always 'dane', the old key can go.
+      console.log(`type ${type} from ${source}`);
+      return reply(body, `MISS ${source}`);
     }
     const stale = await cache.match(goodKey);
     if (stale) return reply(await stale.text(), 'STALE');
@@ -50,10 +57,31 @@ export default {
   },
 };
 
-// The city's JSON, or null if it failed. It answers errors with 200 and a message in
-// `result` instead of the list, so those count as failures too and never get cached.
-async function fetchCity(type, key) {
-  const url = `${UPSTREAM}?resource_id=${RESOURCE}&type=${type}&apikey=${encodeURIComponent(key)}`;
+// Both return the old service's shape, {"result": [...]}, or null if the call failed.
+
+// The new service sends a bare list, and answers a bad token with a 500.
+async function fetchDane(type, token) {
+  if (!token) return null;
+  try {
+    const res = await fetch(DANE, {
+      method: 'POST',
+      headers: { Authorization: token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: Number(type) }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return null;
+    const list = await res.json();
+    return Array.isArray(list) ? JSON.stringify({ result: list }) : null;
+  } catch {
+    return null;
+  }
+}
+
+// The old service answers errors with 200 and a message in `result` instead of the list,
+// so those count as failures too and never get cached.
+async function fetchOld(type, key) {
+  if (!key) return null;
+  const url = `${OLD}?resource_id=${OLD_RESOURCE}&type=${type}&apikey=${encodeURIComponent(key)}`;
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
     if (!res.ok) return null;

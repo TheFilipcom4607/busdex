@@ -366,7 +366,7 @@ struct SettingsSheet: View {
                 } header: {
                     Text("Live data")
                 } footer: {
-                    Text("HUNT and the camera use Warsaw's open-data feed of live bus and tram positions (api.um.warszawa.pl) — only while they're on screen. Leave the key empty to go through TABOR's server, or get your own free key at api.um.warszawa.pl.")
+                    Text("HUNT and the camera use Warsaw's open-data feed of live bus and tram positions (dane.um.warszawa.pl) — only while they're on screen. Leave the key empty to go through TABOR's server, or get your own free key at dane.um.warszawa.pl.")
                 }
                 Section {
                     Button(backingUp ? "Packing…" : "Export catches") { exportBackup() }

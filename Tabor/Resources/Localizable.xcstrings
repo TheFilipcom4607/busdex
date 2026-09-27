@@ -2505,12 +2505,12 @@
         }
       }
     },
-    "HUNT and the camera use Warsaw's open-data feed of live bus and tram positions (api.um.warszawa.pl) — only while they're on screen. Leave the key empty to go through TABOR's server, or get your own free key at api.um.warszawa.pl.": {
+    "HUNT and the camera use Warsaw's open-data feed of live bus and tram positions (dane.um.warszawa.pl) — only while they're on screen. Leave the key empty to go through TABOR's server, or get your own free key at dane.um.warszawa.pl.": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "HUNT i aparat korzystają z otwartych danych Warszawy o pozycjach autobusów i tramwajów na żywo (api.um.warszawa.pl) — tylko gdy są na ekranie. Zostaw klucz pusty, by łączyć się przez serwer TABOR, albo zdobądź własny darmowy klucz na api.um.warszawa.pl."
+            "value": "HUNT i aparat korzystają z otwartych danych Warszawy o pozycjach autobusów i tramwajów na żywo (dane.um.warszawa.pl) — tylko gdy są na ekranie. Zostaw klucz pusty, by łączyć się przez serwer TABOR, albo zdobądź własny darmowy klucz na dane.um.warszawa.pl."
           }
         }
       }
@@ -2525,12 +2525,12 @@
         }
       }
     },
-    "HUNT needs a free api.um.warszawa.pl key. Add yours in ME › Settings › Live data.": {
+    "HUNT needs a free dane.um.warszawa.pl key. Add yours in ME › Settings › Live data.": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "HUNT potrzebuje darmowego klucza api.um.warszawa.pl. Dodaj go w ME › Ustawienia › Dane na żywo."
+            "value": "HUNT potrzebuje darmowego klucza dane.um.warszawa.pl. Dodaj go w ME › Ustawienia › Dane na żywo."
           }
         }
       }
