@@ -19,7 +19,8 @@
   --grotesk: 'Space Grotesk', system-ui, sans-serif; --mono: 'IBM Plex Mono', ui-monospace, monospace;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--grotesk); }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--grotesk); overflow-x: clip; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body { -webkit-font-smoothing: antialiased; }
 a { color: var(--yellow); }
 .wrap { max-width: 1240px; margin: 0 auto; padding: 0 16px 64px; }
@@ -43,7 +44,8 @@ section { margin-top: 44px; }
 section > .head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 section h2 { font-size: 28px; font-weight: 600; letter-spacing: -.01em; margin: 6px 0 0; }
 section .lede { color: var(--sub); margin: 6px 0 0; max-width: 720px; line-height: 1.45; }
-.grid { display: grid; gap: 12px; grid-template-columns: repeat(12, 1fr); }
+/* minmax(0, …): a wide table inside a card must scroll, not stretch the page past the screen. */
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(12, minmax(0, 1fr)); }
 .card { background: var(--card); border: 1px solid var(--hair); border-radius: 20px; padding: 18px; min-width: 0; }
 .card h3 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
 .card .note { color: var(--dim); font-size: 13px; margin: 0 0 14px; line-height: 1.4; }
@@ -53,6 +55,9 @@ section .lede { color: var(--sub); margin: 6px 0 0; max-width: 720px; line-heigh
 @media (max-width: 560px) {
   .s3 { grid-column: span 6; } .s2 { grid-column: span 6; } section h2 { font-size: 23px; }
   .hide-sm { display: none; } header.top { position: static; } .hero .value { font-size: 52px; }
+  .row .grow { white-space: normal; }
+  th, td { padding: 9px 6px; } th { letter-spacing: .06em; }
+  #models td:first-child { width: 55%; }
 }
 
 .tile .label { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
@@ -84,6 +89,8 @@ tr.sel td { background: rgba(255,206,0,.06); }
   border-radius: 7px; padding: 3px 7px; margin: 2px 3px 2px 0; color: var(--sub); }
 
 .list { display: flex; flex-direction: column; }
+/* A box that scrolls on its own traps a thumb on a phone: there, lists just run long. */
+@media (hover: hover) and (min-width: 700px) { .cap { max-height: var(--cap); overflow: auto; } }
 .row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--hair); font-size: 14px; min-width: 0; }
 .row:last-child { border-bottom: 0; }
 .row .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -94,7 +101,8 @@ tr.sel td { background: rgba(255,206,0,.06); }
 .stack i { display: block; height: 100%; }
 
 .chart { position: relative; width: 100%; }
-.chart svg { display: block; width: 100%; overflow: visible; }
+.chart svg { display: block; width: 100%; overflow: visible; touch-action: pan-y; }
+.heat, .stack { touch-action: pan-y; }
 .chart text { font-family: var(--mono); font-size: 10.5px; fill: var(--dim); }
 details.tbl { margin-top: 10px; }
 details.tbl summary { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); cursor: pointer; }
@@ -103,6 +111,7 @@ details.tbl .scroll { max-height: 280px; overflow: auto; margin-top: 8px; }
 details.tbl table { font-size: 12.5px; }
 
 .heat { display: grid; gap: 2px; font-family: var(--mono); font-size: 10px; color: var(--dim); }
+@media (max-width: 560px) { .heat { gap: 1.5px; } .heat .c { height: 18px; border-radius: 3px; } }
 .heat .c { height: 22px; border-radius: 4px; background: var(--slot); }
 .heat .c:hover { outline: 1px solid var(--ink); }
 .scale { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10px; color: var(--dim); margin-top: 10px; }
@@ -132,12 +141,12 @@ details.tbl table { font-size: 12.5px; }
 .meter { height: 8px; border-radius: 4px; background: var(--track); overflow: hidden; margin-top: 10px; }
 .meter i { display: block; height: 100%; background: var(--sub); }
 input.search { background: var(--slot); border: 1px solid var(--hair); color: var(--ink); border-radius: 10px; padding: 9px 12px;
-  font: 14px var(--mono); width: 100%; max-width: 240px; }
+  font: 16px var(--mono); width: 100%; max-width: 260px; }
 details.more summary { cursor: pointer; color: var(--sub); font-size: 14px; padding: 8px 0; }
 
 .gate { max-width: 380px; margin: 18vh auto 0; padding: 0 16px; text-align: center; }
 .gate input { width: 100%; margin: 18px 0 12px; background: var(--card); border: 1px solid var(--hair); color: var(--ink);
-  border-radius: 12px; padding: 14px; font: 15px var(--mono); }
+  border-radius: 12px; padding: 14px; font: 16px var(--mono); }
 .gate button { width: 100%; background: var(--yellow); color: var(--bg); border: 0; border-radius: 14px; padding: 15px;
   font: 600 13px var(--mono); letter-spacing: .2em; text-transform: uppercase; cursor: pointer; }
 .gate p { color: var(--sub); line-height: 1.5; }
@@ -235,6 +244,16 @@ const tip = {
   hide() { this.el.style.display = 'none'; },
 };
 
+// Hover on a mouse, tap or drag on a phone. A finger "leaves" the moment it lifts, so on
+// touch the tooltip stays until the next tap elsewhere or a scroll.
+function hover(el, show, hide = () => {}) {
+  el.addEventListener('pointermove', show);
+  el.addEventListener('pointerdown', show);
+  el.addEventListener('pointerleave', (ev) => { if (ev.pointerType !== 'touch') { hide(); tip.hide(); } });
+}
+addEventListener('scroll', () => tip.hide(), { passive: true });
+document.addEventListener('pointerdown', (ev) => { if (!ev.target.closest?.('.chart, .heat, .stack, .row')) tip.hide(); });
+
 // Every chart is a table too.
 function tableView(head, rows) {
   return h('details', { class: 'tbl' }, h('summary', {}, 'Show as table'),
@@ -299,7 +318,7 @@ function lineChart({ series, xMin, xMax, xTicks, xLabel, yFmt = (v) => fmt(v), y
     svg.append(cross, ...marks);
     const xs = [...new Set(series.flatMap((se) => se.pts.map((p) => p[0])))].sort((a, b) => a - b);
     const hit = s('rect', { x: P.l, y: 0, width: W - P.l - P.r, height, fill: 'transparent' });
-    hit.addEventListener('pointermove', (ev) => {
+    hover(hit, (ev) => {
       if (!xs.length) return;
       const rect = svg.getBoundingClientRect();
       const px = (ev.clientX - rect.left) * (W / rect.width);
@@ -313,8 +332,7 @@ function lineChart({ series, xMin, xMax, xTicks, xLabel, yFmt = (v) => fmt(v), y
         rows.push([se.color, (se.fmt ?? yFmt)(p[1]), se.name + (p[2] ? ' · ' + p[2] : '')]);
       });
       tip.show(ev, xLabel(x), rows);
-    });
-    hit.addEventListener('pointerleave', () => { tip.hide(); cross.setAttribute('visibility', 'hidden'); marks.forEach((m) => m.setAttribute('visibility', 'hidden')); });
+    }, () => { cross.setAttribute('visibility', 'hidden'); marks.forEach((m) => m.setAttribute('visibility', 'hidden')); });
     svg.append(hit);
     box.append(svg);
   });
@@ -349,8 +367,8 @@ function columns({ bars, color, yFmt = (v) => fmt(v), height = 200, table, avg }
         ? `M${x} ${y0} V${y + r} Q${x} ${y} ${x + r} ${y} H${x + bw - r} Q${x + bw} ${y} ${x + bw} ${y + r} V${y0} Z` : '';
       const bar = s('path', { d, fill: b.color ?? color });
       const hit = s('rect', { x: cx - band / 2, y: P.t, width: band, height: height - P.t - P.b, fill: 'transparent' });
-      hit.addEventListener('pointermove', (ev) => { bar.setAttribute('opacity', 0.8); tip.show(ev, b.title ?? b.label, [[b.color ?? color, yFmt(b.value), b.unit ?? '', 'dot']]); });
-      hit.addEventListener('pointerleave', () => { bar.setAttribute('opacity', 1); tip.hide(); });
+      hover(hit, (ev) => { bar.setAttribute('opacity', 0.8); tip.show(ev, b.title ?? b.label, [[b.color ?? color, yFmt(b.value), b.unit ?? '', 'dot']]); },
+        () => bar.setAttribute('opacity', 1));
       svg.append(bar, hit);
       if (i % every === 0) svg.append(s('text', { x: cx, y: height - 6, 'text-anchor': 'middle' }, b.label));
     });
@@ -372,14 +390,13 @@ function heatGrid({ values, color, fmtV, unit }) {
       const cell = h('div', { class: 'c', tabindex: 0, style: v == null ? {} : { background: color, opacity: String(0.12 + 0.88 * Math.sqrt(v / max)) } });
       const show = (ev) => tip.show(ev, `${WEEKDAYS_LONG[wd]} ${String(hr).padStart(2, '0')}:00–${String(hr + 1).padStart(2, '0')}:00`,
         [[color, v == null ? 'no data' : fmtV(v), v == null ? '' : unit, 'dot']]);
-      cell.addEventListener('pointermove', show);
-      cell.addEventListener('pointerleave', () => tip.hide());
+      hover(cell, show);
       grid.append(cell);
     }
   });
   const scale = h('div', { class: 'scale' }, h('span', {}, '0'),
     h('i', { style: { background: `linear-gradient(90deg, ${color}1f, ${color})` } }), h('span', {}, fmtV(max)));
-  return h('div', {}, h('div', { class: 'scroll' }, h('div', { style: { minWidth: '480px' } }, grid)), scale);
+  return h('div', {}, h('div', { class: 'scroll' }, h('div', { style: { minWidth: '300px' } }, grid)), scale);
 }
 
 function sparkline(values, color, w = 90, hgt = 22) {
@@ -395,9 +412,8 @@ function tierStack(parts, title) {
   const total = sum(Object.values(parts));
   const el = h('div', { class: 'stack' }, [...TIERS, TIER.UNKNOWN].filter((t) => parts[t.id]).map((t) =>
     h('i', { style: { width: (parts[t.id] / total * 100) + '%', background: t.color, minWidth: '2px' } })));
-  el.addEventListener('pointermove', (ev) => tip.show(ev, title, [...TIERS, TIER.UNKNOWN].filter((t) => parts[t.id])
+  hover(el, (ev) => tip.show(ev, title, [...TIERS, TIER.UNKNOWN].filter((t) => parts[t.id])
     .map((t) => [t.color, pct(parts[t.id] / total, 1), t.label, 'dot'])));
-  el.addEventListener('pointerleave', () => tip.hide());
   return el;
 }
 
@@ -406,8 +422,7 @@ function hbarRow(label, value, max, color, right, onTip) {
     h('div', { class: 'hbar' }, h('i', { style: { width: (max ? value / max * 100 : 0) + '%', background: color } })),
     h('span', { class: 'r', style: { minWidth: '64px', textAlign: 'right' } }, right));
   if (onTip) {
-    row.addEventListener('pointermove', (ev) => tip.show(ev, ...onTip()));
-    row.addEventListener('pointerleave', () => tip.hide());
+    hover(row, (ev) => tip.show(ev, ...onTip()));
   }
   return row;
 }
@@ -432,7 +447,7 @@ function chipRow(options, current, onPick, colorOf) {
       colorOf ? dot(colorOf(value)) : null, label)));
 }
 
-function sortableTable(cols, rows, state, onRow, selected) {
+function sortableTable(cols, rows, state, onRow, selected, limit = Infinity) {
   const col = cols.find((c) => c.key === state.key) ?? cols[0];
   const sorted = [...rows].sort((a, b) => {
     const x = col.sort(a), y = col.sort(b);
@@ -443,7 +458,7 @@ function sortableTable(cols, rows, state, onRow, selected) {
       class: `sort ${c.right ? 'r' : ''} ${c.key === col.key ? 'on' : ''} ${c.hide ? 'hide-sm' : ''}`,
       onclick: () => { state.desc = c.key === state.key ? !state.desc : c.right ?? false; state.key = c.key; render(); },
     }, c.label + (c.key === col.key ? (state.desc ? ' ↓' : ' ↑') : ''))))),
-    h('tbody', {}, sorted.map((r) => h('tr', { class: `${onRow ? 'click' : ''} ${selected?.(r) ? 'sel' : ''}`, onclick: onRow ? () => onRow(r) : null },
+    h('tbody', {}, sorted.slice(0, limit).map((r) => h('tr', { class: `${onRow ? 'click' : ''} ${selected?.(r) ? 'sel' : ''}`, onclick: onRow ? () => onRow(r) : null },
       cols.map((c) => h('td', { class: `${c.right ? 'r' : ''} ${c.hide ? 'hide-sm' : ''}` }, c.cell(r))))))));
 }
 
@@ -453,7 +468,7 @@ const state = {
   key: localStorage.getItem('taborStatsKey') ?? '',
   range: Number(localStorage.getItem('taborStatsRange') ?? 30),
   huntTier: 'LEGENDARY', mapTier: 'LEGENDARY', kindFilter: 0,
-  modelSort: { key: 'util', desc: true }, model: null, modelHours: null, lineQuery: '',
+  modelSort: { key: 'util', desc: true }, allModels: false, model: null, modelHours: null, lineQuery: '',
   fleet: null, live: null, hist: null, error: null, loading: false,
 };
 
@@ -533,7 +548,7 @@ function renderNow() {
           h('span', { class: 'key' }, dot(t.color), `${t.label} ${pct(counts[t.id] / latest.v.length)}`)))),
       h('div', { class: 'card s6' }, h('h3', {}, 'The rare ones out now'),
         h('p', { class: 'note' }, 'Every legendary, vintage and on-test vehicle in the newest snapshot.'),
-        rare.length ? h('div', { class: 'list', style: { maxHeight: '190px', overflow: 'auto' } }, rare.map((r) =>
+        rare.length ? h('div', { class: 'list cap', style: { '--cap': '190px' } }, rare.map((r) =>
           h('div', { class: 'row' }, tierDot(r.tier), h('span', { class: 'grow' }, r.m.name), h('span', { class: 'r' }, `#${r.n}`),
             h('span', { class: 'pill' }, r.line || '–'))))
           : h('div', { class: 'empty' }, 'None out right now.')),
@@ -548,7 +563,7 @@ function renderNow() {
 
 function liveMap(box, rows) {
   if (!window.L || !box.isConnected) return;
-  const map = L.map(box, { preferCanvas: true, scrollWheelZoom: false }).setView([52.2297, 21.0122], 11);
+  const map = L.map(box, MAP_OPTIONS).setView([52.2297, 21.0122], 11);
   tiles(map);
   // Common ones first, so the rare ones draw on top.
   const sorted = rows.map(([n, k, line, lat, lon]) => ({ n, k, line, lat, lon, ...D.info(k, n) }))
@@ -564,6 +579,10 @@ function liveMap(box, rows) {
 
 // Leaflet's tooltips take HTML; feed text goes through this first.
 function escapeText(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+// On a phone one finger scrolls the page past the map; pinch to zoom. Dragging would
+// trap every swipe that lands on it.
+const MAP_OPTIONS = { preferCanvas: true, scrollWheelZoom: false, dragging: !matchMedia('(pointer: coarse)').matches, tap: false };
 
 function tiles(map) {
   // OpenStreetMap's own tiles need no key; the tile pane's CSS filter turns them dark.
@@ -617,12 +636,11 @@ function renderToday() {
           table: tableView(['Time', 'Buses', 'Trams', 'Total'], curve.map((c) => [hhmm(c[0]), fmt(c[2]), fmt(c[3]), fmt(c[2] + c[3])])),
         })),
       card('s12', `The rare ones today (${rare.length})`, 'Every legendary, vintage and on-test vehicle seen today, and for how long.',
-        rare.length ? h('div', { class: 'scroll' }, h('table', {},
-          h('thead', {}, h('tr', {}, h('th', {}, 'Model'), h('th', { class: 'r' }, 'Number'), h('th', {}, 'Lines'), h('th', { class: 'r' }, 'First–last'), h('th', { class: 'r' }, 'Time out'))),
-          h('tbody', {}, rare.map((r) => h('tr', {},
-            h('td', {}, h('span', { class: 'key' }, tierDot(r.tier), r.m.name)), h('td', { class: 'r' }, `#${r.n}`),
-            h('td', {}, r.lines.sort(lineSort).map((l) => h('span', { class: 'pill' }, l))),
-            h('td', { class: 'r' }, `${hhmm(r.a)}–${hhmm(r.b)}`), h('td', { class: 'r' }, dur(r.c * SAMPLE_MIN)))))))
+        rare.length ? h('div', { class: 'list' }, rare.map((r) => h('div', { class: 'row', style: { flexWrap: 'wrap', rowGap: '6px' } },
+          tierDot(r.tier), h('span', { class: 'grow', style: { whiteSpace: 'normal' } }, r.m.name, h('span', { class: 'muted' }, ` #${r.n}`)),
+          h('div', { style: { flexBasis: '100%', paddingLeft: '19px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 12px' } },
+            h('span', {}, r.lines.sort(lineSort).map((l) => h('span', { class: 'pill' }, l))),
+            h('span', { class: 'r' }, `${hhmm(r.a)}–${hhmm(r.b)} · ${dur(r.c * SAMPLE_MIN)} out`)))))
           : h('div', { class: 'empty' }, 'None yet today.'))));
 }
 
@@ -728,14 +746,14 @@ function renderModels() {
   }
   const rows = [...agg.values()].filter((a) => !state.kindFilter || a.m.kind === state.kindFilter);
   const cols = [
-    { key: 'name', label: 'Model', sort: (r) => r.m.name, cell: (r) => h('span', { class: 'key' }, tierDot(r.m.tier), r.m.name, h('span', { class: 'tag' }, KIND[r.m.kind].toUpperCase())) },
+    { key: 'name', label: 'Model', sort: (r) => r.m.name, cell: (r) => h('span', { class: 'key' }, tierDot(r.m.tier), r.m.name, h('span', { class: 'tag hide-sm' }, KIND[r.m.kind].toUpperCase())) },
     { key: 'tier', label: 'Tier', hide: true, sort: (r) => TIER[r.m.tier].rank, cell: (r) => TIER[r.m.tier].label },
-    { key: 'fleet', label: 'Fleet', right: true, sort: (r) => r.m.fleet, cell: (r) => fmt(r.m.fleet) },
-    { key: 'seen', label: 'Seen', right: true, sort: (r) => r.seen / r.m.fleet, cell: (r) => `${fmt(r.seen)} (${pct(r.seen / r.m.fleet)})` },
+    { key: 'fleet', label: 'Fleet', right: true, hide: true, sort: (r) => r.m.fleet, cell: (r) => fmt(r.m.fleet) },
+    { key: 'seen', label: 'Seen', right: true, hide: true, sort: (r) => r.seen / r.m.fleet, cell: (r) => `${fmt(r.seen)} (${pct(r.seen / r.m.fleet)})` },
     { key: 'avg', label: 'Out a day', right: true, sort: (r) => r.avgOut, cell: (r) => fmt(r.avgOut, 1) },
     { key: 'util', label: 'On the road', right: true, sort: (r) => r.util, cell: (r) => pct(r.util) },
     { key: 'hrs', label: 'Hours each', right: true, hide: true, sort: (r) => r.hrs, cell: (r) => r.hrs ? fmt(r.hrs, 1) : '–' },
-    { key: 'lines', label: 'Top lines', sort: (r) => r.lines.length, cell: (r) => r.lines.slice(0, 3).map(([l]) => h('span', { class: 'pill' }, l)) },
+    { key: 'lines', label: 'Top lines', hide: true, sort: (r) => r.lines.length, cell: (r) => r.lines.slice(0, 3).map(([l]) => h('span', { class: 'pill' }, l)) },
     { key: 'trend', label: 'Each day', hide: true, sort: (r) => r.avgOut, cell: (r) => sparkline(r.daily, TIER[r.m.tier].color) },
   ];
   const pick = (r) => { state.model = state.model === r.m.id ? null : r.m.id; state.modelHours = null; render(); if (state.model) loadModel(); };
@@ -743,7 +761,9 @@ function renderModels() {
     '"Out a day" is how many different vehicles of the model ran each day, on average; "On the road" is that as a share of the fleet; "Hours each" is how long one ran, on a day it ran. Tap a model for its page.',
     chipRow([[0, 'All'], [1, 'Buses'], [2, 'Trams']], state.kindFilter, (v) => { state.kindFilter = v; render(); }),
     h('div', { class: 'grid', style: { marginTop: '12px' } },
-      card('s12', null, null, sortableTable(cols, rows, state.modelSort, pick, (r) => r.m.id === state.model)),
+      card('s12', null, null, sortableTable(cols, rows, state.modelSort, pick, (r) => r.m.id === state.model, state.allModels ? Infinity : 20),
+        !state.allModels && rows.length > 20 ? h('button', { class: 'chip', style: { marginTop: '12px' }, onclick: () => { state.allModels = true; render(); } },
+          `Show all ${rows.length} models`) : null),
       state.model ? modelPage(agg.get(state.model)) : null));
 }
 
@@ -782,7 +802,7 @@ function modelPage(a) {
       card('s6', 'When it runs', 'Average out at once, by weekday and hour.',
         week ? heatGrid({ values: week, color, fmtV: (v) => fmt(v, 1), unit: 'out on average' }) : h('div', { class: 'empty' }, 'Loading…')),
       card('s6', 'Where it runs', 'Share of its time on the road, by line.',
-        a.lines.length ? h('div', { class: 'list', style: { maxHeight: '260px', overflow: 'auto' } }, a.lines.slice(0, 25).map(([l, vs]) =>
+        a.lines.length ? h('div', { class: 'list cap', style: { '--cap': '260px' } }, a.lines.slice(0, 25).map(([l, vs]) =>
           hbarRow(`Line ${l}`, vs, a.lines[0][1], color, pct(vs / lineTotal, 1)))) : h('div', { class: 'empty' }, 'No lines seen.')),
       card('s12', 'Its vehicles', 'Each number seen, with how many days it ran. Brighter ran more.',
         h('div', {}, byDays.map((v) => h('span', { class: 'pill', style: { borderColor: color, opacity: String(0.45 + 0.55 * v.days / Math.max(1, byDays[0]?.days ?? 1)) } },
@@ -857,7 +877,7 @@ function renderWhere() {
 
 function heatMap(box, cells, color, nDays) {
   if (!window.L || !box.isConnected) return;
-  const map = L.map(box, { preferCanvas: true, scrollWheelZoom: false }).setView([52.2297, 21.0122], 11);
+  const map = L.map(box, MAP_OPTIONS).setView([52.2297, 21.0122], 11);
   tiles(map);
   const max = Math.max(1, ...cells.map((c) => c[2]));
   const bounds = [];
@@ -942,7 +962,7 @@ function renderVehicles() {
           h('summary', {}, h('span', { class: 'key' }, tierDot(r.m.tier), `${r.m.name}: ${r.nums.length} of ${r.m.fleet}`)),
           h('div', {}, r.nums.map((n) => h('span', { class: 'pill' }, `#${n}`)))))) : h('div', { class: 'empty' }, 'Everything ran.')),
       card('s6', 'Not in the fleet data', 'Numbers the feed reported that fleet.json doesn\'t know. Worth adding if they keep coming back.',
-        unknown.length ? h('div', { class: 'list', style: { maxHeight: '420px', overflow: 'auto' } }, unknown.map((v) => h('div', { class: 'row' },
+        unknown.length ? h('div', { class: 'list cap', style: { '--cap': '420px' } }, unknown.map((v) => h('div', { class: 'row' },
           h('span', { class: 'grow' }, `${KIND[v.kind]} #${v.number}`), h('span', {}, v.lines.slice(0, 4).map((l) => h('span', { class: 'pill' }, l))),
           h('span', { class: 'r' }, `${v.days} d · last ${shortDay(v.last)}`)))) : h('div', { class: 'empty' }, 'None: fleet.json knows every number.'))));
 }
