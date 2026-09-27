@@ -248,13 +248,15 @@ MERGE = {
 # batch of 30 Yutong U12s (#1940-1969, R-1 Woronicza) runs since 3 Sep 2026 (per
 # Warszawikia, 25 Sep 2026; 13 of them seen live that day). New Solaris Urbino 18
 # electrics are coming in at R-2 Kleszczowa as #58xx (MZA ordered 50 for 2H 2026);
-# only the numbers seen live on 2026-09-25 are listed, not the whole assumed range.
+# only the numbers seen live (2026-09-25, and 7 more on 2026-09-27) are listed, not the
+# whole assumed range.
 # (make, model, number, operator, year, depot.)
 EXTRA_BUSES = [
     *[("Otokar", "Kent C LF Mild Hybrid", n, "Mobilis", 2026, "Ursus") for n in range(9601, 9655)],
     *[("Yutong", "U12-B", n, "MZA", 2026, 'R-1 "Woronicza" (R-07)') for n in range(1940, 1970)],
     *[("Solaris", "Urbino 18E", n, "MZA", 2026, 'R-2 "Kleszczowa" (R-11)')
-      for n in (5803, 5804, 5805, 5807, 5808, 5815, 5817, 5819, 5822, 5827, 5830, 5833)],
+      for n in (5803, 5804, 5805, 5807, 5808, 5811, 5814, 5815, 5816, 5817, 5819, 5822, 5827,
+                5828, 5829, 5830, 5831, 5833, 5835)],
 ]
 # Buses on loan for a trial, not (yet) in the ZTM database. The app tags them ON TEST:
 # catchable and in the book, but, like vintage stock, outside the fleet % and the set
