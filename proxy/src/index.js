@@ -17,6 +17,12 @@ const FRESH_SECONDS = 10;
 // When the city stumbles (it drops calls under load), a copy this old still beats nothing;
 // the app ignores positions older than a few minutes anyway.
 const FALLBACK_SECONDS = 120;
+// The city answers in well under a second; when it doesn't, it tends to hang for minutes.
+// Two tries of this still finish before the app gives up at 20 s.
+const TIMEOUT_MS = 5_000;
+// After both services fail, answer from the fallback copy for a while instead of making
+// every phone wait out the timeouts again.
+const DOWN_SECONDS = 15;
 
 export default {
   async fetch(request, env, ctx) {
@@ -35,13 +41,21 @@ export default {
     const cache = caches.default;
     const freshKey = new Request(`https://cache.tabor/fresh/${type}`);
     const goodKey = new Request(`https://cache.tabor/good/${type}`);
+    const downKey = new Request(`https://cache.tabor/down/${type}`);
 
     const hit = await cache.match(freshKey);
     if (hit) return reply(await hit.text(), 'HIT');
 
-    let body = await fetchDane(type, env.DANE_TOKEN);
-    const source = body ? 'dane' : 'old';
-    body ??= await fetchOld(type, env.UM_KEY);
+    const down = await cache.match(downKey);
+    let body = null;
+    let source = 'dane';
+    if (!down) {
+      body = await fetchDane(type, env.DANE_TOKEN);
+      if (!body) {
+        source = 'old';
+        body = await fetchOld(type, env.UM_KEY);
+      }
+    }
     if (body) {
       ctx.waitUntil(Promise.all([
         cache.put(freshKey, cached(body, FRESH_SECONDS)),
@@ -50,6 +64,10 @@ export default {
       // Which city service answered, for the logs: once it's always 'dane', the old key can go.
       console.log(`type ${type} from ${source}`);
       return reply(body, `MISS ${source}`);
+    }
+    if (!down) {
+      console.log(`type ${type}: the city didn't answer`);
+      ctx.waitUntil(cache.put(downKey, cached('{}', DOWN_SECONDS)));
     }
     const stale = await cache.match(goodKey);
     if (stale) return reply(await stale.text(), 'STALE');
@@ -67,7 +85,7 @@ async function fetchDane(type, token) {
       method: 'POST',
       headers: { Authorization: token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: Number(type) }),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!res.ok) return null;
     const list = await res.json();
@@ -83,7 +101,7 @@ async function fetchOld(type, key) {
   if (!key) return null;
   const url = `${OLD}?resource_id=${OLD_RESOURCE}&type=${type}&apikey=${encodeURIComponent(key)}`;
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
     if (!res.ok) return null;
     const body = await res.text();
     return Array.isArray(JSON.parse(body).result) ? body : null;
