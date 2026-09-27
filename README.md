@@ -37,6 +37,11 @@ frame the shot. **BOOK** files the vehicle under its model and batch. **HUNT**
 shows every vehicle you haven't caught yet, live, on a map. **ME** keeps the
 score.
 
+<p align="center">
+  <img src="docs/tour-1.jpg" width="100%" alt="CATCH: point at any bus or tram, the camera reading fleet number 1972 on a Yutong U12. NEW STICKER: every catch becomes a sticker, the reveal for Yutong U12 #1972, GOLD · 48. BOOK: collect the whole fleet, 2,600+ vehicles, the book listing models with how many of each you have.">
+  <img src="docs/tour-2.jpg" width="100%" alt="HUNT: track down rare ones, live, the map with the Irizar ie tram 12 on test coming your way on line 106. BOOK: every batch, every number, the Hyundai Rotem 140N page with stickers filed by batch. ME: earn badges and flex your rarest, the trophy shelf above stats and badge coins.">
+</p>
+
 ---
 
 ## Install
