@@ -471,7 +471,8 @@ const state = {
   key: localStorage.getItem('taborStatsKey') ?? '',
   range: Number(localStorage.getItem('taborStatsRange') ?? 30),
   huntTier: 'LEGENDARY', mapTier: 'LEGENDARY', kindFilter: 0,
-  modelSort: { key: 'util', desc: true }, allModels: false, model: null, mapModel: null, modelCells: {}, modelHours: null, lineQuery: '',
+  modelSort: { key: 'util', desc: true }, allModels: false, model: null, mapModel: null, modelCells: {},
+  liveTier: 'ALL', liveModel: null, modelHours: null, lineQuery: '',
   fleet: null, live: null, hist: null, error: null, loading: false,
 };
 
@@ -538,7 +539,17 @@ function renderNow() {
   rare.sort((a, b) => TIER[a.tier].rank - TIER[b.tier].rank || a.m.name.localeCompare(b.m.name) || a.n - b.n);
 
   const mapBox = h('div', { class: 'map' });
-  requestAnimationFrame(() => liveMap(mapBox, latest.v));
+  // The live map can narrow to a tier or one model, like the heat map further down.
+  const liveModel = state.liveModel && D.models.get(state.liveModel);
+  const shown = latest.v.filter(([n, k]) => {
+    const { m, tier } = D.info(k, n);
+    return liveModel ? m?.id === liveModel.id : state.liveTier === 'ALL' || tier === state.liveTier;
+  });
+  const narrowed = liveModel || state.liveTier !== 'ALL';
+  requestAnimationFrame(() => liveMap(mapBox, shown, narrowed));
+  const liveNote = !narrowed ? 'Every vehicle in the newest snapshot, coloured by tier. Hover or tap one for its model and line.'
+    : shown.length ? `${fmt(shown.length)} ${liveModel ? liveModel.name : TIER[state.liveTier].label.toLowerCase()} out right now.`
+    : `No ${liveModel ? liveModel.name : TIER[state.liveTier].label.toLowerCase()} out right now.`;
 
   return section('now', `Right now · ${hhmm(latest.minute)}${ageMin > 10 ? ` · ${ageMin} min ago` : ''}`, 'On the road',
     ageMin > 15 ? `The newest snapshot is ${ageMin} minutes old: the city's feed may be down.` : null,
@@ -556,26 +567,32 @@ function renderNow() {
             h('span', { class: 'pill' }, r.line || '–'))))
           : h('div', { class: 'empty' }, 'None out right now.')),
       ...tiles,
-      card('s12', 'Live map', 'Every vehicle in the newest snapshot, coloured by tier. Hover one for its model and line.',
-        h('div', { class: 'legend' }, [...TIERS, TIER.UNKNOWN].filter((t) => counts[t.id]).map((t) =>
-          h('span', { class: 'key' }, dot(t.color), `${t.label} ${fmt(counts[t.id])}`))), mapBox),
+      card('s12', 'Live map', liveNote,
+        mapFilters(state.liveTier, state.liveModel, (v) => { state.liveTier = v; state.liveModel = null; render(); },
+          (id) => { state.liveModel = id; render(); }),
+        narrowed ? null : h('div', { class: 'legend', style: { marginTop: '12px' } }, [...TIERS, TIER.UNKNOWN].filter((t) => counts[t.id]).map((t) =>
+          h('span', { class: 'key' }, dot(t.color), `${t.label} ${fmt(counts[t.id])}`))),
+        h('div', { style: { marginTop: '12px' } }, mapBox)),
       unknown.length ? card('s12', `Not in the fleet data (${unknown.length})`,
         'Numbers on the live feed that fleet.json doesn\'t know: new deliveries, trials, or typos in the feed.',
         h('div', {}, unknown.sort(by((u) => u.n)).map((u) => h('span', { class: 'pill' }, `${KIND[u.k]} #${u.n}${u.line ? ' · ' + u.line : ''}`)))) : null));
 }
 
-function liveMap(box, rows) {
+function liveMap(box, rows, narrowed) {
   if (!window.L || !box.isConnected) return;
   const map = L.map(box, MAP_OPTIONS).setView([52.2297, 21.0122], 11);
   tiles(map);
+  if (narrowed && rows.length) map.fitBounds(rows.map((r) => [r[3] / 1e4, r[4] / 1e4]), { padding: [30, 30], maxZoom: 13 });
   // Common ones first, so the rare ones draw on top.
   const sorted = rows.map(([n, k, line, lat, lon]) => ({ n, k, line, lat, lon, ...D.info(k, n) }))
     .sort((a, b) => (TIER[b.tier] ?? TIER.UNKNOWN).rank - (TIER[a.tier] ?? TIER.UNKNOWN).rank);
   for (const v of sorted) {
     const t = TIER[v.tier] ?? TIER.UNKNOWN;
-    const common = v.tier === 'COMMON';
+    // Common ones stay small in the full view; picked out on their own, they get full dots.
+    const small = v.tier === 'COMMON' && !narrowed;
     L.circleMarker([v.lat / 1e4, v.lon / 1e4], {
-      radius: common ? 2.5 : 5, color: '#0B0C0E', weight: common ? 0.5 : 2, fillColor: t.color, fillOpacity: common ? 0.55 : 1,
+      radius: small ? 2.5 : 5, color: '#0B0C0E', weight: small ? 0.5 : 2,
+      fillColor: v.tier === 'COMMON' ? mapColor('COMMON') : t.color, fillOpacity: small ? 0.55 : 1,
     }).bindTooltip(`${escapeText(v.m?.name ?? 'Unknown model')} · #${v.n}${v.line ? ' · line ' + escapeText(v.line) : ''}`).addTo(map);
   }
 }
@@ -891,19 +908,25 @@ function renderWhere() {
   }
   const box = h('div', { class: 'map' });
   requestAnimationFrame(() => heatMap(box, cells, color, days.length));
-  const byTier = TIERS.map((t) => [t, [...D.models.values()].filter((m) => m.tier === t.id).sort((a, b) => a.name.localeCompare(b.name))]);
-  const picker = h('select', { class: 'search', 'aria-label': 'One model', onchange: (e) => { state.mapModel = e.target.value || null; render(); } },
-    h('option', { value: '' }, 'Or one model…'),
-    byTier.filter(([, ms]) => ms.length).map(([t, ms]) => h('optgroup', { label: t.label },
-      ms.map((m) => h('option', { value: m.id, selected: m.id === state.mapModel }, `${m.name}${m.kind === 2 ? ' (tram)' : ''}`)))));
   return section('where', `Where · ${days.length} day${days.length > 1 ? 's' : ''}`, 'The map',
     'Time spent in each square kilometre, averaged per day. Brighter means more. Pick a tier, or one model.',
-    h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' } },
-      chipRow([['LEGENDARY', 'Legendary'], ['GOLD', 'Gold'], ['RARE', 'Rare'], ['VINTAGE', 'Vintage'], ['ON TEST', 'On test'], ['COMMON', 'Common'], ['ALL', 'Everything']],
-        model ? null : state.mapTier, (v) => { state.mapTier = v; state.mapModel = null; render(); }, (v) => v === 'ALL' ? '#FFCE00' : TIER[v].color),
-      picker),
+    mapFilters(state.mapTier, state.mapModel, (v) => { state.mapTier = v; state.mapModel = null; render(); },
+      (id) => { state.mapModel = id; render(); }),
     h('div', { class: 'grid', style: { marginTop: '12px' } }, card('s12', null, note, box,
       h('div', { class: 'scale' }, h('span', {}, 'less'), h('i', { style: { background: `linear-gradient(90deg, ${color}1f, ${color})` } }), h('span', {}, 'more')))));
+}
+
+// Tier buttons and a model list, for both maps.
+function mapFilters(tier, modelId, onTier, onModel) {
+  const byTier = TIERS.map((t) => [t, [...D.models.values()].filter((m) => m.tier === t.id).sort((a, b) => a.name.localeCompare(b.name))]);
+  const picker = h('select', { class: 'search', 'aria-label': 'One model', onchange: (e) => onModel(e.target.value || null) },
+    h('option', { value: '' }, 'Or one model…'),
+    byTier.filter(([, ms]) => ms.length).map(([t, ms]) => h('optgroup', { label: t.label },
+      ms.map((m) => h('option', { value: m.id, selected: m.id === modelId }, `${m.name}${m.kind === 2 ? ' (tram)' : ''}`)))));
+  return h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' } },
+    chipRow([['ALL', 'Everything'], ['LEGENDARY', 'Legendary'], ['GOLD', 'Gold'], ['RARE', 'Rare'], ['VINTAGE', 'Vintage'], ['ON TEST', 'On test'], ['COMMON', 'Common']],
+      modelId ? null : tier, onTier, (v) => v === 'ALL' ? '#FFCE00' : TIER[v].color),
+    picker);
 }
 
 // Common's grey all but vanishes on the dark map; HUNT in the app uses a lighter one there too.
