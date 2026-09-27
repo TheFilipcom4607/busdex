@@ -107,6 +107,24 @@ struct RootView: View {
             // They've found the control on their own: no need to tip them off about it.
             UserDefaults.standard.set(true, forKey: CatchControlTip.seenKey)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .taborOpenHunt)) { _ in
+            router.tab = .hunt
+            UserDefaults.standard.set(true, forKey: CatchControlTip.seenKey)
+        }
+        // Widget taps.
+        .onOpenURL { url in
+            switch WidgetLink.target(url) {
+            case .book:
+                router.tab = .book
+                router.bookPath.removeAll()
+            case .vehicle(let modelId, let number):
+                router.openVehicle(modelId: modelId, number: number)
+            case nil:
+                return
+            }
+            // Only a widget on the Home Screen sends these: no need for the widget tip.
+            UserDefaults.standard.set(true, forKey: WidgetTip.seenKey)
+        }
         .overlay(alignment: .top) {
             if let unlock = badges.current {
                 BadgeToast(unlock: unlock) {
@@ -126,8 +144,8 @@ struct RootView: View {
             badges.update(Achievements.evaluate(sightings.map(\.record), catalog: Fleet.catalog))
             await WeatherService.backfill(sightings, context: context)
         }
-        // Refresh the Home / Lock Screen widget whenever what it shows could have changed.
-        .task(id: widgetKey) { WidgetBridge.publish(sightings) }
+        // Refresh the Home / Lock Screen widgets whenever what they show could have changed.
+        .task(id: widgetKey) { await WidgetBridge.publish(sightings) }
     }
 
     private var widgetKey: String {

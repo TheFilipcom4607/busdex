@@ -68,21 +68,21 @@ struct CatchControlHowTo: View {
                         Mono("CATCH FASTER", size: 10.5, weight: 600, spacing: 0.14, color: Palette.yellow)
                         Text("One tap, camera on")
                             .font(TaborFont.grotesk(26, 600))
-                        Text("TABOR has a Catch button for your Lock Screen, Control Center and Action button. It opens straight to the camera, even from a locked phone.")
+                        Text("TABOR has a Catch button for your Lock Screen, Control Center and Action button. It opens straight to the camera, even from a locked phone. There's a Hunt button too, for the live map.")
                             .font(TaborFont.grotesk(14))
                             .foregroundStyle(Palette.sub)
                     }
-                    place("lock.fill", title: String(localized: "Lock Screen"), steps: [
+                    HowToSteps(icon: "lock.fill", title: String(localized: "Lock Screen"), steps: [
                         String(localized: "Touch and hold the Lock Screen, then tap Customize."),
                         String(localized: "Tap one of the buttons at the bottom, or − to clear one first."),
                         String(localized: "Search for TABOR and pick Catch a vehicle."),
                     ])
-                    place("switch.2", title: String(localized: "Control Center"), steps: [
+                    HowToSteps(icon: "switch.2", title: String(localized: "Control Center"), steps: [
                         String(localized: "Swipe down from the top-right corner."),
                         String(localized: "Tap + at the top left, then Add a Control."),
                         String(localized: "Search for TABOR and pick Catch a vehicle."),
                     ])
-                    place("button.horizontal.top.press", title: String(localized: "Action button"), steps: [
+                    HowToSteps(icon: "button.horizontal.top.press", title: String(localized: "Action button"), steps: [
                         String(localized: "On iPhones that have one: Settings › Action Button."),
                         String(localized: "Swipe to Controls, then choose Catch a vehicle."),
                     ])
@@ -98,8 +98,15 @@ struct CatchControlHowTo: View {
         .presentationDetents([.large])
         .presentationBackground(Palette.bg)
     }
+}
 
-    private func place(_ icon: String, title: String, steps: [String]) -> some View {
+/// A card of numbered steps under an icon and a title, for the how-to sheets.
+struct HowToSteps: View {
+    let icon: String
+    let title: String
+    let steps: [String]
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 9) {
                 Image(systemName: icon)

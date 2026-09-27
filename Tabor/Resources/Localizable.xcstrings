@@ -103,6 +103,16 @@
         }
       }
     },
+    "%@ caught": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ złapane"
+          }
+        }
+      }
+    },
     "%@ different vehicles": {
       "localizations": {
         "pl": {
@@ -238,6 +248,58 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "ODBLOKOWANO %lld ODZNAK"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld DAYS": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld DAY"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld DAYS"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld DNI"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld DNI"
+                }
+              },
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld DZIEŃ"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld DNI"
                 }
               }
             }
@@ -617,6 +679,56 @@
         }
       }
     },
+    "%lld-day streak · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld-day streak · %2$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seria: %#@days@ · %2$@"
+          },
+          "substitutions": {
+            "days": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "few": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg dni"
+                    }
+                  },
+                  "many": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg dni"
+                    }
+                  },
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg dzień"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg dni"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld/%lld": {
       "localizations": {
         "en": {
@@ -874,6 +986,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Złap coś, gdy pada śnieg"
+          }
+        }
+      }
+    },
+    "A different sticker from your book every hour.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Co godzinę inna naklejka z twojego albumu."
           }
         }
       }
@@ -1363,6 +1485,16 @@
         }
       }
     },
+    "CATCH ONE TODAY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZŁAP COŚ DZIŚ"
+          }
+        }
+      }
+    },
     "CAUGHT": {
       "localizations": {
         "pl": {
@@ -1471,6 +1603,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Złap pojazd"
+          }
+        }
+      }
+    },
+    "Catch and Hunt buttons for Control Center": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przyciski Złap i Poluj do centrum sterowania"
           }
         }
       }
@@ -2244,6 +2386,16 @@
         }
       }
     },
+    "FIRST CAUGHT %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PIERWSZY RAZ %@"
+          }
+        }
+      }
+    },
     "FIRST SEEN": {
       "localizations": {
         "pl": {
@@ -2585,6 +2737,56 @@
         }
       }
     },
+    "Home Screen": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekran początkowy"
+          }
+        }
+      }
+    },
+    "Home Screen widgets": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Widżety na ekranie początkowym"
+          }
+        }
+      }
+    },
+    "How many legendary, gold, rare and common vehicles you've caught.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ile masz już pojazdów legendarnych, złotych, rzadkich i pospolitych."
+          }
+        }
+      }
+    },
+    "Hunt": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poluj"
+          }
+        }
+      }
+    },
+    "Hunt nearby": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poluj w okolicy"
+          }
+        }
+      }
+    },
     "I caught %@ #%@ in %@ on %@!": {
       "localizations": {
         "en": {
@@ -2759,6 +2961,32 @@
         }
       }
     },
+    "LAST: %@ · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "LAST: %1$@ · %2$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OSTATNI: %1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "LATEST CATCHES": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OSTATNIO ZŁAPANE"
+          }
+        }
+      }
+    },
     "LEGENDARY": {
       "comment": "Rarity tier",
       "localizations": {
@@ -2842,6 +3070,32 @@
           "stringUnit": {
             "state": "translated",
             "value": "ZABLOKOWANA"
+          }
+        }
+      }
+    },
+    "Last: %@ %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Last: %1$@ %2$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ostatni: %1$@ %2$@"
+          }
+        }
+      }
+    },
+    "Latest catches": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ostatnio złapane"
           }
         }
       }
@@ -3118,6 +3372,16 @@
         }
       }
     },
+    "NEW: WIDGETS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWOŚĆ: WIDŻETY"
+          }
+        }
+      }
+    },
     "NEXT": {
       "localizations": {
         "pl": {
@@ -3164,6 +3428,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "JESZCZE BEZ ZDJĘCIA"
+          }
+        }
+      }
+    },
+    "NO STREAK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BEZ SERII"
           }
         }
       }
@@ -3420,6 +3694,26 @@
         }
       }
     },
+    "OF THE FLEET": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TABORU"
+          }
+        }
+      }
+    },
+    "OF THE FLEET CAUGHT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TABORU ZŁAPANE"
+          }
+        }
+      }
+    },
     "OFFLINE": {
       "localizations": {
         "pl": {
@@ -3603,12 +3897,42 @@
         }
       }
     },
+    "Open TABOR on the live map of vehicles you haven't caught.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz TABOR na mapie na żywo z pojazdami, których jeszcze nie masz."
+          }
+        }
+      }
+    },
+    "Open TABOR straight to the camera.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz TABOR od razu na aparacie."
+          }
+        }
+      }
+    },
     "Open the camera to catch it": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "Otwórz aparat, by go złapać"
+          }
+        }
+      }
+    },
+    "Opens TABOR on the live map of vehicles you haven't caught.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwiera TABOR na mapie na żywo z pojazdami, których jeszcze nie masz."
           }
         }
       }
@@ -3705,6 +4029,16 @@
         }
       }
     },
+    "Put your book on your Home Screen": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Postaw album na ekranie początkowym"
+          }
+        }
+      }
+    },
     "RARE": {
       "comment": "Rarity tier",
       "localizations": {
@@ -3796,6 +4130,16 @@
         }
       }
     },
+    "Rarity sets": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zestawy rzadkości"
+          }
+        }
+      }
+    },
     "Remove %@ from the filter": {
       "localizations": {
         "pl": {
@@ -3846,6 +4190,58 @@
         }
       }
     },
+    "SEEN %lld TIMES": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "SEEN %lld TIME"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "SEEN %lld TIMES"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "WIDZIANY %lld RAZY"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "WIDZIANY %lld RAZY"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "WIDZIANY %lld RAZY"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "WIDZIANY %lld RAZY"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "SEEN AGAIN": {
       "localizations": {
         "pl": {
@@ -3872,6 +4268,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "WIDZIANY NA LINIACH"
+          }
+        }
+      }
+    },
+    "SEEN ONCE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WIDZIANY RAZ"
+          }
+        }
+      }
+    },
+    "SETS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZESTAWY"
           }
         }
       }
@@ -4048,6 +4464,16 @@
         }
       }
     },
+    "Search for TABOR, swipe to the widget and size you like, then tap Add Widget.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyszukaj TABOR, przesuń do widżetu i rozmiaru, który ci pasuje, i stuknij Dodaj widżet."
+          }
+        }
+      }
+    },
     "Search models": {
       "localizations": {
         "pl": {
@@ -4195,6 +4621,16 @@
         }
       }
     },
+    "Sticker shuffle": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Losowa naklejka"
+          }
+        }
+      }
+    },
     "Storm chaser": {
       "localizations": {
         "pl": {
@@ -4245,12 +4681,12 @@
         }
       }
     },
-    "TABOR has a Catch button for your Lock Screen, Control Center and Action button. It opens straight to the camera, even from a locked phone.": {
+    "TABOR has a Catch button for your Lock Screen, Control Center and Action button. It opens straight to the camera, even from a locked phone. There's a Hunt button too, for the live map.": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "TABOR ma przycisk Złap na ekran blokady, do centrum sterowania i pod przycisk akcji. Od razu otwiera aparat, nawet na zablokowanym telefonie."
+            "value": "TABOR ma przycisk Złap na ekran blokady, do centrum sterowania i pod przycisk akcji. Od razu otwiera aparat, nawet na zablokowanym telefonie. Jest też przycisk Poluj, do mapy na żywo."
           }
         }
       }
@@ -4377,6 +4813,16 @@
         }
       }
     },
+    "Tap Edit at the top left, then Add Widget.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stuknij Edycja w lewym górnym rogu, a potem Dodaj widżet."
+          }
+        }
+      }
+    },
     "Tap each one a few times. Tell Claude which feel wrong and what they remind you of — too buzzy, too weak, too long, late, like a phone ringing…": {
       "localizations": {
         "pl": {
@@ -4393,6 +4839,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Stuknij jeden z przycisków na dole albo najpierw zwolnij miejsce, stukając −."
+          }
+        }
+      }
+    },
+    "Tap the row under the clock and pick TABOR: your streak and progress fit there.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stuknij rząd pod zegarem i wybierz TABOR: zmieści się tam twoja seria i postęp."
           }
         }
       }
@@ -4549,6 +5005,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Latarka"
+          }
+        }
+      }
+    },
+    "Touch and hold an empty spot on the Home Screen until the apps jiggle.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przytrzymaj palec na pustym miejscu ekranu początkowego, aż ikony zaczną drgać."
+          }
+        }
+      }
+    },
+    "Touch and hold the Lock Screen, then tap Customize › Lock Screen.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przytrzymaj palec na ekranie blokady i stuknij Dostosuj › Ekran blokady."
           }
         }
       }
@@ -4804,6 +5280,16 @@
         }
       }
     },
+    "WIDGETS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WIDŻETY"
+          }
+        }
+      }
+    },
     "WRONG NUMBER?": {
       "localizations": {
         "pl": {
@@ -5015,12 +5501,42 @@
         }
       }
     },
+    "Your book": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twój album"
+          }
+        }
+      }
+    },
     "Your book lives on this phone — deleting TABOR deletes it. Export a ZIP now and then: it keeps every sighting, photo and sticker. Importing only adds what's missing.": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "Twój album jest tylko na tym telefonie — usunięcie TABORU usunie też album. Co jakiś czas eksportuj ZIP: zachowa każdą obserwację, zdjęcie i naklejkę. Import dodaje tylko to, czego brakuje."
+          }
+        }
+      }
+    },
+    "Your book, one glance away": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twój album na wyciągnięcie ręki"
+          }
+        }
+      }
+    },
+    "Your catches land here": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu trafią twoje złapane pojazdy"
           }
         }
       }
@@ -5041,12 +5557,52 @@
         }
       }
     },
+    "Your newest stickers, your rarity sets, or a different sticker every hour. They update after every catch.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Najnowsze naklejki, zestawy rzadkości albo co godzinę inna naklejka. Odświeżają się po każdym złapaniu."
+          }
+        }
+      }
+    },
+    "Your newest stickers. Tap one to open it in your book.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twoje najnowsze naklejki. Stuknij jedną, by otworzyć ją w albumie."
+          }
+        }
+      }
+    },
     "Your own · …%@": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "Własny · …%@"
+          }
+        }
+      }
+    },
+    "Your stickers get shuffled here": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu będą się zmieniać twoje naklejki"
+          }
+        }
+      }
+    },
+    "Your streak, how much of the fleet you've caught and your latest sticker.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twoja seria, ile taboru już masz i ostatnia naklejka."
           }
         }
       }

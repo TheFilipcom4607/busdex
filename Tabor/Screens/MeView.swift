@@ -8,6 +8,8 @@ struct MeView: View {
     @Environment(Router.self) private var router
     @State private var showSettings = false
     @State private var showMap = false
+    @State private var showWidgetHowTo = false
+    @AppStorage(WidgetTip.seenKey) private var widgetTipSeen = false
     private let catalog = Fleet.catalog
 
     var body: some View {
@@ -47,6 +49,17 @@ struct MeView: View {
                 .padding(.top, 18)
                 .padding(.horizontal, 22)
 
+                if !widgetTipSeen, sightings.count >= WidgetTip.afterCatches {
+                    WidgetTipCard {
+                        showWidgetHowTo = true
+                        widgetTipSeen = true
+                    } dismiss: {
+                        withAnimation(.snappy) { widgetTipSeen = true }
+                    }
+                    .padding(.top, 18)
+                    .padding(.horizontal, 22)
+                }
+
                 BadgeShelf(badges: Achievements.evaluate(sightings.map(\.record), catalog: catalog))
                     .padding(.top, 18)
                     .padding(.horizontal, 22)
@@ -80,6 +93,10 @@ struct MeView: View {
         .scrollIndicators(.hidden)
         .taborScreen()
         .sheet(isPresented: $showSettings) { SettingsSheet() }
+        .sheet(isPresented: $showWidgetHowTo) { WidgetHowTo() }
+        .task {
+            if !widgetTipSeen, await WidgetTip.anyInstalled() { widgetTipSeen = true }
+        }
         .fullScreenCover(isPresented: $showMap) {
             ZStack(alignment: .topLeading) {
                 SpotMap(sightings: sightings, interactive: true).ignoresSafeArea()
@@ -298,6 +315,7 @@ struct SettingsSheet: View {
     @State private var importing = false
     @State private var backupMessage: String?
     @State private var showControlHowTo = false
+    @State private var showWidgetHowTo = false
     @Query private var allSightings: [Sighting]
     @Query private var manual: [ManualAssignment]
     @Environment(\.modelContext) private var context
@@ -401,6 +419,7 @@ struct SettingsSheet: View {
                     }
                 }
                 Section {
+                    Button("Home Screen widgets") { showWidgetHowTo = true }
                     Button("Catch from the Lock Screen") { showControlHowTo = true }
                     Button("Show the intro again") { showIntro = true }
                 } footer: { betaNote }
@@ -417,6 +436,7 @@ struct SettingsSheet: View {
         .sheet(item: $exportURL) { url in ShareSheet(items: [url]) }
         .fullScreenCover(isPresented: $showIntro) { OnboardingView { showIntro = false }.windowControlsClearance() }
         .sheet(isPresented: $showControlHowTo) { CatchControlHowTo() }
+        .sheet(isPresented: $showWidgetHowTo) { WidgetHowTo() }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.zip]) { result in
             if case .success(let url) = result { importBackup(url) }
         }

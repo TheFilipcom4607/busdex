@@ -5,6 +5,8 @@ import Foundation
 struct WidgetSnapshot: Codable, Equatable {
     static let appGroup = "group.com.filipmanikowski.tabor"
     static let widgetKind = "tabor.progress"
+    /// Every widget that shows the book, reloaded together when it changes.
+    static let bookKinds = [widgetKind, "tabor.recent", "tabor.rarity", "tabor.shuffle"]
 
     /// Distinct vehicles caught that count toward the fleet (vintage and test stock don't).
     var caught: Int
@@ -20,6 +22,33 @@ struct WidgetSnapshot: Codable, Equatable {
     var hasImage: Bool
     /// A die-cut sticker (transparent PNG) rather than the plain photo.
     var imageIsCutout: Bool
+    /// Newest first, for the Latest catches widget. Optional: older snapshots don't have them.
+    var recent: [Card]? = nil
+    /// What the Sticker shuffle widget deals from, one an hour.
+    var pile: [Card]? = nil
+    /// LEGENDARY, GOLD, RARE, COMMON: caught out of the fleet, for the Rarity sets widget.
+    var tiers: [TierCount]? = nil
+
+    /// A caught vehicle that has a picture.
+    struct Card: Codable, Equatable, Hashable {
+        var number: Int
+        var modelId: String
+        var model: String
+        var tier: String
+        /// File name in the App Group container.
+        var image: String
+        var cutout: Bool
+        var firstSeen: Date
+        var times: Int
+
+        var url: URL { WidgetLink.vehicle(modelId: modelId, number: number) }
+    }
+
+    struct TierCount: Codable, Equatable {
+        var tier: String
+        var caught: Int
+        var fleet: Int
+    }
 
     static let placeholder = WidgetSnapshot(caught: 312, fleet: 2677, streak: 6, lastCatch: .now,
                                             latestNumber: 1974, latestModel: "Yutong U12",
@@ -48,6 +77,9 @@ struct WidgetSnapshot: Codable, Equatable {
     }
 
     static var imageURL: URL? { container?.appendingPathComponent("widget-latest.png") }
+    static func imageURL(_ name: String) -> URL? { container?.appendingPathComponent(name) }
+    /// Every sticker-widget picture starts with this, so stale ones can be swept.
+    static let cardPrefix = "w-"
     private static var fileURL: URL? { container?.appendingPathComponent("widget.json") }
 
     static func load() -> WidgetSnapshot? {

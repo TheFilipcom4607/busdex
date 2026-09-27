@@ -123,6 +123,16 @@
         }
       }
     },
+    "A different sticker from your book every hour.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Co godzinę inna naklejka z twojego albumu."
+          }
+        }
+      }
+    },
     "CATCH ONE TODAY": {
       "localizations": {
         "pl": {
@@ -132,6 +142,17 @@
           }
         }
       }
+    },
+    "COMMON": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "POSPOLITY"
+          }
+        }
+      },
+      "comment": "Rarity tier"
     },
     "Catch": {
       "localizations": {
@@ -153,6 +174,57 @@
         }
       }
     },
+    "FIRST CAUGHT %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PIERWSZY RAZ %@"
+          }
+        }
+      }
+    },
+    "GOLD": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZŁOTY"
+          }
+        }
+      },
+      "comment": "Rarity tier"
+    },
+    "How many legendary, gold, rare and common vehicles you've caught.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ile masz już pojazdów legendarnych, złotych, rzadkich i pospolitych."
+          }
+        }
+      }
+    },
+    "Hunt": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poluj"
+          }
+        }
+      }
+    },
+    "Hunt nearby": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poluj w okolicy"
+          }
+        }
+      }
+    },
     "LAST: %@ · %@": {
       "localizations": {
         "en": {
@@ -168,6 +240,27 @@
           }
         }
       }
+    },
+    "LATEST CATCHES": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OSTATNIO ZŁAPANE"
+          }
+        }
+      }
+    },
+    "LEGENDARY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LEGENDARNY"
+          }
+        }
+      },
+      "comment": "Rarity tier"
     },
     "Last: %@ %@": {
       "localizations": {
@@ -185,12 +278,32 @@
         }
       }
     },
+    "Latest catches": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ostatnio złapane"
+          }
+        }
+      }
+    },
     "NO STREAK": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "BEZ SERII"
+          }
+        }
+      }
+    },
+    "OF THE FLEET": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TABORU"
           }
         }
       }
@@ -205,12 +318,43 @@
         }
       }
     },
+    "ON TEST": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NA TESTACH"
+          }
+        }
+      },
+      "comment": "Rarity tier: vehicles on a trial run"
+    },
+    "Open TABOR on the live map of vehicles you haven't caught.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz TABOR na mapie na żywo z pojazdami, których jeszcze nie masz."
+          }
+        }
+      }
+    },
     "Open TABOR straight to the camera.": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "Otwórz TABOR od razu na aparacie."
+          }
+        }
+      }
+    },
+    "Opens TABOR on the live map of vehicles you haven't caught.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwiera TABOR na mapie na żywo z pojazdami, których jeszcze nie masz."
           }
         }
       }
@@ -225,6 +369,99 @@
         }
       }
     },
+    "RARE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RZADKI"
+          }
+        }
+      },
+      "comment": "Rarity tier"
+    },
+    "Rarity sets": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zestawy rzadkości"
+          }
+        }
+      }
+    },
+    "SEEN %lld TIMES": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "SEEN %lld TIME"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "SEEN %lld TIMES"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "WIDZIANY %lld RAZY"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "WIDZIANY %lld RAZY"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "WIDZIANY %lld RAZY"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "WIDZIANY %lld RAZY"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "SEEN ONCE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WIDZIANY RAZ"
+          }
+        }
+      }
+    },
+    "SETS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZESTAWY"
+          }
+        }
+      }
+    },
     "STREAK": {
       "localizations": {
         "pl": {
@@ -235,12 +472,63 @@
         }
       }
     },
+    "Sticker shuffle": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Losowa naklejka"
+          }
+        }
+      }
+    },
+    "VINTAGE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZABYTKOWY"
+          }
+        }
+      },
+      "comment": "Rarity tier: tourist/museum vehicles"
+    },
     "Your book": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "Twój album"
+          }
+        }
+      }
+    },
+    "Your catches land here": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu trafią twoje złapane pojazdy"
+          }
+        }
+      }
+    },
+    "Your newest stickers. Tap one to open it in your book.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twoje najnowsze naklejki. Stuknij jedną, by otworzyć ją w albumie."
+          }
+        }
+      }
+    },
+    "Your stickers get shuffled here": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu będą się zmieniać twoje naklejki"
           }
         }
       }
