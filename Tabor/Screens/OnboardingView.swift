@@ -257,29 +257,28 @@ private struct BookPage: View {
 
 /// A real photo of a whole bus framed in the brackets, with the number on its front picked
 /// out: the vehicle is what becomes the sticker, the number only has to be in the shot.
+/// The line number on its display is marked too, because that's the one people read first.
 private struct CameraPage: View {
     @State private var found = false
-    /// Where "1971" sits on the bus's front in the photo, as fractions of the image.
-    private static let number = CGRect(x: 0.2465, y: 0.6625, width: 0.047, height: 0.0475)
+    /// Where "1972" and the line "163" sit in the photo, as fractions of the image.
+    private static let number = CGRect(x: 0.293, y: 0.612, width: 0.05, height: 0.05)
+    private static let line = CGRect(x: 0.136, y: 0.214, width: 0.048, height: 0.072)
 
     var body: some View {
         PageLayout(kicker: String(localized: "CATCH"),
                    title: String(localized: "Get the whole bus in the shot."),
-                   text: String(localized: "Front, side or back, with its fleet number somewhere in view. TABOR finds the number, knows the model and cuts the vehicle out as your sticker. The rarer it is, the bigger the reveal.")) {
+                   text: String(localized: "Front, side or back, with its fleet number in view: the number painted on the vehicle, not the line number. TABOR finds it, knows the model and cuts the vehicle out as your sticker. The rarer it is, the bigger the reveal.")) {
             VStack(spacing: 14) {
                 ZStack {
                     Image("ViewfinderBus")
                         .resizable()
                         .scaledToFill()
                     GeometryReader { g in
-                        let n = Self.number
-                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .stroke(Palette.green, lineWidth: 2.5)
-                            .shadow(color: Palette.green.opacity(0.8), radius: 4)
-                            .frame(width: g.size.width * n.width, height: g.size.height * n.height)
+                        mark(Self.line, in: g.size, color: .white.opacity(0.75), label: String(localized: "LINE"), above: true)
+                            .opacity(found ? 1 : 0)
+                        mark(Self.number, in: g.size, color: Palette.green, label: String(localized: "FLEET NO."), above: false)
                             .scaleEffect(found ? 1 : 2.2)
                             .opacity(found ? 1 : 0)
-                            .position(x: g.size.width * n.midX, y: g.size.height * n.midY)
                     }
                     Brackets()
                         .stroke(Palette.yellow, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
@@ -290,23 +289,37 @@ private struct CameraPage: View {
                 .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 HStack(spacing: 7) {
                     Circle().fill(Palette.green).frame(width: 6, height: 6)
-                    Mono("1971 · YUTONG U12 · TAP TO CATCH", size: 11, weight: 600, spacing: 0.1, color: Palette.ink)
+                    Mono("1972 · YUTONG U12 · TAP TO CATCH", size: 11, weight: 600, spacing: 0.1, color: Palette.ink)
                 }
                 .padding(.vertical, 9)
                 .padding(.horizontal, 14)
                 .background(Palette.chip, in: Capsule())
                 .overlay(Capsule().stroke(Palette.hairline))
                 .opacity(found ? 1 : 0.35)
-                // CC BY-SA 4.0 asks for the credit wherever the photo is shown.
-                Text("Photo: J2 kolej, CC BY-SA 4.0, via Wikimedia Commons")
-                    .font(TaborFont.grotesk(10))
-                    .foregroundStyle(Palette.faint)
             }
         }
         .task {
             // Framed, then a beat later the number is picked out, like the live camera does.
             try? await Task.sleep(for: .milliseconds(700))
             withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { found = true }
+        }
+    }
+
+    /// A box around a spot in the photo, with a small label just outside it.
+    private func mark(_ r: CGRect, in size: CGSize, color: Color, label: String, above: Bool) -> some View {
+        let box = CGRect(x: size.width * r.minX, y: size.height * r.minY, width: size.width * r.width, height: size.height * r.height)
+        return ZStack {
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .stroke(color, lineWidth: 2.5)
+                .shadow(color: color.opacity(0.8), radius: 4)
+                .frame(width: box.width, height: box.height)
+                .position(x: box.midX, y: box.midY)
+            Mono(label, size: 8.5, weight: 700, spacing: 0.1, color: .black)
+                .fixedSize()
+                .padding(.vertical, 2)
+                .padding(.horizontal, 4)
+                .background(color, in: RoundedRectangle(cornerRadius: 3, style: .continuous))
+                .position(x: box.midX, y: above ? box.minY - 10 : box.maxY + 10)
         }
     }
 }

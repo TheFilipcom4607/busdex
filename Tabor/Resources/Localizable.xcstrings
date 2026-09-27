@@ -688,12 +688,12 @@
         }
       }
     },
-    "1971 · YUTONG U12 · TAP TO CATCH": {
+    "1972 · YUTONG U12 · TAP TO CATCH": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "1971 · YUTONG U12 · STUKNIJ I ZŁAP"
+            "value": "1972 · YUTONG U12 · STUKNIJ I ZŁAP"
           }
         }
       }
@@ -2264,6 +2264,16 @@
         }
       }
     },
+    "FLEET NO.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NR TABOROWY"
+          }
+        }
+      }
+    },
     "FLEET NUMBER": {
       "localizations": {
         "pl": {
@@ -2394,12 +2404,12 @@
         }
       }
     },
-    "Front, side or back, with its fleet number somewhere in view. TABOR finds the number, knows the model and cuts the vehicle out as your sticker. The rarer it is, the bigger the reveal.": {
+    "Front, side or back, with its fleet number in view: the number painted on the vehicle, not the line number. TABOR finds it, knows the model and cuts the vehicle out as your sticker. The rarer it is, the bigger the reveal.": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Przód, bok albo tył — byle numer taborowy był gdzieś widoczny. TABOR odczyta numer, rozpozna model i wytnie pojazd jako twoją naklejkę. Im rzadszy, tym efektowniej się odsłania."
+            "value": "Przód, bok albo tył — byle numer taborowy był w kadrze: numer namalowany na pojeździe, nie numer linii. TABOR go odczyta, rozpozna model i wytnie pojazd jako twoją naklejkę. Im rzadszy, tym efektowniej się odsłania."
           }
         }
       }
@@ -3681,16 +3691,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wklej swój klucz"
-          }
-        }
-      }
-    },
-    "Photo: J2 kolej, CC BY-SA 4.0, via Wikimedia Commons": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zdjęcie: J2 kolej, CC BY-SA 4.0, Wikimedia Commons"
           }
         }
       }
