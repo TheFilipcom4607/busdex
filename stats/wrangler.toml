@@ -1,0 +1,37 @@
+# TABOR's fleet stats (see src/index.js). Everything here fits Cloudflare's free plan.
+# Set up once, from this folder:
+#   npx wrangler d1 execute tabor-stats --remote --file schema.sql
+#   npx wrangler secret put DANE_TOKEN   # the same dane.um.warszawa.pl token as the proxy
+#   npx wrangler secret put STATS_KEY    # any long random string; the dashboard asks for it
+#   npx wrangler deploy
+name = "tabor-stats"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+workers_dev = false
+routes = [{ pattern = "taborstats.thefilip.com", custom_domain = true }]
+
+[triggers]
+# A snapshot every 5 minutes; the rollup after midnight in Warsaw, summer or winter.
+crons = ["*/5 * * * *", "30 1 * * *"]
+
+# The city's feed doesn't answer from abroad: run the fetch handler (and so the jobs, which
+# the cron hands to it through SELF) in Warsaw. Placement doesn't apply to cron itself.
+[placement]
+region = "gcp:europe-central2"
+
+[[services]]
+binding = "SELF"
+service = "tabor-stats"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tabor-stats"
+database_id = "56821f2a-237e-40c2-b68e-7b3132519c63"
+
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
+
+[observability.logs]
+enabled = true
