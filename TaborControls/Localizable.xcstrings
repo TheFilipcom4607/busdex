@@ -6,7 +6,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ złapane"
+            "value": "Złapane: %@"
           }
         }
       }
@@ -313,7 +313,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "TABORU ZŁAPANE"
+            "value": "TABORU W ALBUMIE"
           }
         }
       }
@@ -416,7 +416,7 @@
               "one": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "WIDZIANY %lld RAZY"
+                  "value": "WIDZIANY %lld RAZ"
                 }
               },
               "few": {

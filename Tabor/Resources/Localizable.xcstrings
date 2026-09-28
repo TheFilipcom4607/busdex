@@ -108,7 +108,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ złapane"
+            "value": "Złapane: %@"
           }
         }
       }
@@ -1224,7 +1224,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "WSZYSTKO"
+            "value": "WSZYSTKIE"
           }
         }
       }
@@ -1568,7 +1568,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wróć do 3 kilometrów wokół ciebie"
+            "value": "Wróć do widoku 3 km wokół ciebie"
           }
         }
       }
@@ -2829,7 +2829,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "ZRÓB ZDJĘCIE CAŁEGO POJAZDU"
+            "value": "ZMIEŚĆ CAŁY POJAZD W KADRZE"
           }
         }
       }
@@ -2860,7 +2860,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "MAM — NACIŚNIJ MIGAWKĘ"
+            "value": "MAM GO — ZRÓB ZDJĘCIE"
           }
         }
       }
@@ -2910,7 +2910,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "HUNT i aparat korzystają z otwartych danych Warszawy o pozycjach autobusów i tramwajów na żywo (dane.um.warszawa.pl) — tylko gdy są na ekranie. Zostaw klucz pusty, by łączyć się przez serwer TABOR, albo zdobądź własny darmowy klucz na dane.um.warszawa.pl."
+            "value": "HUNT i aparat korzystają z otwartych danych Warszawy o pozycjach autobusów i tramwajów na żywo (dane.um.warszawa.pl) — tylko gdy są na ekranie. Zostaw klucz pusty, by łączyć się przez serwer TABORU, albo zdobądź własny darmowy klucz na dane.um.warszawa.pl."
           }
         }
       }
@@ -3997,7 +3997,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nic niezłapanego z twojego filtra teraz nie jeździ. Pojawi się tu, gdy tylko wyjedzie."
+            "value": "Żaden niezłapany pojazd z twojego filtra teraz nie jeździ. Gdy tylko któryś wyjedzie, pojawi się tutaj."
           }
         }
       }
@@ -4037,7 +4037,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "TABORU ZŁAPANE"
+            "value": "TABORU W ALBUMIE"
           }
         }
       }
@@ -4443,7 +4443,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "PONÓW"
+            "value": "POWTÓRZ"
           }
         }
       }
@@ -4564,7 +4564,7 @@
               "one": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "WIDZIANY %lld RAZY"
+                  "value": "WIDZIANY %lld RAZ"
                 }
               },
               "few": {
@@ -5104,7 +5104,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Serwer TABOR"
+            "value": "Serwer TABORU"
           }
         }
       }
@@ -5352,7 +5352,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Miejskie dane nie działają"
+            "value": "Miejski serwer nie działa"
           }
         }
       }
