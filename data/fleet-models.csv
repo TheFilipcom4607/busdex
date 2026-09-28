@@ -1,0 +1,77 @@
+kind,model,make,ztm_code,status,count,first_year,last_year,batch_years,number_ranges,operators
+TRAM,Pesa 120N / 120Na Swing,Pesa,Pesa 120N,in service,201,2007,2013,"2007, 2010, 2011, 2012, 2013","3101-3295, 3501-3506",Tramwaje Warszawskie
+TRAM,Konstal 105Na,Konstal,Konstal 105N,in service,184,1985,1997,"1985, 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997","1006, 1275-1276, 1281-1286, 1289-1290, 1293-1315, 1317-1341, 1343-1346, 1349-1374, 1377-1381, 1383-1390, 1393-1470, 2006-2009",Tramwaje Warszawskie
+TRAM,Konstal 105N2k,Alstom Konstal,Alstom Konstal 105N,in service,125,1994,2001,"1994, 1995, 1997, 1998, 1999, 2000, 2001","1391-1392, 2010-2035, 2037-2046, 2048-2064, 2066-2135",Tramwaje Warszawskie
+TRAM,Hyundai Rotem 140N,HRC,HRC 140N,in service,85,2021,2023,"2021, 2022, 2023",4201-4285,Tramwaje Warszawskie
+TRAM,Pesa 128N Jazz Duo,Pesa,Pesa 128N,in service,50,2014,2015,"2014, 2015",3601-3650,Tramwaje Warszawskie
+TRAM,Cegielski 123N,HCP,HCP 123N,in service,30,2006,2007,"2006, 2007",2136-2165,Tramwaje Warszawskie
+TRAM,Pesa 134N Jazz,Pesa,Pesa 134N,in service,30,2015,2015,2015,3801-3830,Tramwaje Warszawskie
+TRAM,Alstom 116Na,Alstom Konstal,Alstom Konstal 116N,in service,29,1998,2000,"1998, 1999, 2000",3002-3030,Tramwaje Warszawskie
+TRAM,Hyundai Rotem 142N,HRC,HRC 142N,in service,20,2022,2023,"2022, 2023",4001-4020,Tramwaje Warszawskie
+TRAM,Hyundai Rotem 141N,HRC,HRC 141N,in service,18,2022,2022,2022,4101-4118,Tramwaje Warszawskie
+TRAM,Konstal 112N,Konstal,Konstal 112N,in service,1,1995,1995,1995,3001,Tramwaje Warszawskie
+TRAM,Konstal 13N,Konstal,Konstal 13N,vintage,9,1959,1969,"1959, 1967, 1968, 1969","407, 503-504, 534-535, 642, 795, 818, 821",Tramwaje Warszawskie
+TRAM,Konstal N,Konstal,Konstal N,vintage,9,1949,1961,"1949, 1951, 1952, 1953, 1955, 1956, 1961","607, 716, 734, 775, 1620, 1724, 1727, 1770, 1811",Tramwaje Warszawskie
+TRAM,Gdańsk type K,Gdańska Fabryka Wagonów / WIwK,Gdańska Fabryka Wagonów / WIwK K,vintage,4,1940,1940,1940,"445-446, 2400, 2405",Tramwaje Warszawskie
+TRAM,Konstal 105Na,Konstal,Konstal 105N,vintage,4,1975,1988,"1975, 1988","1000-1001, 1251-1252",Tramwaje Warszawskie
+TRAM,Konstal 102N,Konstal,Konstal 102N,vintage,2,1969,1971,"1969, 1971","5, 42",Tramwaje Warszawskie
+TRAM,Konstal 4N,Konstal,Konstal 4N,vintage,2,1957,1961,"1957, 1961","838, 873",Tramwaje Warszawskie
+TRAM,Lilpop C,Lilpop,Lilpop C,vintage,2,1925,1928,"1925, 1928","257, 2204",Tramwaje Warszawskie
+TRAM,Credé/Düwag 4EGTw,Credé/Düwag,Credé/Düwag 4EGTw,vintage,1,1956,1956,1956,205,Tramwaje Warszawskie
+TRAM,Falkenried A,Falkenried,Falkenried A,vintage,1,1906,1906,1906,43,Tramwaje Warszawskie
+TRAM,Linke-Hofmann Lw,Linke-Hoffmann,Linke-Hoffmann Lw,vintage,1,1925,1925,1925,541,Tramwaje Warszawskie
+BUS,Solaris Urbino 18,Solaris,Solaris Urbino 18,in service,403,2008,2016,"2008, 2009, 2010, 2011, 2013, 2014, 2015, 2016","781-782, 5201-5234, 5236-5260, 5401-5415, 5417-5460, 8300-8369, 8441-8465, 8500-8595, 8800, 8802, 8804-8805, 8807-8810, 8812-8833, 8835-8837, 8839, 8841-8848, 8850-8899","MZA, KM Łomianki"
+BUS,Solaris Urbino 12,Solaris,Solaris Urbino 12,in service,176,2007,2025,"2007, 2008, 2010, 2011, 2012, 2013, 2015, 2016, 2017, 2020, 2021, 2024, 2025","721-724, 739-741, 743-744, 746-750, 753-758, 761, 774-779, 1400-1401, 1411-1430, 1500, 1502, 1520-1546, 1548-1555, 1800-1819, 1830, 1833, 1835, 1838-1840, 1842-1846, 1848-1849, 1851, 1855-1859, 1862-1863, 9311-9359","MZA, PKS Grodzisk, KM Łomianki"
+BUS,Solaris Urbino 18 electric,Solaris,Solaris Urbino 18E,in service,165,2017,2026,"2017, 2020, 2024, 2025, 2026","5803-5808, 5811, 5814-5817, 5819, 5821-5823, 5827-5831, 5833, 5835, 5850-5861, 5869-5999",MZA
+BUS,MAN Lion’s City G,MAN,MAN A23,in service,130,2010,2020,"2010, 2019, 2020","3400-3469, 7200-7259",MZA
+BUS,Solaris Urbino 18 CNG,Solaris,Solaris Urbino 18CNG,in service,114,2019,2021,"2019, 2021","7700-7759, 9901-9930, 9932-9955","MZA, ReloBus"
+BUS,Mercedes-Benz Conecto G,Mercedes-Benz,Mercedes-Benz 628B02,in service,99,2016,2017,"2016, 2017","6200-6244, 9801-9854","Mobilis, MZA"
+BUS,Autosan Sancity 18LF,Autosan,Autosan M18LF,in service,91,2022,2023,"2022, 2023",7800-7890,MZA
+BUS,Solbus Solcity 18,Solbus,Solbus SM18,in service,79,2014,2015,"2014, 2015","2000-2003, 2005-2028, 2030-2034, 2036-2046, 7301-7335",MZA
+BUS,Solbus Solcity 12,Solbus,Solbus SM12,in service,64,2011,2013,"2011, 2012, 2013","1020-1039, 1060-1079, 1200-1214, 1216-1224",MZA
+BUS,Mercedes-Benz Conecto G,Mercedes-Benz,Mercedes-Benz 628,in service,60,2012,2012,2012,2200-2259,MZA
+BUS,Otokar Kent C Hybrid,Otokar,Otokar Kent C LF Mild Hybrid,in service,54,2026,2026,2026,9601-9654,Mobilis
+BUS,MAN Lion’s City CNG,MAN,MAN A21,in service,50,2019,2019,2019,4200-4249,MZA
+BUS,Yutong U12,Yutong,Yutong U12-B,in service,48,2024,2026,"2024, 2026",1940-1987,MZA
+BUS,Mercus MAN TGE City,Mercus,Mercus SYN2Z,in service,42,2020,2025,"2020, 2021, 2022, 2023, 2024, 2025","10071-10072, 10075-10076, 70018, 70021-70022, 70041-70049, 80101-80108, 80110-80115, 80117-80123, 80125-80126, 80204-80206","ABUS, Grygiel, PKS Grodzisk, Średnicki"
+BUS,Solaris Urbino 12 CNG,Solaris,Solaris Urbino 12CNG,in service,40,2021,2021,2021,4300-4339,MZA
+BUS,Solaris Urbino 12 electric,Solaris,Solaris Urbino 12E,in service,38,2015,2026,"2015, 2018, 2019, 2024, 2026","725-728, 772-773, 1901-1932","MZA, KM Łomianki"
+BUS,Mercedes-Benz Conecto,Mercedes-Benz,Mercedes-Benz 628B01,in service,35,2017,2017,2017,4400-4434,MZA
+BUS,Solaris Urbino 10,Solaris,Solaris Urbino 10,in service,35,2010,2012,"2010, 2012","1000-1014, 1040-1059",MZA
+BUS,Otokar Vectio C,Otokar,Otokar LA16SR2BX,in service,34,2018,2018,2018,9061-9094,ReloBus
+BUS,Güleryüz Cobra GD272,Güleryüz,Güleryüz GD272,in service,29,2021,2026,"2021, 2022, 2023, 2024, 2025, 2026","15077-15079, 35151-35153, 35156-35160, 35221-35222, 36161-36169, 36223, 85211-85216","PKS Grodzisk, ABUS"
+BUS,Scania CityWide,Scania,Scania M323,in service,29,2018,2018,2018,4500-4528,MZA
+BUS,Isuzu Citiport 12,Isuzu,Isuzu B120,in service,28,2022,2025,"2022, 2024, 2025","15081-15094, 15096-15097, 35131-35138, 36139-36142",PKS Polonus
+BUS,ZAZ A08,ZAZ,ZAZ A08,in service,25,2020,2022,"2020, 2021, 2022","70008-70009, 70015-70017, 70019-70020, 70023-70040","PKS Grodzisk, PKS Polonus"
+BUS,Ursus City Smile,Ursus,Ursus CS2,in service,12,2017,2017,2017,"762-763, 1990-1999","MZA, KM Łomianki"
+BUS,ZAZ A10,ZAZ,ZAZ A10,in service,7,2019,2021,"2019, 2020, 2021",70001-70007,PKS Polonus
+BUS,Mercus MB Sprinter City,Mercus,Mercus 906BB62,in service,6,2022,2025,"2022, 2025","70050-70054, 80109","ABUS, Grygiel"
+BUS,MAN Lion’s City Hybrid,MAN,MAN A37,in service,5,2017,2017,2017,9301-9305,PKS Grodzisk
+BUS,BMC Procity 12LF,Procity 12 M,Procity 12 M,in service,4,2026,2026,2026,36143-36146,PKS Polonus
+BUS,Solaris Urbino 18 hybrid,Solaris,Solaris Urbino 18H,in service,4,2011,2011,2011,8396-8399,MZA
+BUS,Iveco Crossway LE,Iveco,Iveco Crossway LE,in service,3,2014,2019,"2014, 2019","35531, 39532-39533",PKS Polonus
+BUS,Solaris Alpino 8.X,Solaris,Solaris Alpino 8.X,in service,1,2016,2016,2016,701,KM Łomianki
+BUS,Ikarus 280,Ikarus,Ikarus 280,vintage,7,1987,1997,"1987, 1992, 1997","646, 691, 2600, 5715, 5741, 6941, 6954","KMKM, MZA"
+BUS,Ikarus 260,Ikarus,Ikarus 260,vintage,4,1982,1995,"1982, 1993, 1995","289, 6306, 6905, 6930","MZA, KMKM"
+BUS,Jelcz 043,Jelcz,Jelcz 043,vintage,2,1974,1986,"1974, 1986","8058, 8081",KMKM
+BUS,Jelcz 272 MEX,Jelcz,Jelcz 272 MEX,vintage,2,1972,1977,"1972, 1977","1816, 1983",KMKM
+BUS,Solaris Urbino 15,Solaris,Solaris Urbino 15,vintage,2,1999,2001,"1999, 2001","6962, 8731","MZA, KMKM"
+BUS,Berliet PR100,Berliet,Berliet PR100,vintage,1,1980,1980,1980,3873,KMKM
+BUS,Chausson AH 48,Chausson,Chausson AH 48,vintage,1,1950,1950,1950,395,KMKM
+BUS,Ikarus 405,Ikarus,Ikarus 405,vintage,1,1994,1994,1994,6454,KMKM
+BUS,Ikarus 411,Ikarus,Ikarus 411,vintage,1,1995,1995,1995,6550,KMKM
+BUS,Ikarus Zemun IK-160P,Ikarus Zemun,Ikarus Zemun IK-160P,vintage,1,1987,1987,1987,70504,KMKM
+BUS,Irizar ie tram 12,Irizar,Irizar ie tram 12,trial,1,,,,959,MZA
+BUS,Jelcz 120MM/1,Jelcz,Jelcz 120MM/1,vintage,1,1993,1993,1993,4340,KMKM
+BUS,Jelcz L11,Jelcz,Jelcz L11,vintage,1,1989,1989,1989,90904,KMKM
+BUS,Jelcz M11,Jelcz,Jelcz M11,vintage,1,1987,1987,1987,95,KMKM
+BUS,Jelcz M121I/4,Jelcz,Jelcz M121I/4,vintage,1,,,,4942,MZA
+BUS,Jelcz M121M,Jelcz,Jelcz M121M,vintage,1,1998,1998,1998,4891,KMKM
+BUS,Jelcz PAT-4,Jelcz,Jelcz PAT-4,vintage,1,,,,643,KMKM
+BUS,Jelcz PO1,Jelcz,Jelcz PO1,vintage,1,,,,618,KMKM
+BUS,Jelcz PR110M,Jelcz,Jelcz PR110M,vintage,1,1991,1991,1991,4617,KMKM
+BUS,Jelcz PR110U,Jelcz,Jelcz PR110U,vintage,1,1978,1978,1978,5299,KMKM
+BUS,MAN Lion’s City G,MAN,MAN A23,vintage,1,2001,2001,2001,6922,MZA
+BUS,San H-100A,San,San H-100A,vintage,1,1972,1972,1972,8082,KMKM
+BUS,San H-100B,San,San H-100B,vintage,1,1973,1973,1973,160,KMKM
+BUS,Solaris Urbino 18,Solaris,Solaris Urbino 18,vintage,1,2005,2005,2005,6923,MZA
