@@ -45,7 +45,7 @@ struct HuntView: View {
     /// Where pins sit on the map: slid along their route to where they probably are now, since
     /// every fix is some seconds old. Distances and sorting stay on the fix itself.
     @State private var nowCoordinates: [String: CLLocationCoordinate2D] = [:]
-    /// Ticks every second while a vehicle is selected, so its pin creeps along between polls.
+    /// Moves on while a vehicle is selected, so its pin creeps along between polls.
     @State private var tick = Date()
     @State private var selectedId: String?
     /// A small bubble you tapped: its vehicles, listed so you can pick one.
@@ -128,13 +128,7 @@ struct HuntView: View {
         }
         .onChange(of: sightings.count) { recompute(animated: false) }
         .onChange(of: routes.book?.feed) { recompute(animated: false) }
-        .task(id: selectedId) {
-            guard selectedId != nil else { return }
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(1))
-                withAnimation(.linear(duration: 1)) { tick = Date() }
-            }
-        }
+        .task(id: selectedId) { await creep() }
         .onChange(of: picked) {
             selectedId = nil
             openGroup = nil
@@ -173,24 +167,27 @@ struct HuntView: View {
                         .stroke(pin.accent.opacity(0.25 + 0.75 * Double(i + 1) / Double(path.count - 1)),
                                 style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
                 }
-                // Where it goes next: a dotted line along its route to the next few stops, a
-                // small bead at each, fainter the further ahead. Lighter than the solid trail
-                // behind it, since it's a forecast.
+                // Where it goes next: a dotted line along its route to the next few stops,
+                // fainter the further ahead, and lighter than the solid trail behind it since
+                // it's a forecast. Stops are white beads, as on a transit map, so they don't
+                // read as more of the dots.
                 if let now {
                     let ahead = now.upcoming(stops: 4)
                     let legs = legs(of: now, to: ahead.stops)
                     ForEach(legs.indices, id: \.self) { i in
                         MapPolyline(coordinates: legs[i])
                             .stroke(pin.accent.opacity(Self.aheadOpacity(i)),
-                                    style: StrokeStyle(lineWidth: 3.5, lineCap: .round, lineJoin: .round, dash: [0.01, 7]))
+                                    style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round, dash: [0.01, 5.5]))
                     }
+                    // On the line rather than at the platform, a few metres off it.
                     ForEach(Array(ahead.stops.enumerated()), id: \.offset) { i, stop in
-                        Annotation(stop.name, coordinate: CLLocationCoordinate2D(latitude: stop.latitude, longitude: stop.longitude),
+                        Annotation(stop.name, coordinate: CLLocationCoordinate2D(now.shape.coordinate(at: stop.along)),
                                    anchor: .center) {
                             Circle()
-                                .fill(pin.accent.opacity(Self.aheadOpacity(i)))
-                                .overlay(Circle().strokeBorder(Palette.bg.opacity(0.85), lineWidth: 1.5))
-                                .frame(width: 8, height: 8)
+                                .fill(Palette.ink)
+                                .overlay(Circle().strokeBorder(Palette.bg, lineWidth: 1.5))
+                                .frame(width: 7, height: 7)
+                                .opacity(Self.aheadOpacity(i))
                                 .accessibilityHidden(true)
                         }
                         .annotationTitles(.hidden)
@@ -784,8 +781,32 @@ struct HuntView: View {
         routeMatch(pin)?.advanced(by: date.timeIntervalSince(pin.vehicle.time), stopped: live.trails.isStopped(pin.id))
     }
 
-    /// The selected vehicle, moved on to this second.
+    /// The selected vehicle, moved on to the last tick.
     private func creeping(_ pin: WantedPin) -> RouteMatch? { advanced(pin, at: tick) }
+
+    /// Moves the selected pin along its route between polls, but only in steps you'd see: a few
+    /// points on screen at the current zoom, so zoomed out it hardly ticks at all. Each step is
+    /// a short glide rather than non-stop animation, which would keep the map redrawing at full
+    /// frame rate, and a stopped vehicle (or one already at its next stop) doesn't tick.
+    private func creep() async {
+        while !Task.isCancelled, let id = selectedId {
+            var wait = 2.0
+            if let pin = pins.first(where: { $0.id == id }), let now = creeping(pin), now.speed >= 0.5,
+               !live.trails.isStopped(id), let region = mapRegion {
+                // Metres per screen point, across a phone-width map.
+                let perPoint = region.span.longitudeDelta * 111_320 * cos(region.center.latitude * .pi / 180) / 400
+                wait = min(max(Self.creepStep * perPoint / now.speed, 1), 10)
+                try? await Task.sleep(for: .seconds(wait))
+                guard !Task.isCancelled, let later = advanced(pin, at: Date()), later.along - now.along > 1 else { continue }
+                withAnimation(.easeInOut(duration: 0.4)) { tick = Date() }
+                continue
+            }
+            try? await Task.sleep(for: .seconds(wait))
+        }
+    }
+
+    /// Screen points a creeping pin moves per step.
+    private static let creepStep = 4.0
 
     private func mapCoordinate(_ pin: WantedPin, selected now: RouteMatch?) -> CLLocationCoordinate2D {
         if pin.id == selectedId, let now { return CLLocationCoordinate2D(now.coordinate) }
