@@ -3,6 +3,8 @@ name: Refresh routes
 # Builds routes.json (every bus and tram line's street shapes and stops) from ZTM's GTFS and
 # uploads it to the tabor-live Worker, where phones fetch it once a day for HUNT's future
 # trails. ZTM republishes the GTFS around 07:50 Warsaw time, with that day's detours.
+# gtfs.ztm.waw.pl doesn't answer GitHub's runners (the connection times out, 2026-09-28), so
+# the zip comes through the Worker, which it does answer.
 on:
   schedule:
     - cron: "30 6 * * *"
@@ -27,6 +29,9 @@ jobs:
           python-version: "3.12"
 
       - name: Build routes.json from the GTFS
+        env:
+          GTFS_URL: https://taborapi.thefilip.com/v1/gtfs
+          ROUTES_UPLOAD_TOKEN: ${{ secrets.ROUTES_UPLOAD_TOKEN }}
         run: python3 scripts/build_routes.py
 
       - name: Upload to the Worker

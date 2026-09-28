@@ -16,6 +16,7 @@ import gzip
 import io
 import json
 import math
+import os
 import sys
 import urllib.request
 import zipfile
@@ -34,8 +35,14 @@ STOP_SNAP = 400
 
 
 def download():
-    print(f"downloading {URL}", file=sys.stderr)
-    req = urllib.request.Request(URL, headers={"User-Agent": "tabor-routes/1"})
+    # GitHub's runners can't reach ZTM, so the Action goes through the tabor-live Worker
+    # (GTFS_URL, with the upload token).
+    url = os.environ.get("GTFS_URL", URL)
+    headers = {"User-Agent": "tabor-routes/1"}
+    if url != URL and os.environ.get("ROUTES_UPLOAD_TOKEN"):
+        headers["Authorization"] = f"Bearer {os.environ['ROUTES_UPLOAD_TOKEN']}"
+    print(f"downloading {url}", file=sys.stderr)
+    req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=300) as r:
         return io.BytesIO(r.read())
 
@@ -48,7 +55,7 @@ def rows(z, name):
 
 def metres(a, b):
     """Haversine, as Geo.km in the app, so distances along a shape agree on both sides."""
-    r = 6371.0088 * 1000
+    r = 6371.0 * 1000
     la1, la2 = math.radians(a[0]), math.radians(b[0])
     h = math.sin((la2 - la1) / 2) ** 2 + math.cos(la1) * math.cos(la2) * math.sin(math.radians(b[1] - a[1]) / 2) ** 2
     return 2 * r * math.asin(min(1, math.sqrt(h)))

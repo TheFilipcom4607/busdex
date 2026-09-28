@@ -6,6 +6,7 @@
 // that already has today's copy gets a 304 without the Worker reading the body.
 
 const KEY = 'routes';
+const GTFS = 'https://gtfs.ztm.waw.pl/last/';
 // Fewer lines than this means a broken build (a normal day has about 300): keep yesterday's.
 const MIN_LINES = 200;
 
@@ -23,10 +24,19 @@ export async function getRoutes(request, env) {
   });
 }
 
+// ZTM's GTFS, passed straight through for the Action: gtfs.ztm.waw.pl doesn't answer GitHub's
+// runners (the connection times out), but it does answer Cloudflare. Streamed, never held.
+export async function getGtfs(request, env) {
+  if (!(await authorized(request, env))) return json({ result: 'Unauthorized' }, 401);
+  const res = await fetch(GTFS, { headers: { 'User-Agent': 'tabor-routes/1' } });
+  if (!res.ok) return json({ result: `ZTM answered ${res.status}` }, 502);
+  return new Response(res.body, {
+    headers: { 'Content-Type': 'application/zip', 'Content-Length': res.headers.get('Content-Length') ?? '' },
+  });
+}
+
 export async function putRoutes(request, env) {
-  if (!env.ROUTES_UPLOAD_TOKEN || !(await sameText(request.headers.get('Authorization') ?? '', `Bearer ${env.ROUTES_UPLOAD_TOKEN}`))) {
-    return json({ result: 'Unauthorized' }, 401);
-  }
+  if (!(await authorized(request, env))) return json({ result: 'Unauthorized' }, 401);
   const text = await request.text();
   let routes;
   try {
@@ -47,6 +57,11 @@ export async function putRoutes(request, env) {
   await env.ROUTES.put(`${KEY}:meta`, JSON.stringify(meta));
   console.log(`routes: ${meta.feed}, ${lines} lines, ${gzipped.byteLength} bytes`);
   return json({ result: 'ok', ...meta }, 200);
+}
+
+async function authorized(request, env) {
+  return !!env.ROUTES_UPLOAD_TOKEN
+    && sameText(request.headers.get('Authorization') ?? '', `Bearer ${env.ROUTES_UPLOAD_TOKEN}`);
 }
 
 // Compares hashes, so how long it takes doesn't give away how much of a guess was right.

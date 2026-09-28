@@ -6,12 +6,13 @@
 //   GET /v1/vehicles?type=2   trams
 //   GET /v1/routes            every line's street shapes and stops (routes.js)
 //   PUT /v1/routes            the daily upload of those, from the GitHub Action
+//   GET /v1/gtfs              ZTM's GTFS zip, passed through for that Action
 //
 // The vehicles body is the old service's shape, {"result": [...]}, whichever service
 // answered, so the app parses it exactly as before.
 
 import { fetchDane, fetchOld } from './city.js';
-import { getRoutes, putRoutes } from './routes.js';
+import { getGtfs, getRoutes, putRoutes } from './routes.js';
 
 // The city moves vehicles every ~10 s, but each vehicle on its own clock, so any copy held
 // here only adds to how old a position is when it reaches the map. A few seconds still lets
@@ -27,7 +28,7 @@ const DOWN_SECONDS = 15;
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    if (url.pathname !== '/v1/vehicles' && url.pathname !== '/v1/routes') return json({ result: 'Not found' }, 404);
+    if (!['/v1/vehicles', '/v1/routes', '/v1/gtfs'].includes(url.pathname)) return json({ result: 'Not found' }, 404);
 
     // A phone polls twice (buses, trams) every 10 s, 12 calls a minute. The limit leaves room
     // for several phones behind one carrier NAT, and stops a script hammering the key.
@@ -35,6 +36,7 @@ export default {
     const { success } = await env.PER_IP.limit({ key: ip });
     if (!success) return json({ result: 'Too many requests' }, 429);
 
+    if (url.pathname === '/v1/gtfs') return request.method === 'GET' ? getGtfs(request, env) : json({ result: 'GET only' }, 405);
     if (url.pathname === '/v1/routes') {
       if (request.method === 'GET') return getRoutes(request, env);
       if (request.method === 'PUT') return putRoutes(request, env);
