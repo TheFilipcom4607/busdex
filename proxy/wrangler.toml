@@ -2,6 +2,7 @@
 #   npx wrangler login
 #   npx wrangler secret put DANE_TOKEN # the dane.um.warszawa.pl token (dane.um.warszawa.pl/en/key-api)
 #   npx wrangler secret put UM_KEY     # the old api.um.warszawa.pl key, until the city switches it off
+#   npx wrangler secret put ROUTES_UPLOAD_TOKEN  # what the routes Action sends to PUT /v1/routes
 #   npx wrangler deploy
 name = "tabor-live"
 main = "src/index.js"
@@ -14,6 +15,11 @@ routes = [{ pattern = "taborapi.thefilip.com", custom_domain = true }]
 name = "PER_IP"
 namespace_id = "1001"
 simple = { limit = 60, period = 60 }
+
+# routes.json for HUNT's future trails (src/routes.js). KV, not R2: one small write a day.
+[[kv_namespaces]]
+binding = "ROUTES"
+id = "197432fc70f44a5692736b7762d8eb60"
 
 # Requests, errors and timings in the dashboard (Observability tab). Kept 7 days on Workers Paid.
 [observability.logs]
