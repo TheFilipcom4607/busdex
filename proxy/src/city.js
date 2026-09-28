@@ -1,4 +1,4 @@
-// Warsaw's live vehicle feed, shared by the proxy (index.js) and the stats collector (stats/).
+// Warsaw's live vehicle feed, for the proxy (index.js).
 
 // The city is moving its open data from api.um.warszawa.pl to dane.um.warszawa.pl and will
 // switch the old one off. The new one comes first; the old one covers for it until then.

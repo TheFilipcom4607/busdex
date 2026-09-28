@@ -24,7 +24,3 @@ __pycache__/
 proxy/.dev.vars
 proxy/.wrangler/
 proxy/node_modules/
-
-# The stats Worker's local secrets and wrangler state
-stats/.dev.vars
-stats/.wrangler/
