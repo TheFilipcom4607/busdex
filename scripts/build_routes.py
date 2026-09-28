@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build build/routes.json from ZTM's official GTFS (https://gtfs.ztm.waw.pl/last/): the street
+"""Build build/routes.json (and routes.json.gz, for upload_routes.sh) from ZTM's official GTFS (https://gtfs.ztm.waw.pl/last/): the street
 shape of every bus and tram route variant, how many trips run it, and its stops in order, so
 HUNT can draw where a vehicle goes next.
 
@@ -212,6 +212,13 @@ if __name__ == "__main__":
     OUT.parent.mkdir(exist_ok=True)
     body = json.dumps(result, ensure_ascii=False, separators=(",", ":")).encode()
     OUT.write_bytes(body)
+    # What upload_routes.sh sends: the Worker stores it as it is (mtime 0 keeps the bytes, and
+    # so the ETag, the same for the same routes).
+    packed = gzip.compress(body, mtime=0)
+    OUT.with_suffix(".json.gz").write_bytes(packed)
+    OUT.with_suffix(".meta").write_text(f"{len(result['lines'])} {result['feed']}\n")
     shapes = sum(len(l["shapes"]) for l in result["lines"].values())
     print(f"wrote {OUT.relative_to(ROOT)}: {len(result['lines'])} lines, {shapes} shapes, "
-          f"{len(body) / 1e6:.1f} MB, {len(gzip.compress(body)) / 1e6:.2f} MB gzipped ({result['feed']})")
+          f"{len(body) / 1e6:.1f} MB, {len(packed) / 1e6:.2f} MB gzipped ({result['feed']})")
+    if len(result["lines"]) <= 200:
+        sys.exit("too few lines: not a usable build")

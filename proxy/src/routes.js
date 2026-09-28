@@ -28,30 +28,36 @@ export async function getRoutes(request, env) {
 // runners (the connection times out), but it does answer Cloudflare. Streamed, never held.
 export async function getGtfs(request, env) {
   if (!(await authorized(request, env))) return json({ result: 'Unauthorized' }, 401);
-  const res = await fetch(GTFS, { headers: { 'User-Agent': 'tabor-routes/1' } });
-  if (!res.ok) return json({ result: `ZTM answered ${res.status}` }, 502);
+  let res;
+  try {
+    res = await fetch(GTFS, { headers: { 'User-Agent': 'tabor-routes/1' } });
+  } catch (e) {
+    console.log(`gtfs: ${e}`);
+    return json({ result: `ZTM didn't answer: ${e}` }, 502);
+  }
+  if (!res.ok) {
+    console.log(`gtfs: ZTM answered ${res.status} (colo ${request.cf?.colo})`);
+    return json({ result: `ZTM answered ${res.status}` }, 502);
+  }
   return new Response(res.body, {
     headers: { 'Content-Type': 'application/zip', 'Content-Length': res.headers.get('Content-Length') ?? '' },
   });
 }
 
+// The Action sends the file already gzipped, with its line count and feed in headers: parsing
+// and compressing 2.7 MB here would blow the free plan's 10 ms of CPU a call.
 export async function putRoutes(request, env) {
   if (!(await authorized(request, env))) return json({ result: 'Unauthorized' }, 401);
-  const text = await request.text();
-  let routes;
-  try {
-    routes = JSON.parse(text);
-  } catch {
-    return json({ result: "The body isn't JSON" }, 400);
+  const lines = Number(request.headers.get('X-Routes-Lines'));
+  if (!(lines > MIN_LINES)) return json({ result: `Only ${lines || 0} lines: keeping the old routes` }, 422);
+  const gzipped = await request.arrayBuffer();
+  const head = new Uint8Array(gzipped, 0, Math.min(2, gzipped.byteLength));
+  if (gzipped.byteLength < 100_000 || head[0] !== 0x1f || head[1] !== 0x8b) {
+    return json({ result: 'Expected a gzipped routes.json' }, 400);
   }
-  const lines = Object.keys(routes?.lines ?? {}).length;
-  if (lines <= MIN_LINES) return json({ result: `Only ${lines} lines: keeping the old routes` }, 422);
-
-  const bytes = new TextEncoder().encode(text);
-  const gzipped = await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
-  const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', gzipped));
   const etag = `"${[...hash.slice(0, 12)].map((b) => b.toString(16).padStart(2, '0')).join('')}"`;
-  const meta = { etag, feed: routes.feed ?? '', built: routes.built ?? '', lines, bytes: gzipped.byteLength };
+  const meta = { etag, feed: request.headers.get('X-Routes-Feed') ?? '', lines, bytes: gzipped.byteLength };
   // Body first: a phone reading the new ETag must find the body it names.
   await env.ROUTES.put(KEY, gzipped);
   await env.ROUTES.put(`${KEY}:meta`, JSON.stringify(meta));
