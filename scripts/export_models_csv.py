@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 """Export Tabor/Resources/fleet.json to data/fleet-models.csv, one row per unbroken run of
-fleet numbers of one model built in one year: number range, model, year, count, rarity tier,
-ZTM code and whether it's a bus or a tram.
+fleet numbers of one model, built in one year, at one depot, with one operator: number
+range, model, year, count, rarity tier, ZTM code, bus or tram, depot and operator.
 
-Usage:  python3 scripts/export_models_csv.py
+fleet.json only keeps a batch's most common depot and a model's operators, so the depot
+and operator of each vehicle come from data/ztm-vehicles.json plus the extra vehicles in
+fetch_fleet.py, the same rows fleet.json is built from.
+
+Usage:  python3 scripts/export_models_csv.py   # Python 3.12+, like fetch_fleet.py
 """
 import csv
 import json
 from collections import defaultdict
 from pathlib import Path
+
+import fetch_fleet
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "Tabor" / "Resources" / "fleet.json"
@@ -28,11 +34,8 @@ def spans(numbers):
     return out
 
 
-# Same tiers as Tier in Tabor/Core/Fleet.swift.
-RANK = {t: i for i, t in enumerate(["COMMON", "RARE", "GOLD", "LEGENDARY", "VINTAGE", "ON TEST"])}
-
-
 def tier(m):
+    """Same tiers as Tier in Tabor/Core/Fleet.swift."""
     if m.get("vintage"):
         return "VINTAGE"
     if m.get("onTest"):
@@ -41,14 +44,30 @@ def tier(m):
     return "LEGENDARY" if fleet <= 12 else "GOLD" if fleet <= 48 else "RARE" if fleet <= 80 else "COMMON"
 
 
+def vehicles():
+    """(kind, ZTM code, number) -> (depot, operator) for every vehicle fleet.json is built from."""
+    raw = json.loads(fetch_fleet.RAW.read_text())["vehicles"]
+    out = {}
+    for v in fetch_fleet.with_vintage_extras(raw):
+        if not v["number"].isdigit():
+            continue
+        code = f"{v['make']} {v['model']}".strip()
+        depot = " ".join(filter(None, fetch_fleet.parse_depot(v["depot"]))) if v["depot"] else ""
+        out[(v["kind"], code, int(v["number"]))] = (depot, fetch_fleet.short_carrier(v["carrier"]))
+    return out
+
+
 def main():
     models = json.loads(SRC.read_text())["models"]
+    where = vehicles()
     rows = []
     for m in models:
-        by_year = defaultdict(list)  # a year can come in several batches, one per depot
+        groups = defaultdict(list)
         for b in m["batches"]:
-            by_year[b.get("year")] += b["numbers"]
-        for year, numbers in by_year.items():
+            for n in b["numbers"]:
+                depot, operator = where[(m["kind"], m["code"], n)]
+                groups[(b.get("year"), depot, operator)].append(n)
+        for (year, depot, operator), numbers in groups.items():
             for lo, hi in spans(numbers):
                 rows.append({
                     "number range": str(lo) if lo == hi else f"{lo}-{hi}",
@@ -58,6 +77,8 @@ def main():
                     "rarity": tier(m),
                     "ztm code": m["code"],
                     "type": m["kind"].lower(),
+                    "depot": depot,
+                    "operator": operator,
                     "_sort": (m["kind"] != "TRAM", lo),
                 })
     rows.sort(key=lambda r: r.pop("_sort"))
