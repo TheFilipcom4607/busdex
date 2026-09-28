@@ -1,12 +1,14 @@
 name: Refresh fleet data
 
-# Re-scrapes the ZTM vehicle database and commits fleet.json when the fleet changed.
+# Rebuilds fleet.json from the city's vehicle list and commits it when the fleet changed.
 # The app downloads the committed file from raw.githubusercontent.com, so new deliveries
 # reach phones without an App Store release.
 #
-# Manual only: ztm.waw.pl answers GitHub's runners with an AWS WAF bot challenge instead
-# of the database (seen 2026-09-25), so a schedule here would just fail every week. Run
-# `python3 scripts/fetch_fleet.py` from a home connection and commit instead.
+# Manual only, and it needs the TABOR_DANE_TOKEN repo secret: fetch_fleet.py now builds from
+# the city's open-data vehicle list (dane.um.warszawa.pl) on top of the last ZTM scrape. The
+# scrape itself (--scrape) can't run here: ztm.waw.pl answers GitHub's runners with an AWS
+# WAF bot challenge (seen 2026-09-25). Running `python3 scripts/fetch_fleet.py` from a home
+# connection and committing is the usual way.
 on:
   workflow_dispatch:
 
@@ -30,7 +32,9 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Scrape ZTM and rebuild fleet.json
+      - name: Fetch the city's vehicle list and rebuild fleet.json
+        env:
+          TABOR_DANE_TOKEN: ${{ secrets.TABOR_DANE_TOKEN }}
         run: python3 scripts/fetch_fleet.py
 
       - name: Commit if the fleet changed
@@ -47,6 +51,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Tabor/Resources/fleet.json data/ztm-vehicles.json
+          git add Tabor/Resources/fleet.json data/ztm-pojazdy.json
           git commit -m "Refresh fleet data from ZTM ($(date -u +%F))"
           git push origin HEAD:main

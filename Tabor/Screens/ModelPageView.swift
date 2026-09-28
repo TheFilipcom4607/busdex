@@ -115,6 +115,12 @@ struct ModelPageView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
+                    // At the top of the scroll rather than above it, so the stickers keep the room.
+                    if let specs = model.specs {
+                        specsRow(specs, kind: model.kind)
+                            .padding(.top, 2)
+                            .padding(.bottom, 16)
+                    }
                     ForEach(Array(model.batches.enumerated()), id: \.offset) { i, batch in
                         batchHeader(batch, have: batch.numbers.filter { ownedByNumber[$0] != nil }.count, trial: model.trialDisplay)
                             .padding(.top, i == 0 ? 6 : 18)
@@ -201,6 +207,27 @@ struct ModelPageView: View {
         try? context.save()
         deleting = nil
         Haptics.shared.nope()
+    }
+
+    /// Length, drive and room, from the city's open data; each tile only if it's known.
+    private func specsRow(_ s: ModelSpecs, kind: VehicleKind) -> some View {
+        let drive = s.drive?.name ?? (kind == .tram ? ModelSpecs.Drive.electric.name : nil)
+        let airCon = s.airCon.map { $0 ? String(localized: "Air-conditioned") : String(localized: "No air-con") }
+        return HStack(spacing: 9) {
+            if let metres = s.metres {
+                StatTile(label: String(localized: "LENGTH"),
+                         value: "\(metres.formatted(FloatingPointFormatStyle<Double>(locale: .app).precision(.fractionLength(0...1)))) M",
+                         valueSize: 17, caption: s.floor?.name)
+            }
+            if let drive {
+                StatTile(label: String(localized: "DRIVE"), value: drive, valueSize: 17, caption: airCon)
+            }
+            if let places = s.places {
+                StatTile(label: String(localized: "PASSENGERS"), value: "\(places)", valueSize: 17,
+                         caption: s.seats.map { String(localized: "\($0) seated") })
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func subtitle(_ m: VehicleModel) -> String {

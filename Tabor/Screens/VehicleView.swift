@@ -50,6 +50,16 @@ struct VehicleView: View {
                             .lineLimit(1)
                         Mono(batch?.depotDisplay ?? model?.operators.first?.uppercased() ?? "", size: 11, color: Palette.sub)
                             .lineLimit(1)
+                        if let livery = model?.livery(of: number) {
+                            HStack(spacing: 5) {
+                                Image(systemName: "paintbrush.fill")
+                                    .font(.system(size: 9, weight: .bold))
+                                Mono(livery.name, size: 10, weight: 700, spacing: 0.1, color: Palette.yellow)
+                            }
+                            .foregroundStyle(Palette.yellow)
+                            .padding(.top, 5)
+                            .accessibilityLabel(Text("Special livery: \(livery.name.lowercased())"))
+                        }
                     }
                     .padding(.bottom, 6)
                 }

@@ -709,12 +709,32 @@
         }
       }
     },
+    "%lld seated": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld siedzących"
+          }
+        }
+      }
+    },
     "%lld vehicles here, zoom in": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "Pojazdy tutaj: %lld, przybliż"
+          }
+        }
+      }
+    },
+    "%lld vehicles in a special livery": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld pojazdów w nietypowym malowaniu"
           }
         }
       }
@@ -1090,6 +1110,16 @@
         }
       }
     },
+    "A vehicle in a special livery": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pojazd w nietypowym malowaniu"
+          }
+        }
+      }
+    },
     "A vehicle still in service at 20 years old": {
       "localizations": {
         "pl": {
@@ -1272,6 +1302,16 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "Air-conditioned": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klimatyzowany"
           }
         }
       }
@@ -1561,6 +1601,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ZŁAPANY · %@"
+          }
+        }
+      }
+    },
+    "CNG": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CNG"
           }
         }
       }
@@ -1878,12 +1928,32 @@
         }
       }
     },
+    "DIESEL": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DIESEL"
+          }
+        }
+      }
+    },
     "DRAG TO SPIN": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "PRZECIĄGNIJ, BY OBRÓCIĆ"
+          }
+        }
+      }
+    },
+    "DRIVE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NAPĘD"
           }
         }
       }
@@ -2196,6 +2266,16 @@
         }
       }
     },
+    "Dressed up": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W odświętnych barwach"
+          }
+        }
+      }
+    },
     "Déjà vu": {
       "localizations": {
         "pl": {
@@ -2222,6 +2302,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "EDYTUJ SZCZEGÓŁY"
+          }
+        }
+      }
+    },
+    "ELECTRIC": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ELEKTRYCZNY"
           }
         }
       }
@@ -2747,6 +2837,26 @@
         }
       }
     },
+    "HYBRID": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HYBRYDOWY"
+          }
+        }
+      }
+    },
+    "HYDROGEN": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WODOROWY"
+          }
+        }
+      }
+    },
     "Happy New Year": {
       "localizations": {
         "pl": {
@@ -2783,6 +2893,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Upał"
+          }
+        }
+      }
+    },
+    "High floor": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wysoka podłoga"
           }
         }
       }
@@ -3058,6 +3178,16 @@
         }
       }
     },
+    "LENGTH": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DŁUGOŚĆ"
+          }
+        }
+      }
+    },
     "LET'S GO": {
       "localizations": {
         "pl": {
@@ -3120,6 +3250,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "NA ŻYWO"
+          }
+        }
+      }
+    },
+    "LNG": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LNG"
           }
         }
       }
@@ -3226,6 +3366,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zapisane ujęcia"
+          }
+        }
+      }
+    },
+    "Low entry": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niskie wejście"
+          }
+        }
+      }
+    },
+    "Low floor": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niska podłoga"
+          }
+        }
+      }
+    },
+    "MAKER'S PAINT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MALOWANIE PRODUCENTA"
           }
         }
       }
@@ -3613,6 +3783,16 @@
         }
       }
     },
+    "No air-con": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bez klimatyzacji"
+          }
+        }
+      }
+    },
     "No key": {
       "localizations": {
         "pl": {
@@ -3825,6 +4005,16 @@
         }
       }
     },
+    "OTHER LIVERY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "INNE MALOWANIE"
+          }
+        }
+      }
+    },
     "Off": {
       "localizations": {
         "pl": {
@@ -4003,6 +4193,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Otwiera TABOR od razu na aparacie."
+          }
+        }
+      }
+    },
+    "PASSENGERS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MIEJSCA"
           }
         }
       }
@@ -4671,6 +4871,16 @@
         }
       }
     },
+    "Special livery: %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nietypowe malowanie: %@"
+          }
+        }
+      }
+    },
     "Status": {
       "localizations": {
         "pl": {
@@ -4879,6 +5089,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "SKRĘCA, NIM DO CIEBIE DOJEDZIE"
+          }
+        }
+      }
+    },
+    "TW LIVERY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MALOWANIE TW"
           }
         }
       }

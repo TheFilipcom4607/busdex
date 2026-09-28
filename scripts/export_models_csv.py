@@ -4,8 +4,8 @@ fleet numbers of one model, built in one year, at one depot, with one operator: 
 range, model, year, count, rarity tier, ZTM code, bus or tram, depot and operator.
 
 fleet.json only keeps a batch's most common depot and a model's operators, so the depot
-and operator of each vehicle come from data/ztm-vehicles.json plus the extra vehicles in
-fetch_fleet.py, the same rows fleet.json is built from.
+and operator of each vehicle come from data/ztm-vehicles.json, data/ztm-pojazdy.json and the
+extra vehicles in fetch_fleet.py, the same rows fleet.json is built from.
 
 Usage:  python3 scripts/export_models_csv.py   # Python 3.12+, like fetch_fleet.py
 """
@@ -46,9 +46,8 @@ def tier(m):
 
 def vehicles():
     """(kind, ZTM code, number) -> (depot, operator) for every vehicle fleet.json is built from."""
-    raw = json.loads(fetch_fleet.RAW.read_text())["vehicles"]
     out = {}
-    for v in fetch_fleet.with_vintage_extras(raw):
+    for v in fetch_fleet.with_vintage_extras(fetch_fleet.source_rows()):
         if not v["number"].isdigit():
             continue
         code = f"{v['make']} {v['model']}".strip()

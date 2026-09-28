@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
-"""Snapshot Warsaw's bus + tram fleet from the official ZTM vehicle database
-(https://www.ztm.waw.pl/baza-danych-pojazdow/) into Tabor/Resources/fleet.json.
+"""Build Tabor/Resources/fleet.json: Warsaw's buses and trams, by model and batch.
 
-The list view has number, make, model, operator and depot but no year, so we
-query it once per (traction, production year) and read the year from the filter.
-A final unfiltered pass catches vehicles with no year on record.
+Two sources, plus the hand-kept lists below:
+- The last scrape of ZTM's vehicle database (https://www.ztm.waw.pl/baza-danych-pojazdow/),
+  data/ztm-vehicles.json. It's the base, and kept as it is: where the sources disagree, ours
+  wins, so model ids never change.
+- The city's open-data vehicle list (dane.um.warszawa.pl, get_ztm_pojazdy), refreshed daily,
+  data/ztm-pojazdy.json. It adds the vehicles the scrape hasn't got, each joining the model
+  most of its type (idMarki) belongs to, plus each model's specs and special liveries.
 
-Usage:  python3 scripts/fetch_fleet.py            # scrape + build
-        python3 scripts/fetch_fleet.py --offline  # rebuild from data/ztm-vehicles.json
+Usage:  python3 scripts/fetch_fleet.py            # fetch the city's list + build
+        python3 scripts/fetch_fleet.py --offline  # rebuild from the saved files
+        python3 scripts/fetch_fleet.py --scrape   # re-scrape ZTM's database too (slow)
+
+The city's list needs TABOR_DANE_TOKEN, from the environment or Config/Secrets.xcconfig.
 """
 import html
 import json
+import os
 import re
 import sys
 import time
@@ -22,7 +29,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "data" / "ztm-vehicles.json"
+CITY = ROOT / "data" / "ztm-pojazdy.json"
 OUT = ROOT / "Tabor" / "Resources" / "fleet.json"
+DANE = "https://dane.um.warszawa.pl/api/action/get_ztm_pojazdy"
 BASE = "https://www.ztm.waw.pl/baza-danych-pojazdow/"
 # CloudFront rejects non-browser user agents.
 HEADERS = {
@@ -115,6 +124,127 @@ def scrape():
     RAW.write_text(json.dumps({"fetched": date.today().isoformat(), "source": BASE, "vehicles": out},
                               ensure_ascii=False, indent=0))
     return out
+
+
+# ---------------------------------------------------------------- the city's list
+
+def dane_token():
+    token = os.environ.get("TABOR_DANE_TOKEN")
+    if not token:
+        secrets = ROOT / "Config" / "Secrets.xcconfig"
+        m = re.search(r"^TABOR_DANE_TOKEN\s*=\s*(\S+)", secrets.read_text(), re.M) if secrets.exists() else None
+        token = m and m.group(1)
+    if not token:
+        raise RuntimeError("no TABOR_DANE_TOKEN (environment or Config/Secrets.xcconfig)")
+    return token
+
+
+def fetch_city():
+    """The city's vehicle list, trimmed to what the build uses, saved to data/ztm-pojazdy.json."""
+    req = urllib.request.Request(DANE, data=b"{}", method="POST", headers={
+        **HEADERS, "Accept": "application/json", "Content-Type": "application/json",
+        "Authorization": dane_token()})
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                d = json.loads(r.read())
+            break
+        except Exception as e:  # noqa: BLE001 — the city drops calls under load
+            if attempt == 3:
+                raise
+            print(f"  ! {e} — retry in {2 ** attempt}s", file=sys.stderr)
+            time.sleep(2 ** attempt)
+    vehicles = [{
+        "kind": kind, "number": v["numerTaborowy"], "idMarki": v["idMarki"], "year": v["rokProdukcji"],
+        "carrier": v["nazwaOperatora"] or "", "depot": v["nazwaZajezdni"] or "",
+        "livery": v["schematMalowania"],
+    } for key, kind in (("busy", "BUS"), ("tramwaje", "TRAM")) for v in d[key]]
+    keep = ("idMarki", "marka", "typ", "dlugosc", "rodzajZasilania", "zasilanie",
+            "liczMiejscSiedzacychTab", "liczMiejscTab", "klimatyzacja", "podloga")
+    types = {kind: [{k: t.get(k) for k in keep} for t in d[key]]
+             for key, kind in (("markiBus", "BUS"), ("markiTramwaje", "TRAM"))}
+    if len(vehicles) < 2000:
+        raise RuntimeError(f"only {len(vehicles)} vehicles in the city's list: not a usable answer")
+    city = {"fetched": date.today().isoformat(), "source": DANE,
+            "vehicles": sorted(vehicles, key=lambda v: (v["kind"], v["number"])), "types": types}
+    CITY.write_text(json.dumps(city, ensure_ascii=False, indent=0))
+    print(f"city: {len(vehicles)} vehicles, {sum(len(t) for t in types.values())} types")
+    return city
+
+
+def with_city(vehicles, city, report=True):
+    """The scrape plus the vehicles only the city lists. A new number joins the model most
+    numbers of its type (idMarki) already belong to; a type nothing known belongs to is
+    printed for a human to place, and left out. Numbers only we list are kept, and printed."""
+    listed = {(c["kind"], c["number"]): c for c in city["vehicles"]}
+    votes = defaultdict(Counter)
+    # Hand-added deliveries count as known too: they're how a brand-new type gets placed.
+    known = [(v["kind"], v["number"], v["make"], v["model"]) for v in vehicles]
+    known += [("BUS", str(n), make, model) for make, model, n, *_ in EXTRA_BUSES]
+    for kind, number, make, model in known:
+        if c := listed.get((kind, number)):
+            votes[(kind, c["idMarki"])][(make, model)] += 1
+    ours = {(v["kind"], v["number"]) for v in vehicles}
+    out, added, unplaced = list(vehicles), Counter(), defaultdict(list)
+    for (kind, number), c in sorted(listed.items()):
+        if (kind, number) in ours or not number.isdigit():
+            continue
+        if not votes[(kind, c["idMarki"])]:
+            unplaced[(kind, c["idMarki"])].append(number)
+            continue
+        make, model = votes[(kind, c["idMarki"])].most_common(1)[0][0]
+        out.append({"ztmId": "", "number": number, "make": make, "model": model, "carrier": c["carrier"],
+                    "depot": c["depot"], "kind": kind, "year": c["year"]})
+        added[f"{make} {model}"] += 1
+    if not report:
+        return out
+    for model, n in added.most_common():
+        print(f"  + {n} from the city's list: {model}")
+    for (kind, id_marki), numbers in sorted(unplaced.items()):
+        print(f"  ? {kind} type {id_marki} fits no model yet, left out: {', '.join(numbers)}")
+    missing = defaultdict(list)
+    for v in vehicles:
+        if (v["kind"], v["number"]) not in listed and v["number"].isdigit():
+            missing[(v["kind"], v["make"], v["model"])].append(int(v["number"]))
+    for (kind, make, model), numbers in sorted(missing.items()):
+        print(f"  - not in the city's list: {kind} {make} {model} {span(numbers)}")
+    return out
+
+
+def span(numbers):
+    """[1, 2, 3, 7] -> '1-3, 7'"""
+    numbers, runs = sorted(numbers), []
+    for n in numbers:
+        if runs and n == runs[-1][1] + 1:
+            runs[-1][1] = n
+        else:
+            runs.append([n, n])
+    return ", ".join(f"{a}-{b}" if a != b else f"{a}" for a, b in runs)
+
+
+def source_rows():
+    """Every vehicle row fleet.json is built from, before the hand-kept lists."""
+    scraped = json.loads(RAW.read_text())["vehicles"]
+    return with_city(scraped, json.loads(CITY.read_text()), report=False) if CITY.exists() else scraped
+
+
+# What the city calls each drive, for the model page.
+DRIVES = {
+    ("Spalinowy", "ON"): "diesel", ("Spalinowy", "CNG"): "cng", ("Spalinowy", "LNG"): "lng",
+    ("EV", "EV"): "electric", ("EV", "H2"): "hydrogen",
+}
+LIVERIES = {"producencki", "inny", "TW"}
+
+
+def specs(t, kind):
+    """A model's specs from the city's row for its type. Trams are all electric: no drive."""
+    drive = "hybrid" if t.get("rodzajZasilania") == "Hybryda" else DRIVES.get((t.get("rodzajZasilania"), t.get("zasilanie")))
+    s = {
+        "length": t.get("dlugosc"), "drive": drive if kind == "BUS" else None,
+        "seats": t.get("liczMiejscSiedzacychTab"), "places": t.get("liczMiejscTab"),
+        "airCon": t.get("klimatyzacja"), "floor": t.get("podloga") if t.get("podloga") in ("LF", "LE", "HF") else None,
+    }
+    return {k: v for k, v in s.items() if v is not None} or None
 
 
 # ---------------------------------------------------------------- build
@@ -250,6 +380,9 @@ MERGE = {
 # electrics are coming in at R-2 Kleszczowa as #58xx (MZA ordered 50 for 2H 2026);
 # only the numbers seen live (2026-09-25, and 10 more on 2026-09-27) are listed, not
 # the whole assumed range.
+# Since 2026-09-28 the city's list has most of these, and its rows win, so the entries retire
+# themselves. Keep them anyway: they're how the city's rows of a type ZTM's scrape lacks
+# (the Otokar Kent C) find their model.
 # (make, model, number, operator, year, depot.)
 EXTRA_BUSES = [
     *[("Otokar", "Kent C LF Mild Hybrid", n, "Mobilis", 2026, "Ursus") for n in range(9601, 9655)],
@@ -327,7 +460,9 @@ def slug(s):
     return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
 
 
-def build(vehicles):
+def build(vehicles, city=None):
+    city_rows = {(c["kind"], c["number"]): c for c in city["vehicles"]} if city else {}
+    types = {(kind, t["idMarki"]): t for kind, ts in city["types"].items() for t in ts} if city else {}
     groups = defaultdict(list)
     for v in with_vintage_extras(vehicles):
         if not v["number"].isdigit():
@@ -352,6 +487,11 @@ def build(vehicles):
             })
         years = [v["year"] for v in vs if v["year"]]
         model_id = slug(f"{kind}-{make}-{model}") + ("-vintage" if split else "")
+        # Specs from the type most of this model's vehicles are, in the city's list.
+        in_city = [city_rows[(kind, v["number"])] for v in vs if (kind, v["number"]) in city_rows]
+        majority = Counter(c["idMarki"] for c in in_city).most_common(1)
+        model_specs = specs(types[(kind, majority[0][0])], kind) if majority and (kind, majority[0][0]) in types else None
+        liveries = {c["number"]: c["livery"] for c in in_city if c["livery"] in LIVERIES}
         models.append({
             "id": model_id,
             "name": display_name(make, model),
@@ -368,6 +508,8 @@ def build(vehicles):
             "onTest": all(v.get("onTest", False) for v in vs),
             **(dict(zip(("runs", "trial", "runsPl", "trialPl"), TRIALS[(make, model)]))
                if (make, model) in TRIALS else {}),
+            **({"specs": model_specs} if model_specs else {}),
+            **({"liveries": dict(sorted(liveries.items(), key=lambda kv: int(kv[0])))} if liveries else {}),
         })
     models.sort(key=lambda m: (m["kind"], -m["fleet"], m["name"]))
     missing = VINTAGE - {m["id"] for m in models}
@@ -375,14 +517,18 @@ def build(vehicles):
 
     depots = sorted({parse_depot(v["depot"]) + (v["kind"],) for v in vehicles if v["depot"]})
     raw = json.loads(RAW.read_text())
+    # Phones download fleet.json when this date beats theirs.
+    fetched = max(raw["fetched"], city["fetched"]) if city else raw["fetched"]
+    city_en = f" and the city's open data (fetched {city['fetched']})" if city else ""
+    city_pl = f" i otwarte dane miasta (stan z {city['fetched']})" if city else ""
     OUT.write_text(json.dumps({
         # ZTM is the base; the hand-kept lists above fill its gaps (new deliveries, trial
         # and club buses, names, build years).
-        "source": f"Warsaw ZTM vehicle database (fetched {raw['fetched']}), plus Warszawikia, "
+        "source": f"Warsaw ZTM vehicle database (fetched {raw['fetched']}){city_en}, plus Warszawikia, "
                   "the KMKM club, TransInfo, phototrans.eu and live GPS",
-        "sourcePl": f"Baza pojazdów ZTM Warszawa (stan z {raw['fetched']}), a także Warszawikia, "
+        "sourcePl": f"Baza pojazdów ZTM Warszawa (stan z {raw['fetched']}){city_pl}, a także Warszawikia, "
                     "klub KMKM, TransInfo, phototrans.eu i GPS na żywo",
-        "fetched": raw["fetched"],
+        "fetched": fetched,
         "models": models,
         "depots": [{"code": c, "name": n, "kind": k} for c, n, k in depots],
     }, ensure_ascii=False, separators=(",", ":")))
@@ -391,5 +537,7 @@ def build(vehicles):
 
 
 if __name__ == "__main__":
-    data = json.loads(RAW.read_text())["vehicles"] if "--offline" in sys.argv else scrape()
-    build(data)
+    if "--scrape" in sys.argv:
+        scrape()
+    city = json.loads(CITY.read_text()) if "--offline" in sys.argv else fetch_city()
+    build(with_city(json.loads(RAW.read_text())["vehicles"], city), city)

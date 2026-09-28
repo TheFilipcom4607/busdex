@@ -76,7 +76,7 @@ public enum Achievements {
         let c = Context(sightings: sightings, catalog: catalog, calendar: calendar)
         let all: [Achievement?] = [
             // Collecting
-            collector(c), fleetShare(c), lines(c), photographer(c),
+            collector(c), fleetShare(c), lines(c), photographer(c), specialLivery(c),
             // Rarity
             unicorn(c), tierSet(c, .legendary, id: "legendary-all", symbol: "crown.fill"),
             tierSet(c, .gold, id: "gold-set", symbol: "star.circle.fill"),
@@ -172,6 +172,17 @@ public enum Achievements {
         tiered(id: "photographer", title: String(localized: "Photographer"), symbol: "camera.aperture",
                value: c.sightings.filter(\.hasSticker).count, thresholds: [10, 50, 200]) {
             String(localized: "\($0) catches with a cut-out sticker")
+        }
+    }
+
+    /// Vehicles caught in anything but ZTM's red and yellow. Hidden with a fleet file that
+    /// doesn't know liveries.
+    static func specialLivery(_ c: Context) -> Achievement? {
+        guard c.catalog.models.contains(where: { !($0.liveries ?? [:]).isEmpty }) else { return nil }
+        let painted = c.stats.vehicles.filter { v in c.catalog.model(id: v.modelId)?.livery(of: v.number) != nil }.count
+        return tiered(id: "special-livery", title: String(localized: "Dressed up"), symbol: "paintbrush.fill",
+                      value: painted, thresholds: [1, 5, 20]) {
+            $0 == 1 ? String(localized: "A vehicle in a special livery") : String(localized: "\($0) vehicles in a special livery")
         }
     }
 

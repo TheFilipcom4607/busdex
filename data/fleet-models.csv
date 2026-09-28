@@ -338,13 +338,13 @@ number range,model and make,year,count,rarity,ztm code,type,depot,operator
 5417-5460,Solaris Urbino 18,2015,44,COMMON,Solaris Urbino 18,bus,R-4 Stalowa,MZA
 5715,Ikarus 280,1997,1,VINTAGE,Ikarus 280,bus,,KMKM
 5741,Ikarus 280,,1,VINTAGE,Ikarus 280,bus,,MZA
-5803-5808,Solaris Urbino 18 electric,2026,6,COMMON,Solaris Urbino 18E,bus,R-2 Kleszczowa,MZA
-5811,Solaris Urbino 18 electric,2026,1,COMMON,Solaris Urbino 18E,bus,R-2 Kleszczowa,MZA
-5814-5817,Solaris Urbino 18 electric,2026,4,COMMON,Solaris Urbino 18E,bus,R-2 Kleszczowa,MZA
-5819,Solaris Urbino 18 electric,2026,1,COMMON,Solaris Urbino 18E,bus,R-2 Kleszczowa,MZA
-5821-5823,Solaris Urbino 18 electric,2026,3,COMMON,Solaris Urbino 18E,bus,R-2 Kleszczowa,MZA
-5827-5831,Solaris Urbino 18 electric,2026,5,COMMON,Solaris Urbino 18E,bus,R-2 Kleszczowa,MZA
-5833,Solaris Urbino 18 electric,2026,1,COMMON,Solaris Urbino 18E,bus,R-2 Kleszczowa,MZA
+5800,Solaris Urbino 18 electric,2026,1,COMMON,Solaris Urbino 18E,bus,R-2 Kleszczowa,MZA
+5802-5807,Solaris Urbino 18 electric,2026,6,COMMON,Solaris Urbino 18E,bus,R-2 Kleszczowa,MZA
+5808,Solaris Urbino 18 electric,2025,1,COMMON,Solaris Urbino 18E,bus,R-2 Kleszczowa,MZA
+5809-5829,Solaris Urbino 18 electric,2026,21,COMMON,Solaris Urbino 18E,bus,R-2 Kleszczowa,MZA
+5830,Solaris Urbino 18 electric,2026,1,COMMON,Solaris Urbino 18E,bus,,MZA
+5831-5833,Solaris Urbino 18 electric,2026,3,COMMON,Solaris Urbino 18E,bus,R-2 Kleszczowa,MZA
+5834,Solaris Urbino 18 electric,2025,1,COMMON,Solaris Urbino 18E,bus,R-2 Kleszczowa,MZA
 5835,Solaris Urbino 18 electric,2026,1,COMMON,Solaris Urbino 18E,bus,R-2 Kleszczowa,MZA
 5850-5852,Solaris Urbino 18 electric,2025,3,COMMON,Solaris Urbino 18E,bus,R-2 Kleszczowa,MZA
 5853,Solaris Urbino 18 electric,2024,1,COMMON,Solaris Urbino 18E,bus,R-2 Kleszczowa,MZA
@@ -414,7 +414,9 @@ number range,model and make,year,count,rarity,ztm code,type,depot,operator
 9061-9094,Otokar Vectio C,2018,34,GOLD,Otokar LA16SR2BX,bus,Estrady RLB,ReloBus
 9301-9305,MAN Lion’s City Hybrid,2017,5,LEGENDARY,MAN A37,bus,Klementowicka PKS,PKS Grodzisk
 9311-9359,Solaris Urbino 12,2017,49,COMMON,Solaris Urbino 12,bus,Klementowicka PKS,PKS Grodzisk
-9601-9654,Otokar Kent C Hybrid,2026,54,RARE,Otokar Kent C LF Mild Hybrid,bus,Ursus,Mobilis
+9601-9630,Otokar Kent C Hybrid,2026,30,RARE,Otokar Kent C LF Mild Hybrid,bus,Posag 7 Panien MOB,Mobilis
+9631,Otokar Kent C Hybrid,2026,1,RARE,Otokar Kent C LF Mild Hybrid,bus,Ursus,Mobilis
+9632-9654,Otokar Kent C Hybrid,2026,23,RARE,Otokar Kent C LF Mild Hybrid,bus,Posag 7 Panien MOB,Mobilis
 9801-9854,Mercedes-Benz Conecto G,2016,54,COMMON,Mercedes-Benz 628B02,bus,Posag 7 Panien MOB,Mobilis
 9901-9930,Solaris Urbino 18 CNG,2019,30,COMMON,Solaris Urbino 18CNG,bus,Estrady RLB,ReloBus
 9932-9954,Solaris Urbino 18 CNG,2019,23,COMMON,Solaris Urbino 18CNG,bus,Estrady RLB,ReloBus

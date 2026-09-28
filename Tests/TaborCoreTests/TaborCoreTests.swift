@@ -926,3 +926,35 @@ private func drive(from lon0: Double, step: Double, fixes: Int, lat: Double = ro
     let early = drive(from: 21.012, step: 0.001, fixes: 4)
     #expect(shared.match(line: "175", kind: .bus, trail: early.trail, position: early.position)?.end == nil)
 }
+
+// MARK: - Specs and liveries
+
+@Test func fleetJsonCarriesSpecsAndLiveries() {
+    let e18 = catalog.model(id: "bus-solaris-urbino-18e")!
+    #expect(e18.specs?.drive == .electric)
+    #expect(e18.specs?.metres == 18)
+    #expect(e18.specs?.floor == .low)
+    #expect((e18.specs?.places ?? 0) > (e18.specs?.seats ?? 0))
+    // #5869 came in the maker's own paint; its neighbours are in ZTM's.
+    #expect(e18.livery(of: 5869) == .maker)
+    #expect(e18.livery(of: 5868) == nil)
+    // Trams are all electric: the city gives no drive for them.
+    #expect(catalog.model(id: "tram-hrc-140n")?.specs?.drive == nil)
+}
+
+@Test func unknownSpecValuesAreSkipped() throws {
+    let json = #"{"length": 11947, "drive": "steam", "floor": "XX", "seats": 30}"#
+    let s = try JSONDecoder().decode(ModelSpecs.self, from: Data(json.utf8))
+    #expect(s.drive == nil && s.floor == nil && s.seats == 30)
+    #expect(s.metres == 11.9)
+}
+
+@Test func specialLiveryBadgeCountsPaintedVehicles() {
+    let e18 = catalog.model(id: "bus-solaris-urbino-18e")!
+    let hybrid = catalog.model(id: "bus-solaris-urbino-18h")!
+    let painted = [5869].map { any(e18.id, number: $0) } + [8396, 8397].map { any(hybrid.id, number: $0) }
+    #expect(eval([any(e18.id, number: 5868)])["special-livery"]?.level == 0)
+    let badge = eval(painted + painted)["special-livery"]!
+    // Each vehicle counts once, however often it's caught.
+    #expect(badge.progress == 3 && badge.level == 1)
+}

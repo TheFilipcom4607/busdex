@@ -61,11 +61,16 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     /// `runs` and `trial` in Polish. Hand-written in fetch_fleet.py; older fleet files lack them.
     public let runsPl: String?
     public let trialPl: String?
+    /// From the city's open data; older fleet files and vehicles it doesn't list have none.
+    public let specs: ModelSpecs?
+    /// Vehicles not in ZTM's usual paint, by fleet number (JSON keys are strings): the city's
+    /// scheme name, see `Livery`.
+    public let liveries: [String: String]?
 
     public init(id: String, name: String, make: String, code: String? = nil, kind: VehicleKind,
                 operators: [String], fleet: Int, firstYear: Int?, lastYear: Int?, batches: [Batch],
                 vintage: Bool = false, onTest: Bool = false, runs: String? = nil, trial: String? = nil,
-                runsPl: String? = nil, trialPl: String? = nil) {
+                runsPl: String? = nil, trialPl: String? = nil, specs: ModelSpecs? = nil, liveries: [String: String]? = nil) {
         self.id = id
         self.name = name
         self.make = make
@@ -82,11 +87,13 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         self.trial = trial
         self.runsPl = runsPl
         self.trialPl = trialPl
+        self.specs = specs
+        self.liveries = liveries
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, name, make, code, kind, operators, fleet, firstYear, lastYear, batches, vintage, onTest, runs, trial,
-             runsPl, trialPl
+             runsPl, trialPl, specs, liveries
     }
 
     public init(from decoder: Decoder) throws {
@@ -107,7 +114,13 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         trial = try c.decodeIfPresent(String.self, forKey: .trial)
         runsPl = try c.decodeIfPresent(String.self, forKey: .runsPl)
         trialPl = try c.decodeIfPresent(String.self, forKey: .trialPl)
+        // Optional extras: a malformed one is dropped rather than failing the whole file.
+        specs = try? c.decodeIfPresent(ModelSpecs.self, forKey: .specs)
+        liveries = try? c.decodeIfPresent([String: String].self, forKey: .liveries)
     }
+
+    /// A special paint job, if this vehicle has one.
+    public func livery(of number: Int) -> Livery? { liveries?[String(number)].flatMap { Livery(rawValue: $0) } }
 
     /// `trial` in the app's language.
     public var trialDisplay: String? { AppLanguage.polish ? trialPl ?? trial : trial }
@@ -141,6 +154,88 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
 
     public func batch(containing number: Int) -> Batch? {
         batches.first { $0.numbers.contains(number) }
+    }
+}
+
+/// What the city's open data says about a model (from the type most of its vehicles are).
+public struct ModelSpecs: Codable, Hashable, Sendable {
+    /// Millimetres.
+    public let length: Int?
+    public let drive: Drive?
+    public let seats: Int?
+    /// Seated and standing.
+    public let places: Int?
+    public let airCon: Bool?
+    public let floor: Floor?
+
+    public init(length: Int? = nil, drive: Drive? = nil, seats: Int? = nil, places: Int? = nil,
+                airCon: Bool? = nil, floor: Floor? = nil) {
+        self.length = length
+        self.drive = drive
+        self.seats = seats
+        self.places = places
+        self.airCon = airCon
+        self.floor = floor
+    }
+
+    private enum CodingKeys: String, CodingKey { case length, drive, seats, places, airCon, floor }
+
+    /// A drive or floor added in a later version is skipped, not fatal.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        length = try c.decodeIfPresent(Int.self, forKey: .length)
+        drive = (try? c.decodeIfPresent(String.self, forKey: .drive))?.flatMap { Drive(rawValue: $0) }
+        seats = try c.decodeIfPresent(Int.self, forKey: .seats)
+        places = try c.decodeIfPresent(Int.self, forKey: .places)
+        airCon = try c.decodeIfPresent(Bool.self, forKey: .airCon)
+        floor = (try? c.decodeIfPresent(String.self, forKey: .floor))?.flatMap { Floor(rawValue: $0) }
+    }
+
+    /// 11947 mm is "11.9", 18000 mm "18": metres, to a tenth.
+    public var metres: Double? { length.map { (Double($0) / 100).rounded() / 10 } }
+
+    public enum Drive: String, Codable, Sendable {
+        case diesel, electric, hydrogen, cng, lng, hybrid
+
+        public var name: String {
+            switch self {
+            case .diesel: String(localized: "DIESEL", comment: "Drive")
+            case .electric: String(localized: "ELECTRIC", comment: "Drive")
+            case .hydrogen: String(localized: "HYDROGEN", comment: "Drive")
+            case .cng: String(localized: "CNG", comment: "Drive: compressed natural gas")
+            case .lng: String(localized: "LNG", comment: "Drive: liquefied natural gas")
+            case .hybrid: String(localized: "HYBRID", comment: "Drive")
+            }
+        }
+    }
+
+    public enum Floor: String, Codable, Sendable {
+        case low = "LF", lowEntry = "LE", high = "HF"
+
+        public var name: String {
+            switch self {
+            case .low: String(localized: "Low floor")
+            case .lowEntry: String(localized: "Low entry")
+            case .high: String(localized: "High floor")
+            }
+        }
+    }
+}
+
+/// A paint job other than ZTM's red and yellow, as the city's open data calls it.
+public enum Livery: String, Sendable, CaseIterable {
+    /// The maker's own paint, as delivered.
+    case maker = "producencki"
+    case other = "inny"
+    /// Tramwaje Warszawskie's own, on a few historic trams.
+    case tw = "TW"
+
+    public var name: String {
+        switch self {
+        case .maker: String(localized: "MAKER'S PAINT")
+        case .other: String(localized: "OTHER LIVERY")
+        case .tw: String(localized: "TW LIVERY")
+        }
     }
 }
 
