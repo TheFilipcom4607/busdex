@@ -1,77 +1,284 @@
-number range,model and make,year,count,rarity,ztm code
-"3101-3295, 3501-3506",Pesa 120N / 120Na Swing,2007-2013,201,COMMON,Pesa 120N
-"1006, 1275-1276, 1281-1286, 1289-1290, 1293-1315, 1317-1341, 1343-1346, 1349-1374, 1377-1381, 1383-1390, 1393-1470, 2006-2009",Konstal 105Na,1985-1997,184,COMMON,Konstal 105N
-"1391-1392, 2010-2035, 2037-2046, 2048-2064, 2066-2135",Konstal 105N2k,1994-2001,125,COMMON,Alstom Konstal 105N
-4201-4285,Hyundai Rotem 140N,2021-2023,85,COMMON,HRC 140N
-3601-3650,Pesa 128N Jazz Duo,2014-2015,50,RARE,Pesa 128N
-2136-2165,Cegielski 123N,2006-2007,30,GOLD,HCP 123N
-3801-3830,Pesa 134N Jazz,2015,30,GOLD,Pesa 134N
-3002-3030,Alstom 116Na,1998-2000,29,GOLD,Alstom Konstal 116N
-4001-4020,Hyundai Rotem 142N,2022-2023,20,GOLD,HRC 142N
-4101-4118,Hyundai Rotem 141N,2022,18,GOLD,HRC 141N
-3001,Konstal 112N,1995,1,LEGENDARY,Konstal 112N
-"407, 503-504, 534-535, 642, 795, 818, 821",Konstal 13N,1959-1969,9,VINTAGE,Konstal 13N
-"607, 716, 734, 775, 1620, 1724, 1727, 1770, 1811",Konstal N,1949-1961,9,VINTAGE,Konstal N
-"445-446, 2400, 2405",Gdańsk type K,1940,4,VINTAGE,Gdańska Fabryka Wagonów / WIwK K
-"1000-1001, 1251-1252",Konstal 105Na,1975-1988,4,VINTAGE,Konstal 105N
-"5, 42",Konstal 102N,1969-1971,2,VINTAGE,Konstal 102N
-"838, 873",Konstal 4N,1957-1961,2,VINTAGE,Konstal 4N
-"257, 2204",Lilpop C,1925-1928,2,VINTAGE,Lilpop C
-205,Credé/Düwag 4EGTw,1956,1,VINTAGE,Credé/Düwag 4EGTw
-43,Falkenried A,1906,1,VINTAGE,Falkenried A
-541,Linke-Hofmann Lw,1925,1,VINTAGE,Linke-Hoffmann Lw
-"781-782, 5201-5234, 5236-5260, 5401-5415, 5417-5460, 8300-8369, 8441-8465, 8500-8595, 8800, 8802, 8804-8805, 8807-8810, 8812-8833, 8835-8837, 8839, 8841-8848, 8850-8899",Solaris Urbino 18,2008-2016,403,COMMON,Solaris Urbino 18
-"721-724, 739-741, 743-744, 746-750, 753-758, 761, 774-779, 1400-1401, 1411-1430, 1500, 1502, 1520-1546, 1548-1555, 1800-1819, 1830, 1833, 1835, 1838-1840, 1842-1846, 1848-1849, 1851, 1855-1859, 1862-1863, 9311-9359",Solaris Urbino 12,2007-2025,176,COMMON,Solaris Urbino 12
-"5803-5808, 5811, 5814-5817, 5819, 5821-5823, 5827-5831, 5833, 5835, 5850-5861, 5869-5999",Solaris Urbino 18 electric,2017-2026,165,COMMON,Solaris Urbino 18E
-"3400-3469, 7200-7259",MAN Lion’s City G,2010-2020,130,COMMON,MAN A23
-"7700-7759, 9901-9930, 9932-9955",Solaris Urbino 18 CNG,2019-2021,114,COMMON,Solaris Urbino 18CNG
-"6200-6244, 9801-9854",Mercedes-Benz Conecto G,2016-2017,99,COMMON,Mercedes-Benz 628B02
-7800-7890,Autosan Sancity 18LF,2022-2023,91,COMMON,Autosan M18LF
-"2000-2003, 2005-2028, 2030-2034, 2036-2046, 7301-7335",Solbus Solcity 18,2014-2015,79,RARE,Solbus SM18
-"1020-1039, 1060-1079, 1200-1214, 1216-1224",Solbus Solcity 12,2011-2013,64,RARE,Solbus SM12
-2200-2259,Mercedes-Benz Conecto G,2012,60,RARE,Mercedes-Benz 628
-9601-9654,Otokar Kent C Hybrid,2026,54,RARE,Otokar Kent C LF Mild Hybrid
-4200-4249,MAN Lion’s City CNG,2019,50,RARE,MAN A21
-1940-1987,Yutong U12,2024-2026,48,GOLD,Yutong U12-B
-"10071-10072, 10075-10076, 70018, 70021-70022, 70041-70049, 80101-80108, 80110-80115, 80117-80123, 80125-80126, 80204-80206",Mercus MAN TGE City,2020-2025,42,GOLD,Mercus SYN2Z
-4300-4339,Solaris Urbino 12 CNG,2021,40,GOLD,Solaris Urbino 12CNG
-"725-728, 772-773, 1901-1932",Solaris Urbino 12 electric,2015-2026,38,GOLD,Solaris Urbino 12E
-4400-4434,Mercedes-Benz Conecto,2017,35,GOLD,Mercedes-Benz 628B01
-"1000-1014, 1040-1059",Solaris Urbino 10,2010-2012,35,GOLD,Solaris Urbino 10
-9061-9094,Otokar Vectio C,2018,34,GOLD,Otokar LA16SR2BX
-"15077-15079, 35151-35153, 35156-35160, 35221-35222, 36161-36169, 36223, 85211-85216",Güleryüz Cobra GD272,2021-2026,29,GOLD,Güleryüz GD272
-4500-4528,Scania CityWide,2018,29,GOLD,Scania M323
-"15081-15094, 15096-15097, 35131-35138, 36139-36142",Isuzu Citiport 12,2022-2025,28,GOLD,Isuzu B120
-"70008-70009, 70015-70017, 70019-70020, 70023-70040",ZAZ A08,2020-2022,25,GOLD,ZAZ A08
-"762-763, 1990-1999",Ursus City Smile,2017,12,LEGENDARY,Ursus CS2
-70001-70007,ZAZ A10,2019-2021,7,LEGENDARY,ZAZ A10
-"70050-70054, 80109",Mercus MB Sprinter City,2022-2025,6,LEGENDARY,Mercus 906BB62
-9301-9305,MAN Lion’s City Hybrid,2017,5,LEGENDARY,MAN A37
-36143-36146,BMC Procity 12LF,2026,4,LEGENDARY,Procity 12 M
-8396-8399,Solaris Urbino 18 hybrid,2011,4,LEGENDARY,Solaris Urbino 18H
-"35531, 39532-39533",Iveco Crossway LE,2014-2019,3,LEGENDARY,Iveco Crossway LE
-701,Solaris Alpino 8.X,2016,1,LEGENDARY,Solaris Alpino 8.X
-"646, 691, 2600, 5715, 5741, 6941, 6954",Ikarus 280,1987-1997,7,VINTAGE,Ikarus 280
-"289, 6306, 6905, 6930",Ikarus 260,1982-1995,4,VINTAGE,Ikarus 260
-"8058, 8081",Jelcz 043,1974-1986,2,VINTAGE,Jelcz 043
-"1816, 1983",Jelcz 272 MEX,1972-1977,2,VINTAGE,Jelcz 272 MEX
-"6962, 8731",Solaris Urbino 15,1999-2001,2,VINTAGE,Solaris Urbino 15
-3873,Berliet PR100,1980,1,VINTAGE,Berliet PR100
-395,Chausson AH 48,1950,1,VINTAGE,Chausson AH 48
-6454,Ikarus 405,1994,1,VINTAGE,Ikarus 405
-6550,Ikarus 411,1995,1,VINTAGE,Ikarus 411
-70504,Ikarus Zemun IK-160P,1987,1,VINTAGE,Ikarus Zemun IK-160P
-4340,Jelcz 120MM/1,1993,1,VINTAGE,Jelcz 120MM/1
-90904,Jelcz L11,1989,1,VINTAGE,Jelcz L11
-95,Jelcz M11,1987,1,VINTAGE,Jelcz M11
-4942,Jelcz M121I/4,,1,VINTAGE,Jelcz M121I/4
-4891,Jelcz M121M,1998,1,VINTAGE,Jelcz M121M
-643,Jelcz PAT-4,,1,VINTAGE,Jelcz PAT-4
-618,Jelcz PO1,,1,VINTAGE,Jelcz PO1
-4617,Jelcz PR110M,1991,1,VINTAGE,Jelcz PR110M
-5299,Jelcz PR110U,1978,1,VINTAGE,Jelcz PR110U
-6922,MAN Lion’s City G,2001,1,VINTAGE,MAN A23
-8082,San H-100A,1972,1,VINTAGE,San H-100A
-160,San H-100B,1973,1,VINTAGE,San H-100B
-6923,Solaris Urbino 18,2005,1,VINTAGE,Solaris Urbino 18
-959,Irizar ie tram 12,,1,ON TEST,Irizar ie tram 12
+number range,model and make,year,count,rarity,ztm code,type
+5,Konstal 102N,1969,1,VINTAGE,Konstal 102N,tram
+42,Konstal 102N,1971,1,VINTAGE,Konstal 102N,tram
+43,Falkenried A,1906,1,VINTAGE,Falkenried A,tram
+205,Credé/Düwag 4EGTw,1956,1,VINTAGE,Credé/Düwag 4EGTw,tram
+257,Lilpop C,1925,1,VINTAGE,Lilpop C,tram
+407,Konstal 13N,1967,1,VINTAGE,Konstal 13N,tram
+445-446,Gdańsk type K,1940,2,VINTAGE,Gdańska Fabryka Wagonów / WIwK K,tram
+503-504,Konstal 13N,1959,2,VINTAGE,Konstal 13N,tram
+534-535,Konstal 13N,1968,2,VINTAGE,Konstal 13N,tram
+541,Linke-Hofmann Lw,1925,1,VINTAGE,Linke-Hoffmann Lw,tram
+607,Konstal N,1949,1,VINTAGE,Konstal N,tram
+642,Konstal 13N,1968,1,VINTAGE,Konstal 13N,tram
+716,Konstal N,1953,1,VINTAGE,Konstal N,tram
+734,Konstal N,1952,1,VINTAGE,Konstal N,tram
+775,Konstal N,1955,1,VINTAGE,Konstal N,tram
+795,Konstal 13N,1969,1,VINTAGE,Konstal 13N,tram
+818,Konstal 13N,1969,1,VINTAGE,Konstal 13N,tram
+821,Konstal 13N,1969,1,VINTAGE,Konstal 13N,tram
+838,Konstal 4N,1957,1,VINTAGE,Konstal 4N,tram
+873,Konstal 4N,1961,1,VINTAGE,Konstal 4N,tram
+1000-1001,Konstal 105Na,1975,2,VINTAGE,Konstal 105N,tram
+1006,Konstal 105Na,1990,1,COMMON,Konstal 105N,tram
+1251-1252,Konstal 105Na,1988,2,VINTAGE,Konstal 105N,tram
+1275-1276,Konstal 105Na,1989,2,COMMON,Konstal 105N,tram
+1281-1286,Konstal 105Na,1989,6,COMMON,Konstal 105N,tram
+1289-1290,Konstal 105Na,1989,2,COMMON,Konstal 105N,tram
+1293-1315,Konstal 105Na,1990,23,COMMON,Konstal 105N,tram
+1317-1330,Konstal 105Na,1990,14,COMMON,Konstal 105N,tram
+1331-1341,Konstal 105Na,1991,11,COMMON,Konstal 105N,tram
+1343-1344,Konstal 105Na,1991,2,COMMON,Konstal 105N,tram
+1345,Konstal 105Na,1985,1,COMMON,Konstal 105N,tram
+1346,Konstal 105Na,1991,1,COMMON,Konstal 105N,tram
+1349-1368,Konstal 105Na,1991,20,COMMON,Konstal 105N,tram
+1369-1373,Konstal 105Na,1992,5,COMMON,Konstal 105N,tram
+1374,Konstal 105Na,1988,1,COMMON,Konstal 105N,tram
+1377-1381,Konstal 105Na,1992,5,COMMON,Konstal 105N,tram
+1383,Konstal 105Na,1994,1,COMMON,Konstal 105N,tram
+1384-1386,Konstal 105Na,1993,3,COMMON,Konstal 105N,tram
+1387-1389,Konstal 105Na,1994,3,COMMON,Konstal 105N,tram
+1390,Konstal 105Na,1993,1,COMMON,Konstal 105N,tram
+1391,Konstal 105N2k,1997,1,COMMON,Alstom Konstal 105N,tram
+1392,Konstal 105N2k,1994,1,COMMON,Alstom Konstal 105N,tram
+1393-1410,Konstal 105Na,1993,18,COMMON,Konstal 105N,tram
+1411-1422,Konstal 105Na,1994,12,COMMON,Konstal 105N,tram
+1423-1424,Konstal 105Na,1993,2,COMMON,Konstal 105N,tram
+1425-1440,Konstal 105Na,1994,16,COMMON,Konstal 105N,tram
+1441-1455,Konstal 105Na,1995,15,COMMON,Konstal 105N,tram
+1456-1468,Konstal 105Na,1996,13,COMMON,Konstal 105N,tram
+1469-1470,Konstal 105Na,1997,2,COMMON,Konstal 105N,tram
+1620,Konstal N,1951,1,VINTAGE,Konstal N,tram
+1724,Konstal N,1955,1,VINTAGE,Konstal N,tram
+1727,Konstal N,1955,1,VINTAGE,Konstal N,tram
+1770,Konstal N,1956,1,VINTAGE,Konstal N,tram
+1811,Konstal N,1961,1,VINTAGE,Konstal N,tram
+2006-2007,Konstal 105Na,1989,2,COMMON,Konstal 105N,tram
+2008-2009,Konstal 105Na,1992,2,COMMON,Konstal 105N,tram
+2010-2013,Konstal 105N2k,1995,4,COMMON,Alstom Konstal 105N,tram
+2014-2029,Konstal 105N2k,1997,16,COMMON,Alstom Konstal 105N,tram
+2030-2035,Konstal 105N2k,1998,6,COMMON,Alstom Konstal 105N,tram
+2037-2046,Konstal 105N2k,1998,10,COMMON,Alstom Konstal 105N,tram
+2048-2053,Konstal 105N2k,1998,6,COMMON,Alstom Konstal 105N,tram
+2054-2061,Konstal 105N2k,1999,8,COMMON,Alstom Konstal 105N,tram
+2062-2064,Konstal 105N2k,2000,3,COMMON,Alstom Konstal 105N,tram
+2066-2073,Konstal 105N2k,2000,8,COMMON,Alstom Konstal 105N,tram
+2074-2135,Konstal 105N2k,2001,62,COMMON,Alstom Konstal 105N,tram
+2136-2138,Cegielski 123N,2006,3,GOLD,HCP 123N,tram
+2139-2165,Cegielski 123N,2007,27,GOLD,HCP 123N,tram
+2204,Lilpop C,1928,1,VINTAGE,Lilpop C,tram
+2400,Gdańsk type K,1940,1,VINTAGE,Gdańska Fabryka Wagonów / WIwK K,tram
+2405,Gdańsk type K,1940,1,VINTAGE,Gdańska Fabryka Wagonów / WIwK K,tram
+3001,Konstal 112N,1995,1,LEGENDARY,Konstal 112N,tram
+3002-3004,Alstom 116Na,1998,3,GOLD,Alstom Konstal 116N,tram
+3005-3024,Alstom 116Na,1999,20,GOLD,Alstom Konstal 116N,tram
+3025-3030,Alstom 116Na,2000,6,GOLD,Alstom Konstal 116N,tram
+3101-3115,Pesa 120N / 120Na Swing,2007,15,COMMON,Pesa 120N,tram
+3116-3151,Pesa 120N / 120Na Swing,2010,36,COMMON,Pesa 120N,tram
+3152-3210,Pesa 120N / 120Na Swing,2011,59,COMMON,Pesa 120N,tram
+3211-3259,Pesa 120N / 120Na Swing,2012,49,COMMON,Pesa 120N,tram
+3260-3295,Pesa 120N / 120Na Swing,2013,36,COMMON,Pesa 120N,tram
+3501-3506,Pesa 120N / 120Na Swing,2012,6,COMMON,Pesa 120N,tram
+3601-3604,Pesa 128N Jazz Duo,2014,4,RARE,Pesa 128N,tram
+3605-3650,Pesa 128N Jazz Duo,2015,46,RARE,Pesa 128N,tram
+3801-3830,Pesa 134N Jazz,2015,30,GOLD,Pesa 134N,tram
+4001,Hyundai Rotem 142N,2022,1,GOLD,HRC 142N,tram
+4002-4020,Hyundai Rotem 142N,2023,19,GOLD,HRC 142N,tram
+4101-4118,Hyundai Rotem 141N,2022,18,GOLD,HRC 141N,tram
+4201-4208,Hyundai Rotem 140N,2021,8,COMMON,HRC 140N,tram
+4209-4282,Hyundai Rotem 140N,2022,74,COMMON,HRC 140N,tram
+4283-4285,Hyundai Rotem 140N,2023,3,COMMON,HRC 140N,tram
+95,Jelcz M11,1987,1,VINTAGE,Jelcz M11,bus
+160,San H-100B,1973,1,VINTAGE,San H-100B,bus
+289,Ikarus 260,1982,1,VINTAGE,Ikarus 260,bus
+395,Chausson AH 48,1950,1,VINTAGE,Chausson AH 48,bus
+618,Jelcz PO1,,1,VINTAGE,Jelcz PO1,bus
+643,Jelcz PAT-4,,1,VINTAGE,Jelcz PAT-4,bus
+646,Ikarus 280,,1,VINTAGE,Ikarus 280,bus
+691,Ikarus 280,,1,VINTAGE,Ikarus 280,bus
+701,Solaris Alpino 8.X,2016,1,LEGENDARY,Solaris Alpino 8.X,bus
+721-722,Solaris Urbino 12,2024,2,COMMON,Solaris Urbino 12,bus
+723-724,Solaris Urbino 12,2025,2,COMMON,Solaris Urbino 12,bus
+725-728,Solaris Urbino 12 electric,2026,4,GOLD,Solaris Urbino 12E,bus
+739-741,Solaris Urbino 12,2010,3,COMMON,Solaris Urbino 12,bus
+743-744,Solaris Urbino 12,2010,2,COMMON,Solaris Urbino 12,bus
+746,Solaris Urbino 12,2010,1,COMMON,Solaris Urbino 12,bus
+747,Solaris Urbino 12,2012,1,COMMON,Solaris Urbino 12,bus
+748-750,Solaris Urbino 12,2013,3,COMMON,Solaris Urbino 12,bus
+753,Solaris Urbino 12,2013,1,COMMON,Solaris Urbino 12,bus
+754-758,Solaris Urbino 12,2015,5,COMMON,Solaris Urbino 12,bus
+761,Solaris Urbino 12,2016,1,COMMON,Solaris Urbino 12,bus
+762-763,Ursus City Smile,2017,2,LEGENDARY,Ursus CS2,bus
+772-773,Solaris Urbino 12 electric,2019,2,GOLD,Solaris Urbino 12E,bus
+774-775,Solaris Urbino 12,2016,2,COMMON,Solaris Urbino 12,bus
+776-777,Solaris Urbino 12,2020,2,COMMON,Solaris Urbino 12,bus
+778-779,Solaris Urbino 12,2021,2,COMMON,Solaris Urbino 12,bus
+781-782,Solaris Urbino 18,2015,2,COMMON,Solaris Urbino 18,bus
+959,Irizar ie tram 12,,1,ON TEST,Irizar ie tram 12,bus
+1000-1014,Solaris Urbino 10,2010,15,GOLD,Solaris Urbino 10,bus
+1020-1039,Solbus Solcity 12,2011,20,RARE,Solbus SM12,bus
+1040-1059,Solaris Urbino 10,2012,20,GOLD,Solaris Urbino 10,bus
+1060-1079,Solbus Solcity 12,2013,20,RARE,Solbus SM12,bus
+1200-1214,Solbus Solcity 12,2012,15,RARE,Solbus SM12,bus
+1216-1224,Solbus Solcity 12,2012,9,RARE,Solbus SM12,bus
+1400-1401,Solaris Urbino 12,2007,2,COMMON,Solaris Urbino 12,bus
+1411-1430,Solaris Urbino 12,2015,20,COMMON,Solaris Urbino 12,bus
+1500,Solaris Urbino 12,2007,1,COMMON,Solaris Urbino 12,bus
+1502,Solaris Urbino 12,2007,1,COMMON,Solaris Urbino 12,bus
+1520-1546,Solaris Urbino 12,2011,27,COMMON,Solaris Urbino 12,bus
+1548-1555,Solaris Urbino 12,2011,8,COMMON,Solaris Urbino 12,bus
+1800-1819,Solaris Urbino 12,2008,20,COMMON,Solaris Urbino 12,bus
+1816,Jelcz 272 MEX,1972,1,VINTAGE,Jelcz 272 MEX,bus
+1830,Solaris Urbino 12,2008,1,COMMON,Solaris Urbino 12,bus
+1833,Solaris Urbino 12,2008,1,COMMON,Solaris Urbino 12,bus
+1835,Solaris Urbino 12,2008,1,COMMON,Solaris Urbino 12,bus
+1838-1840,Solaris Urbino 12,2008,3,COMMON,Solaris Urbino 12,bus
+1842-1846,Solaris Urbino 12,2008,5,COMMON,Solaris Urbino 12,bus
+1848-1849,Solaris Urbino 12,2008,2,COMMON,Solaris Urbino 12,bus
+1851,Solaris Urbino 12,2008,1,COMMON,Solaris Urbino 12,bus
+1855-1859,Solaris Urbino 12,2008,5,COMMON,Solaris Urbino 12,bus
+1862-1863,Solaris Urbino 12,2008,2,COMMON,Solaris Urbino 12,bus
+1901-1910,Solaris Urbino 12 electric,2015,10,GOLD,Solaris Urbino 12E,bus
+1911-1920,Solaris Urbino 12 electric,2018,10,GOLD,Solaris Urbino 12E,bus
+1921-1932,Solaris Urbino 12 electric,2024,12,GOLD,Solaris Urbino 12E,bus
+1940-1969,Yutong U12,2026,30,GOLD,Yutong U12-B,bus
+1970-1987,Yutong U12,2024,18,GOLD,Yutong U12-B,bus
+1983,Jelcz 272 MEX,1977,1,VINTAGE,Jelcz 272 MEX,bus
+1990-1999,Ursus City Smile,2017,10,LEGENDARY,Ursus CS2,bus
+2000-2003,Solbus Solcity 18,2014,4,RARE,Solbus SM18,bus
+2005-2028,Solbus Solcity 18,2014,24,RARE,Solbus SM18,bus
+2030-2034,Solbus Solcity 18,2014,5,RARE,Solbus SM18,bus
+2036-2046,Solbus Solcity 18,2014,11,RARE,Solbus SM18,bus
+2200-2259,Mercedes-Benz Conecto G,2012,60,RARE,Mercedes-Benz 628,bus
+2600,Ikarus 280,1987,1,VINTAGE,Ikarus 280,bus
+3400-3469,MAN Lion’s City G,2010,70,COMMON,MAN A23,bus
+3873,Berliet PR100,1980,1,VINTAGE,Berliet PR100,bus
+4200-4249,MAN Lion’s City CNG,2019,50,RARE,MAN A21,bus
+4300-4339,Solaris Urbino 12 CNG,2021,40,GOLD,Solaris Urbino 12CNG,bus
+4340,Jelcz 120MM/1,1993,1,VINTAGE,Jelcz 120MM/1,bus
+4400-4434,Mercedes-Benz Conecto,2017,35,GOLD,Mercedes-Benz 628B01,bus
+4500-4528,Scania CityWide,2018,29,GOLD,Scania M323,bus
+4617,Jelcz PR110M,1991,1,VINTAGE,Jelcz PR110M,bus
+4891,Jelcz M121M,1998,1,VINTAGE,Jelcz M121M,bus
+4942,Jelcz M121I/4,,1,VINTAGE,Jelcz M121I/4,bus
+5201-5220,Solaris Urbino 18,2015,20,COMMON,Solaris Urbino 18,bus
+5221-5234,Solaris Urbino 18,2016,14,COMMON,Solaris Urbino 18,bus
+5236-5260,Solaris Urbino 18,2016,25,COMMON,Solaris Urbino 18,bus
+5299,Jelcz PR110U,1978,1,VINTAGE,Jelcz PR110U,bus
+5401-5415,Solaris Urbino 18,2015,15,COMMON,Solaris Urbino 18,bus
+5417-5460,Solaris Urbino 18,2015,44,COMMON,Solaris Urbino 18,bus
+5715,Ikarus 280,1997,1,VINTAGE,Ikarus 280,bus
+5741,Ikarus 280,,1,VINTAGE,Ikarus 280,bus
+5803-5808,Solaris Urbino 18 electric,2026,6,COMMON,Solaris Urbino 18E,bus
+5811,Solaris Urbino 18 electric,2026,1,COMMON,Solaris Urbino 18E,bus
+5814-5817,Solaris Urbino 18 electric,2026,4,COMMON,Solaris Urbino 18E,bus
+5819,Solaris Urbino 18 electric,2026,1,COMMON,Solaris Urbino 18E,bus
+5821-5823,Solaris Urbino 18 electric,2026,3,COMMON,Solaris Urbino 18E,bus
+5827-5831,Solaris Urbino 18 electric,2026,5,COMMON,Solaris Urbino 18E,bus
+5833,Solaris Urbino 18 electric,2026,1,COMMON,Solaris Urbino 18E,bus
+5835,Solaris Urbino 18 electric,2026,1,COMMON,Solaris Urbino 18E,bus
+5850-5852,Solaris Urbino 18 electric,2025,3,COMMON,Solaris Urbino 18E,bus
+5853,Solaris Urbino 18 electric,2024,1,COMMON,Solaris Urbino 18E,bus
+5854-5861,Solaris Urbino 18 electric,2025,8,COMMON,Solaris Urbino 18E,bus
+5869,Solaris Urbino 18 electric,2017,1,COMMON,Solaris Urbino 18E,bus
+5870-5999,Solaris Urbino 18 electric,2020,130,COMMON,Solaris Urbino 18E,bus
+6200-6244,Mercedes-Benz Conecto G,2017,45,COMMON,Mercedes-Benz 628B02,bus
+6306,Ikarus 260,1993,1,VINTAGE,Ikarus 260,bus
+6454,Ikarus 405,1994,1,VINTAGE,Ikarus 405,bus
+6550,Ikarus 411,1995,1,VINTAGE,Ikarus 411,bus
+6905,Ikarus 260,1995,1,VINTAGE,Ikarus 260,bus
+6922,MAN Lion’s City G,2001,1,VINTAGE,MAN A23,bus
+6923,Solaris Urbino 18,2005,1,VINTAGE,Solaris Urbino 18,bus
+6930,Ikarus 260,1993,1,VINTAGE,Ikarus 260,bus
+6941,Ikarus 280,1997,1,VINTAGE,Ikarus 280,bus
+6954,Ikarus 280,1992,1,VINTAGE,Ikarus 280,bus
+6962,Solaris Urbino 15,1999,1,VINTAGE,Solaris Urbino 15,bus
+7200-7249,MAN Lion’s City G,2019,50,COMMON,MAN A23,bus
+7250-7259,MAN Lion’s City G,2020,10,COMMON,MAN A23,bus
+7301,Solbus Solcity 18,2014,1,RARE,Solbus SM18,bus
+7302-7335,Solbus Solcity 18,2015,34,RARE,Solbus SM18,bus
+7700-7759,Solaris Urbino 18 CNG,2021,60,COMMON,Solaris Urbino 18CNG,bus
+7800-7829,Autosan Sancity 18LF,2022,30,COMMON,Autosan M18LF,bus
+7830-7889,Autosan Sancity 18LF,2023,60,COMMON,Autosan M18LF,bus
+7890,Autosan Sancity 18LF,2022,1,COMMON,Autosan M18LF,bus
+8058,Jelcz 043,1974,1,VINTAGE,Jelcz 043,bus
+8081,Jelcz 043,1986,1,VINTAGE,Jelcz 043,bus
+8082,San H-100A,1972,1,VINTAGE,San H-100A,bus
+8300-8341,Solaris Urbino 18,2010,42,COMMON,Solaris Urbino 18,bus
+8342-8369,Solaris Urbino 18,2011,28,COMMON,Solaris Urbino 18,bus
+8396-8399,Solaris Urbino 18 hybrid,2011,4,LEGENDARY,Solaris Urbino 18H,bus
+8441-8465,Solaris Urbino 18,2014,25,COMMON,Solaris Urbino 18,bus
+8500-8579,Solaris Urbino 18,2011,80,COMMON,Solaris Urbino 18,bus
+8580-8595,Solaris Urbino 18,2013,16,COMMON,Solaris Urbino 18,bus
+8731,Solaris Urbino 15,2001,1,VINTAGE,Solaris Urbino 15,bus
+8800,Solaris Urbino 18,2008,1,COMMON,Solaris Urbino 18,bus
+8802,Solaris Urbino 18,2008,1,COMMON,Solaris Urbino 18,bus
+8804-8805,Solaris Urbino 18,2008,2,COMMON,Solaris Urbino 18,bus
+8807-8810,Solaris Urbino 18,2008,4,COMMON,Solaris Urbino 18,bus
+8812-8833,Solaris Urbino 18,2008,22,COMMON,Solaris Urbino 18,bus
+8835-8837,Solaris Urbino 18,2008,3,COMMON,Solaris Urbino 18,bus
+8839,Solaris Urbino 18,2008,1,COMMON,Solaris Urbino 18,bus
+8841-8848,Solaris Urbino 18,2008,8,COMMON,Solaris Urbino 18,bus
+8850-8879,Solaris Urbino 18,2008,30,COMMON,Solaris Urbino 18,bus
+8880-8899,Solaris Urbino 18,2009,20,COMMON,Solaris Urbino 18,bus
+9061-9094,Otokar Vectio C,2018,34,GOLD,Otokar LA16SR2BX,bus
+9301-9305,MAN Lion’s City Hybrid,2017,5,LEGENDARY,MAN A37,bus
+9311-9359,Solaris Urbino 12,2017,49,COMMON,Solaris Urbino 12,bus
+9601-9654,Otokar Kent C Hybrid,2026,54,RARE,Otokar Kent C LF Mild Hybrid,bus
+9801-9854,Mercedes-Benz Conecto G,2016,54,COMMON,Mercedes-Benz 628B02,bus
+9901-9930,Solaris Urbino 18 CNG,2019,30,COMMON,Solaris Urbino 18CNG,bus
+9932-9954,Solaris Urbino 18 CNG,2019,23,COMMON,Solaris Urbino 18CNG,bus
+9955,Solaris Urbino 18 CNG,2021,1,COMMON,Solaris Urbino 18CNG,bus
+10071-10072,Mercus MAN TGE City,2022,2,GOLD,Mercus SYN2Z,bus
+10075,Mercus MAN TGE City,2022,1,GOLD,Mercus SYN2Z,bus
+10076,Mercus MAN TGE City,2021,1,GOLD,Mercus SYN2Z,bus
+15077,Güleryüz Cobra GD272,2026,1,GOLD,Güleryüz GD272,bus
+15078-15079,Güleryüz Cobra GD272,2025,2,GOLD,Güleryüz GD272,bus
+15081-15093,Isuzu Citiport 12,2022,13,GOLD,Isuzu B120,bus
+15094,Isuzu Citiport 12,2025,1,GOLD,Isuzu B120,bus
+15096-15097,Isuzu Citiport 12,2024,2,GOLD,Isuzu B120,bus
+35131-35138,Isuzu Citiport 12,2022,8,GOLD,Isuzu B120,bus
+35151,Güleryüz Cobra GD272,2021,1,GOLD,Güleryüz GD272,bus
+35152-35153,Güleryüz Cobra GD272,2022,2,GOLD,Güleryüz GD272,bus
+35156,Güleryüz Cobra GD272,2021,1,GOLD,Güleryüz GD272,bus
+35157-35160,Güleryüz Cobra GD272,2022,4,GOLD,Güleryüz GD272,bus
+35221-35222,Güleryüz Cobra GD272,2026,2,GOLD,Güleryüz GD272,bus
+35531,Iveco Crossway LE,2019,1,LEGENDARY,Iveco Crossway LE,bus
+36139-36141,Isuzu Citiport 12,2022,3,GOLD,Isuzu B120,bus
+36142,Isuzu Citiport 12,2025,1,GOLD,Isuzu B120,bus
+36143-36146,BMC Procity 12LF,2026,4,LEGENDARY,Procity 12 M,bus
+36161-36162,Güleryüz Cobra GD272,2024,2,GOLD,Güleryüz GD272,bus
+36163-36166,Güleryüz Cobra GD272,2022,4,GOLD,Güleryüz GD272,bus
+36167,Güleryüz Cobra GD272,2023,1,GOLD,Güleryüz GD272,bus
+36168,Güleryüz Cobra GD272,2024,1,GOLD,Güleryüz GD272,bus
+36169,Güleryüz Cobra GD272,2026,1,GOLD,Güleryüz GD272,bus
+36223,Güleryüz Cobra GD272,2026,1,GOLD,Güleryüz GD272,bus
+39532-39533,Iveco Crossway LE,2014,2,LEGENDARY,Iveco Crossway LE,bus
+70001-70002,ZAZ A10,2019,2,LEGENDARY,ZAZ A10,bus
+70003-70004,ZAZ A10,2020,2,LEGENDARY,ZAZ A10,bus
+70005-70007,ZAZ A10,2021,3,LEGENDARY,ZAZ A10,bus
+70008-70009,ZAZ A08,2021,2,GOLD,ZAZ A08,bus
+70015-70017,ZAZ A08,2021,3,GOLD,ZAZ A08,bus
+70018,Mercus MAN TGE City,2024,1,GOLD,Mercus SYN2Z,bus
+70019-70020,ZAZ A08,2020,2,GOLD,ZAZ A08,bus
+70021-70022,Mercus MAN TGE City,2021,2,GOLD,Mercus SYN2Z,bus
+70023-70038,ZAZ A08,2021,16,GOLD,ZAZ A08,bus
+70039-70040,ZAZ A08,2022,2,GOLD,ZAZ A08,bus
+70041-70043,Mercus MAN TGE City,2022,3,GOLD,Mercus SYN2Z,bus
+70044,Mercus MAN TGE City,2023,1,GOLD,Mercus SYN2Z,bus
+70045,Mercus MAN TGE City,2022,1,GOLD,Mercus SYN2Z,bus
+70046-70047,Mercus MAN TGE City,2024,2,GOLD,Mercus SYN2Z,bus
+70048-70049,Mercus MAN TGE City,2022,2,GOLD,Mercus SYN2Z,bus
+70050-70054,Mercus MB Sprinter City,2025,5,LEGENDARY,Mercus 906BB62,bus
+70504,Ikarus Zemun IK-160P,1987,1,VINTAGE,Ikarus Zemun IK-160P,bus
+80101-80104,Mercus MAN TGE City,2020,4,GOLD,Mercus SYN2Z,bus
+80105-80108,Mercus MAN TGE City,2021,4,GOLD,Mercus SYN2Z,bus
+80109,Mercus MB Sprinter City,2022,1,LEGENDARY,Mercus 906BB62,bus
+80110,Mercus MAN TGE City,2025,1,GOLD,Mercus SYN2Z,bus
+80111-80115,Mercus MAN TGE City,2022,5,GOLD,Mercus SYN2Z,bus
+80117-80123,Mercus MAN TGE City,2022,7,GOLD,Mercus SYN2Z,bus
+80125,Mercus MAN TGE City,2023,1,GOLD,Mercus SYN2Z,bus
+80126,Mercus MAN TGE City,2022,1,GOLD,Mercus SYN2Z,bus
+80204-80206,Mercus MAN TGE City,2025,3,GOLD,Mercus SYN2Z,bus
+85211-85216,Güleryüz Cobra GD272,2025,6,GOLD,Güleryüz GD272,bus
+90904,Jelcz L11,1989,1,VINTAGE,Jelcz L11,bus
