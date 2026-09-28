@@ -958,3 +958,26 @@ private func drive(from lon0: Double, step: Double, fixes: Int, lat: Double = ro
     // Each vehicle counts once, however often it's caught.
     #expect(badge.progress == 3 && badge.level == 1)
 }
+
+@Test func badgesSayWhichVehiclesEarnedThem() {
+    // Veteran: the old one, with its age; the young one doesn't count.
+    let old = catalog.models.first { $0.regular && $0.batches.contains { ($0.year ?? 9999) <= 2005 } }!
+    let oldBatch = old.batches.first { ($0.year ?? 9999) <= 2005 }!
+    let young = catalog.models.first { $0.regular && $0.batches.contains { $0.year == 2024 } }!
+    let youngNumber = young.batches.first { $0.year == 2024 }!.numbers[0]
+    let vet = eval([any(old.id, number: oldBatch.numbers[0], date: day(2026, 6, 1)), any(young.id, number: youngNumber, date: day(2026, 6, 1))])["veteran"]!
+    #expect(vet.proof == [Achievement.Proof(modelId: old.id, number: oldBatch.numbers[0], note: "\(2026 - oldBatch.year!) YEARS OLD")])
+    // Not earned yet: the oldest so far, as the closest.
+    #expect(eval([any(young.id, number: youngNumber, date: day(2026, 6, 1))])["veteran"]!.proof.map(\.number) == [youngNumber])
+    // Dressed up: every painted vehicle once, however often caught.
+    let e18 = catalog.model(id: "bus-solaris-urbino-18e")!
+    let painted = eval([any(e18.id, number: 5869), any(e18.id, number: 5869), any(e18.id, number: 5868)])["special-livery"]!
+    #expect(painted.proof == [Achievement.Proof(modelId: e18.id, number: 5869, note: Livery.maker.name)])
+    // A secret keeps its vehicles hidden until earned; once earned it names them.
+    let m = catalog.models.max { $0.fleet < $1.fleet }!
+    let pair = m.numbers.first { m.numbers.contains($0 + 1) }!
+    #expect(eval([any(m.id, number: pair)])["twins"]!.proof.isEmpty)
+    #expect(eval([any(m.id, number: pair), any(m.id, number: pair + 1)])["twins"]!.proof.map(\.number) == [pair, pair + 1])
+    // Counting badges don't list anything.
+    #expect(eval([any()])["collector"]!.proof.isEmpty)
+}

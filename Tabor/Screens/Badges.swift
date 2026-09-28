@@ -235,6 +235,8 @@ private struct MedalPressStyle: ButtonStyle {
 
 struct BadgeDetailSheet: View {
     let badge: Achievement
+    @Environment(Router.self) private var router
+    @Environment(\.dismiss) private var dismiss
     @State private var angle: Double = 0
     @State private var dragStart: Double?
     @State private var lastFace = 0
@@ -245,8 +247,9 @@ struct BadgeDetailSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             Capsule().fill(Palette.track).frame(width: 36, height: 4).padding(.top, 10)
-            // Tiered badges list their levels too, so they scroll inside the same half-height sheet.
-            if badge.tiered {
+            // Tiered badges list their levels, and some their vehicles, so they scroll inside
+            // the same half-height sheet.
+            if badge.tiered || !badge.proof.isEmpty {
                 ScrollView { details.padding(.bottom, 28) }
                     .scrollIndicators(.hidden)
                     // Soft edge instead of a hard cut where the list runs under the sheet's bottom.
@@ -259,7 +262,10 @@ struct BadgeDetailSheet: View {
         }
         .frame(maxWidth: .infinity)
         .foregroundStyle(Palette.ink)
-        .presentationDetents([.medium])
+        // Half height to glance; drag it up to see the medal and everything under it at once.
+        .presentationDetents([.medium, .large])
+        // The sheet draws its own grabber.
+        .presentationDragIndicator(.hidden)
         .presentationBackground(Palette.bg)
         .task {
             // Earned medals arrive with a flourish: one full turn.
@@ -343,7 +349,66 @@ struct BadgeDetailSheet: View {
                 .padding(.top, 18)
                 .padding(.horizontal, 22)
             }
+
+            if !badge.proof.isEmpty {
+                proofList
+                    .padding(.top, 18)
+                    .padding(.horizontal, 22)
+            }
         }
+    }
+
+    /// The vehicles behind the badge; each opens its page in the book.
+    private var proofList: some View {
+        let catalog = Fleet.catalog
+        return VStack(alignment: .leading, spacing: 8) {
+            SectionLabel(text: badge.earned ? String(localized: "EARNED BY") : String(localized: "SO FAR"))
+            VStack(spacing: 0) {
+                ForEach(Array(badge.proof.enumerated()), id: \.offset) { i, p in
+                    if let model = catalog.model(id: p.modelId) {
+                        Button {
+                            Haptics.shared.tick()
+                            dismiss()
+                            router.openVehicle(modelId: p.modelId, number: p.number)
+                        } label: {
+                            proofRow(p, model: model)
+                        }
+                        .buttonStyle(.plain)
+                        if i < badge.proof.count - 1 {
+                            Rectangle().fill(Palette.hairline).frame(height: 1).padding(.leading, 26)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 14)
+            .background(Palette.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+    }
+
+    private func proofRow(_ p: Achievement.Proof, model: VehicleModel) -> some View {
+        HStack(spacing: 12) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(model.tier.color)
+                .frame(width: 4, height: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(model.name)
+                    .font(TaborFont.grotesk(14, 600))
+                    .lineLimit(1)
+                Mono("#\(String(p.number)) · \(model.kind.name)", size: 10, color: Palette.sub)
+            }
+            Spacer(minLength: 8)
+            if let note = p.note {
+                Mono(note, size: 10, weight: 600, spacing: 0.08, color: badge.earned ? badge.medal.ink : Palette.sub)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Palette.faint)
+        }
+        .padding(.vertical, 11)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 
     /// Front shows the symbol; turned past 90° you see the engraved back.

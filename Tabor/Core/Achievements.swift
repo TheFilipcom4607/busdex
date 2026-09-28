@@ -18,9 +18,25 @@ public struct Achievement: Identifiable, Hashable, Sendable {
     public let secret: Bool
     /// Tiered badges: what each level asks for, e.g. ["10 different vehicles", "100 different vehicles", …].
     public let steps: [String]
+    /// The vehicles behind it: what earned it, or, not earned yet, the closest so far. Empty for
+    /// badges that just count (Collector) or aren't about particular vehicles.
+    public let proof: [Proof]
+
+    /// One vehicle behind a badge, with why it counts ("21 YEARS OLD", "LINE 16").
+    public struct Proof: Hashable, Sendable {
+        public let modelId: String
+        public let number: Int
+        public let note: String?
+
+        public init(modelId: String, number: Int, note: String? = nil) {
+            self.modelId = modelId
+            self.number = number
+            self.note = note
+        }
+    }
 
     public init(id: String, title: String, detail: String, symbol: String, progress: Int, goal: Int,
-                level: Int? = nil, levels: Int = 1, secret: Bool = false, steps: [String] = []) {
+                level: Int? = nil, levels: Int = 1, secret: Bool = false, steps: [String] = [], proof: [Proof] = []) {
         self.id = id
         self.title = title
         self.detail = detail
@@ -31,6 +47,8 @@ public struct Achievement: Identifiable, Hashable, Sendable {
         self.levels = levels
         self.secret = secret
         self.steps = steps
+        // A secret keeps its vehicles to itself until it's earned.
+        self.proof = secret && !(goal > 0 && (level ?? (progress >= goal ? 1 : 0)) > 0) ? [] : proof
     }
 
     public var earned: Bool { level > 0 }
@@ -130,17 +148,25 @@ public enum Achievements {
         }
 
         func model(_ s: SightingRecord) -> VehicleModel? { catalog.model(id: s.modelId) }
+
+        /// Each vehicle once, keeping the first note it came with.
+        func proof(_ sightings: [SightingRecord], note: (SightingRecord) -> String? = { _ in nil }) -> [Achievement.Proof] {
+            var seen = Set<String>()
+            return sightings.compactMap { s in
+                seen.insert("\(s.modelId)#\(s.number)").inserted ? Achievement.Proof(modelId: s.modelId, number: s.number, note: note(s)) : nil
+            }
+        }
         func has(_ m: VehicleModel) -> Bool { !(owned[m.id] ?? []).isEmpty }
         func year(_ d: Date) -> Int { calendar.component(.year, from: d) }
     }
 
     /// A badge with levels: `value` against rising thresholds.
     static func tiered(id: String, title: String, symbol: String, value: Int, thresholds: [Int],
-                       detail: (Int) -> String) -> Achievement {
+                       proof: [Achievement.Proof] = [], detail: (Int) -> String) -> Achievement {
         let level = thresholds.filter { value >= $0 }.count
         let goal = thresholds[min(level, thresholds.count - 1)]
         return Achievement(id: id, title: title, detail: detail(goal), symbol: symbol, progress: value,
-                           goal: goal, level: level, levels: thresholds.count, steps: thresholds.map(detail))
+                           goal: goal, level: level, levels: thresholds.count, steps: thresholds.map(detail), proof: proof)
     }
 
     // MARK: Collecting
@@ -179,9 +205,11 @@ public enum Achievements {
     /// doesn't know liveries.
     static func specialLivery(_ c: Context) -> Achievement? {
         guard c.catalog.models.contains(where: { !($0.liveries ?? [:]).isEmpty }) else { return nil }
-        let painted = c.stats.vehicles.filter { v in c.catalog.model(id: v.modelId)?.livery(of: v.number) != nil }.count
+        let painted = c.stats.vehicles.compactMap { v in
+            c.catalog.model(id: v.modelId)?.livery(of: v.number).map { Achievement.Proof(modelId: v.modelId, number: v.number, note: $0.name) }
+        }.sorted { $0.number < $1.number }
         return tiered(id: "special-livery", title: String(localized: "Dressed up"), symbol: "paintbrush.fill",
-                      value: painted, thresholds: [1, 5, 20]) {
+                      value: painted.count, thresholds: [1, 5, 20], proof: painted) {
             $0 == 1 ? String(localized: "A vehicle in a special livery") : String(localized: "\($0) vehicles in a special livery")
         }
     }
@@ -192,7 +220,8 @@ public enum Achievements {
         let singles = c.catalog.models.filter { $0.regular && $0.fleet == 1 }
         guard !singles.isEmpty else { return nil }
         return Achievement(id: "unicorn", title: String(localized: "Unicorn"), detail: String(localized: "The only vehicle of its kind in Warsaw"),
-                           symbol: "wand.and.stars", progress: singles.contains(where: c.has) ? 1 : 0, goal: 1)
+                           symbol: "wand.and.stars", progress: singles.contains(where: c.has) ? 1 : 0, goal: 1,
+                           proof: c.proof(c.sightings.filter { s in singles.contains { $0.id == s.modelId } }))
     }
 
     /// One of every model in a tier.
@@ -205,8 +234,10 @@ public enum Achievements {
         case .gold: (String(localized: "All \(n) gold"), String(localized: "One of every GOLD model"))
         default: (String(localized: "All \(n) rare"), String(localized: "One of every RARE model"))
         }
+        // One vehicle per model: the lowest number you have of it.
+        let proof = models.compactMap { m in (c.owned[m.id]?.min()).map { Achievement.Proof(modelId: m.id, number: $0) } }
         return Achievement(id: id, title: title, detail: detail,
-                           symbol: symbol, progress: models.filter(c.has).count, goal: n)
+                           symbol: symbol, progress: models.filter(c.has).count, goal: n, proof: proof)
     }
 
     /// Closest delivery batch to completion (at least two vehicles, so it's a real batch).
@@ -242,48 +273,67 @@ public enum Achievements {
 
     static func rainbowDay(_ c: Context) -> Achievement {
         let wanted: Set<Tier> = [.legendary, .gold, .rare, .common]
-        let best = c.byDay.values.map { day in Set(day.compactMap { c.model($0)?.tier }).intersection(wanted).count }.max() ?? 0
+        let score = { (day: [SightingRecord]) in Set(day.compactMap { c.model($0)?.tier }).intersection(wanted).count }
+        let bestDay = c.byDay.values.max { score($0) < score($1) } ?? []
+        // The day's first of each colour, rarest first.
+        let proof = Tier.allCases.filter(wanted.contains).compactMap { tier in
+            bestDay.sorted { $0.date < $1.date }.first { c.model($0)?.tier == tier }
+                .map { Achievement.Proof(modelId: $0.modelId, number: $0.number, note: tier.name) }
+        }
         return Achievement(id: "rainbow-day", title: String(localized: "Rainbow day"), detail: String(localized: "A LEGENDARY, GOLD, RARE and COMMON in one day"),
-                           symbol: "rainbow", progress: best, goal: wanted.count)
+                           symbol: "rainbow", progress: score(bestDay), goal: wanted.count, proof: proof)
     }
 
     // MARK: Days out
 
     static func tramDay(_ c: Context) -> Achievement {
-        let best = c.byDay.values.map { day in
-            Set(day.filter { c.model($0)?.kind == .tram }.map { "\($0.modelId)#\($0.number)" }).count
-        }.max() ?? 0
+        let trams = { (day: [SightingRecord]) in c.proof(day.filter { c.model($0)?.kind == .tram }.sorted { $0.date < $1.date }) }
+        let best = c.byDay.values.map(trams).max { $0.count < $1.count } ?? []
         return Achievement(id: "trams-day", title: String(localized: "Tram day"), detail: String(localized: "\(tramsInADay) different trams in one day"),
-                           symbol: "tram.fill", progress: best, goal: tramsInADay)
+                           symbol: "tram.fill", progress: best.count, goal: tramsInADay, proof: best)
     }
 
     /// Meteorological seasons: winter is December to February.
     static func fourSeasons(_ c: Context) -> Achievement {
-        let seasons = Set(c.sightings.map { c.calendar.component(.month, from: $0.date) % 12 / 3 })
+        let season = { (s: SightingRecord) in c.calendar.component(.month, from: s.date) % 12 / 3 }
+        let names = [String(localized: "WINTER"), String(localized: "SPRING"), String(localized: "SUMMER"), String(localized: "AUTUMN")]
+        // The first catch of each season.
+        let firsts = Dictionary(grouping: c.sightings, by: season).compactMap { ($0.key, $0.value.min { $0.date < $1.date }!) }
+            .sorted { $0.0 < $1.0 }
+        let proof = firsts.map { Achievement.Proof(modelId: $0.1.modelId, number: $0.1.number, note: names[$0.0]) }
         return Achievement(id: "four-seasons", title: String(localized: "Four seasons"), detail: String(localized: "A catch in winter, spring, summer and autumn"),
-                           symbol: "leaf.fill", progress: seasons.count, goal: 4)
+                           symbol: "leaf.fill", progress: firsts.count, goal: 4, proof: proof)
     }
 
     static func oldFriend(_ c: Context) -> Achievement {
-        Achievement(id: "old-friend", title: String(localized: "Old friend"), detail: String(localized: "The same vehicle seen 10 times"), symbol: "heart.fill",
-                    progress: c.stats.vehicles.map(\.timesSeen).max() ?? 0, goal: 10)
+        let most = c.stats.vehicles.map(\.timesSeen).max() ?? 0
+        let proof = c.stats.vehicles.filter { $0.timesSeen == most && most > 1 }
+            .map { Achievement.Proof(modelId: $0.modelId, number: $0.number, note: String(localized: "SEEN \($0.timesSeen)×")) }
+        return Achievement(id: "old-friend", title: String(localized: "Old friend"), detail: String(localized: "The same vehicle seen 10 times"), symbol: "heart.fill",
+                           progress: most, goal: 10, proof: proof)
     }
 
     static func freshOffTheLine(_ c: Context) -> Achievement {
-        let hit = c.sightings.contains { s in
+        let fresh = c.sightings.filter { s in
             c.model(s)?.batch(containing: s.number)?.year == c.year(s.date)
         }
         return Achievement(id: "fresh", title: String(localized: "Fresh off the line"), detail: String(localized: "A vehicle delivered the year you caught it"),
-                           symbol: "shippingbox.fill", progress: hit ? 1 : 0, goal: 1)
+                           symbol: "shippingbox.fill", progress: fresh.isEmpty ? 0 : 1, goal: 1,
+                           proof: c.proof(fresh) { String(localized: "BUILT \(String(c.year($0.date)))") })
     }
 
     static func veteran(_ c: Context) -> Achievement {
-        let oldest = c.sightings.compactMap { s -> Int? in
+        let ages = c.sightings.compactMap { s -> (SightingRecord, Int)? in
             guard let m = c.model(s), m.regular, let y = m.batch(containing: s.number)?.year else { return nil }
-            return c.year(s.date) - y
-        }.max() ?? 0
+            return (s, c.year(s.date) - y)
+        }.sorted { $0.1 > $1.1 }
+        let oldest = ages.first?.1 ?? 0
+        // Every one old enough, or, until then, the oldest so far.
+        let shown = oldest >= 20 ? ages.filter { $0.1 >= 20 } : Array(ages.prefix(1))
+        let age = Dictionary(shown.map { ("\($0.0.modelId)#\($0.0.number)", $0.1) }) { a, b in max(a, b) }
         return Achievement(id: "veteran", title: String(localized: "Veteran"), detail: String(localized: "A vehicle still in service at 20 years old"),
-                           symbol: "medal.fill", progress: max(oldest, 0), goal: 20)
+                           symbol: "medal.fill", progress: max(oldest, 0), goal: 20,
+                           proof: c.proof(shown.map(\.0)) { String(localized: "\(age["\($0.modelId)#\($0.number)"] ?? 0) YEARS OLD") })
     }
 
     /// Operators are counted by each model's main one: a model shared by several
@@ -293,99 +343,129 @@ public enum Achievements {
         let all = Set(regular.compactMap(\.operators.first))
         guard !all.isEmpty else { return nil }
         let have = Set(regular.filter(c.has).compactMap(\.operators.first))
+        // Your first catch from each operator.
+        let proof = have.sorted().compactMap { op in
+            c.sightings.sorted { $0.date < $1.date }.first { s in c.model(s).map { $0.regular && $0.operators.first == op } ?? false }
+                .map { Achievement.Proof(modelId: $0.modelId, number: $0.number, note: op.uppercased()) }
+        }
         return Achievement(id: "all-operators", title: String(localized: "Every operator"), detail: String(localized: "A vehicle from all \(all.count) operators"),
-                           symbol: "person.3.fill", progress: have.count, goal: all.count)
+                           symbol: "person.3.fill", progress: have.count, goal: all.count, proof: proof)
     }
 
     // MARK: Places
 
     static func everyDistrict(_ c: Context) -> Achievement {
-        let found = Set(c.sightings.compactMap { $0.district.flatMap(district(of:)) })
+        let byDistrict = Dictionary(grouping: c.sightings.sorted { $0.date < $1.date }) { $0.district.flatMap(district(of:)) }
+        let proof = byDistrict.compactMap { d, ss in d.map { Achievement.Proof(modelId: ss[0].modelId, number: ss[0].number, note: $0.uppercased()) } }
+            .sorted { ($0.note ?? "") < ($1.note ?? "") }
         return Achievement(id: "every-district", title: String(localized: "Every district"), detail: String(localized: "A catch in all \(districts.count) districts of Warsaw"),
-                           symbol: "map.fill", progress: found.count, goal: districts.count)
+                           symbol: "map.fill", progress: proof.count, goal: districts.count, proof: proof)
     }
 
     /// Two catches on the same day at least 15 km apart.
     static func explorer(_ c: Context) -> Achievement {
         var best = 0.0
+        var pair: (SightingRecord, SightingRecord)?
         for day in c.byDay.values {
-            let points = day.compactMap { s in s.latitude.flatMap { lat in s.longitude.map { (lat, $0) } } }
-            for i in points.indices {
-                for j in points.indices where j > i {
-                    best = max(best, Geo.km(points[i], points[j]))
+            let placed = day.filter { $0.latitude != nil && $0.longitude != nil }.sorted { $0.date < $1.date }
+            for i in placed.indices {
+                for j in placed.indices where j > i {
+                    let d = Geo.km((placed[i].latitude!, placed[i].longitude!), (placed[j].latitude!, placed[j].longitude!))
+                    if d > best { (best, pair) = (d, (placed[i], placed[j])) }
                 }
             }
         }
+        let proof = pair.map { a, b in
+            [Achievement.Proof(modelId: a.modelId, number: a.number, note: a.district?.uppercased()),
+             Achievement.Proof(modelId: b.modelId, number: b.number, note: String(localized: "\(Int(best)) KM LATER"))]
+        } ?? []
         return Achievement(id: "explorer", title: String(localized: "Explorer"), detail: String(localized: "Two catches 15 km apart on the same day"),
-                           symbol: "location.north.line.fill", progress: Int(best), goal: 15)
+                           symbol: "location.north.line.fill", progress: Int(best), goal: 15, proof: proof)
     }
 
     static func suburbanite(_ c: Context) -> Achievement {
-        let hit = c.sightings.contains { s in
+        let outside = c.sightings.filter { s in
             guard let lat = s.latitude, let lon = s.longitude else { return false }
             return !Geo.inWarsaw(lat, lon)
         }
         return Achievement(id: "suburbanite", title: String(localized: "Suburbanite"), detail: String(localized: "A catch outside Warsaw"),
-                           symbol: "house.and.flag.fill", progress: hit ? 1 : 0, goal: 1)
+                           symbol: "house.and.flag.fill", progress: outside.isEmpty ? 0 : 1, goal: 1,
+                           proof: c.proof(outside) { $0.district?.uppercased() })
     }
 
     static func busyStreet(_ c: Context) -> Achievement {
-        let perStreet = Dictionary(grouping: c.sightings.filter { $0.street != nil && $0.line != nil }) {
+        let line = { (s: SightingRecord) in s.line?.trimmingCharacters(in: .whitespaces).uppercased() }
+        let perStreet = Dictionary(grouping: c.sightings.filter { $0.street != nil && $0.line != nil }.sorted { $0.date < $1.date }) {
             $0.street!.lowercased()
-        }.mapValues { Set($0.compactMap { $0.line?.trimmingCharacters(in: .whitespaces).uppercased() }).count }
+        }
+        let busiest = perStreet.values.max { Set($0.compactMap(line)).count < Set($1.compactMap(line)).count } ?? []
+        // A vehicle per line, on the street with the most of them.
+        var lines = Set<String>()
+        let proof = busiest.filter { s in line(s).map { lines.insert($0).inserted } ?? false }
+            .map { Achievement.Proof(modelId: $0.modelId, number: $0.number, note: String(localized: "LINE \(line($0) ?? "")")) }
         return Achievement(id: "busy-street", title: String(localized: "Busy street"), detail: String(localized: "5 different lines caught on one street"),
-                           symbol: "road.lanes", progress: perStreet.values.max() ?? 0, goal: 5)
+                           symbol: "road.lanes", progress: lines.count, goal: 5, proof: proof)
     }
 
     // MARK: Weather
 
     static func weather(_ c: Context, id: String, title: String, detail: String, symbol: String, secret: Bool = false,
                         _ match: (SightingRecord) -> Bool) -> Achievement {
-        Achievement(id: id, title: title, detail: detail, symbol: symbol,
-                    progress: c.sightings.contains(where: match) ? 1 : 0, goal: 1, secret: secret)
+        let hits = c.sightings.filter(match)
+        return Achievement(id: id, title: title, detail: detail, symbol: symbol,
+                           progress: hits.isEmpty ? 0 : 1, goal: 1, secret: secret,
+                           proof: c.proof(hits) { $0.temperature.map { "\(Int($0.rounded())) °C" } })
     }
 
     // MARK: Secrets
 
     static func onDate(_ c: Context, id: String, title: String, detail: String, symbol: String, month: Int, day: Int) -> Achievement {
-        let hit = c.sightings.contains {
+        let hits = c.sightings.filter {
             let d = c.calendar.dateComponents([.month, .day], from: $0.date)
             return d.month == month && d.day == day
         }
-        return Achievement(id: id, title: title, detail: detail, symbol: symbol, progress: hit ? 1 : 0, goal: 1, secret: true)
+        return Achievement(id: id, title: title, detail: detail, symbol: symbol, progress: hits.isEmpty ? 0 : 1, goal: 1, secret: true,
+                           proof: c.proof(hits) { String(c.year($0.date)) })
     }
 
     /// A catch on the date of your very first one, a year or more later.
     static func anniversary(_ c: Context) -> Achievement {
-        var hit = false
+        var hits: [SightingRecord] = []
         if let first = c.sightings.map(\.date).min() {
             let f = c.calendar.dateComponents([.year, .month, .day], from: first)
-            hit = c.sightings.contains {
+            hits = c.sightings.filter {
                 let d = c.calendar.dateComponents([.year, .month, .day], from: $0.date)
                 return d.month == f.month && d.day == f.day && (d.year ?? 0) > (f.year ?? 0)
             }
         }
         return Achievement(id: "anniversary", title: String(localized: "Anniversary"), detail: String(localized: "A catch one year to the day after your first"),
-                           symbol: "birthday.cake.fill", progress: hit ? 1 : 0, goal: 1, secret: true)
+                           symbol: "birthday.cake.fill", progress: hits.isEmpty ? 0 : 1, goal: 1, secret: true,
+                           proof: c.proof(hits) { String(c.year($0.date)) })
     }
 
     /// Two back-to-back fleet numbers of the same model.
     static func twins(_ c: Context) -> Achievement {
-        let hit = c.owned.values.contains { nums in nums.contains { nums.contains($0 + 1) } }
+        let pairs = c.owned.flatMap { id, nums in
+            nums.filter { nums.contains($0 + 1) }.sorted().flatMap { n in
+                [Achievement.Proof(modelId: id, number: n), Achievement.Proof(modelId: id, number: n + 1)]
+            }
+        }
+        var seen = Set<Achievement.Proof>()
         return Achievement(id: "twins", title: String(localized: "Twins"), detail: String(localized: "Two back-to-back fleet numbers of the same model"),
-                           symbol: "person.2.fill", progress: hit ? 1 : 0, goal: 1, secret: true)
+                           symbol: "person.2.fill", progress: pairs.isEmpty ? 0 : 1, goal: 1, secret: true,
+                           proof: pairs.filter { seen.insert($0).inserted })
     }
 
     static func roundNumber(_ c: Context) -> Achievement {
-        let hit = c.sightings.contains { $0.number > 0 && $0.number % 100 == 0 }
+        let hits = c.sightings.filter { $0.number > 0 && $0.number % 100 == 0 }
         return Achievement(id: "round-number", title: String(localized: "Round number"), detail: String(localized: "A fleet number ending in 00"),
-                           symbol: "circle.circle.fill", progress: hit ? 1 : 0, goal: 1, secret: true)
+                           symbol: "circle.circle.fill", progress: hits.isEmpty ? 0 : 1, goal: 1, secret: true, proof: c.proof(hits))
     }
 
     static func palindrome(_ c: Context) -> Achievement {
-        let hit = c.sightings.contains { $0.number >= 100 && isPalindrome($0.number) }
+        let hits = c.sightings.filter { $0.number >= 100 && isPalindrome($0.number) }
         return Achievement(id: "palindrome", title: String(localized: "Palindrome"), detail: String(localized: "A fleet number that reads the same backwards"),
-                           symbol: "arrow.left.arrow.right", progress: hit ? 1 : 0, goal: 1, secret: true)
+                           symbol: "arrow.left.arrow.right", progress: hits.isEmpty ? 0 : 1, goal: 1, secret: true, proof: c.proof(hits))
     }
 
     /// A bus and a tram carrying the same fleet number.
@@ -394,18 +474,19 @@ public enum Achievements {
         for s in c.sightings {
             if let kind = c.model(s)?.kind { byKind[kind, default: []].insert(s.number) }
         }
-        let hit = !(byKind[.bus] ?? []).isDisjoint(with: byKind[.tram] ?? [])
+        let shared = (byKind[.bus] ?? []).intersection(byKind[.tram] ?? [])
         return Achievement(id: "double-life", title: String(localized: "Double life"), detail: String(localized: "A bus and a tram with the same number"),
-                           symbol: "theatermasks.fill", progress: hit ? 1 : 0, goal: 1, secret: true)
+                           symbol: "theatermasks.fill", progress: shared.isEmpty ? 0 : 1, goal: 1, secret: true,
+                           proof: c.proof(c.sightings.filter { shared.contains($0.number) }.sorted { $0.number < $1.number }) { c.model($0)?.kind.name })
     }
 
     static func dejaVu(_ c: Context) -> Achievement {
-        let hit = c.byDay.values.contains { day in
-            let keys = day.map { "\($0.modelId)#\($0.number)" }
-            return Set(keys).count < keys.count
+        let twice = c.byDay.values.flatMap { day in
+            Dictionary(grouping: day) { "\($0.modelId)#\($0.number)" }.values.filter { $0.count > 1 }.map { $0[0] }
         }
         return Achievement(id: "deja-vu", title: String(localized: "Déjà vu"), detail: String(localized: "The same vehicle twice in one day"),
-                           symbol: "arrow.triangle.2.circlepath", progress: hit ? 1 : 0, goal: 1, secret: true)
+                           symbol: "arrow.triangle.2.circlepath", progress: twice.isEmpty ? 0 : 1, goal: 1, secret: true,
+                           proof: c.proof(twice.sorted { $0.date < $1.date }))
     }
 
     // MARK: Depots
