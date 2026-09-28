@@ -4813,6 +4813,26 @@
         }
       }
     },
+    "TURNS OFF": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SKRĘCA"
+          }
+        }
+      }
+    },
+    "TURNS OFF BEFORE YOU": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SKRĘCA, NIM DO CIEBIE DOJEDZIE"
+          }
+        }
+      }
+    },
     "TYPE": {
       "localizations": {
         "pl": {

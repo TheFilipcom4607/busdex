@@ -33,12 +33,20 @@ struct HuntView: View {
 
     private let live = LiveFleetService.shared
     private let location = LocationService.shared
+    private let routes = RoutesUpdater.shared
     private let catalog = Fleet.catalog
 
     @State private var position: MapCameraPosition = .region(Self.warsaw)
     /// Opened on the default 3 km view around you, once there was a fix to open it on.
     @State private var centered = false
     @State private var pins: [WantedPin] = []
+    /// Each vehicle placed on its route, when it could be, as of the last refresh.
+    @State private var matches: [String: RouteMatch] = [:]
+    /// Where pins sit on the map: slid along their route to where they probably are now, since
+    /// every fix is some seconds old. Distances and sorting stay on the fix itself.
+    @State private var nowCoordinates: [String: CLLocationCoordinate2D] = [:]
+    /// Ticks every second while a vehicle is selected, so its pin creeps along between polls.
+    @State private var tick = Date()
     @State private var selectedId: String?
     /// A small bubble you tapped: its vehicles, listed so you can pick one.
     @State private var openGroup: [String]?
@@ -101,6 +109,7 @@ struct HuntView: View {
         }
         .onAppear {
             live.start("hunt")
+            routes.prepare()
             centerOnceOnYou()
             // Models a fleet update dropped can't match anything; don't leave them as ghost chips.
             let known = targets.models.filter { catalog.model(id: $0) != nil }
@@ -118,6 +127,14 @@ struct HuntView: View {
             recompute(animated: false)
         }
         .onChange(of: sightings.count) { recompute(animated: false) }
+        .onChange(of: routes.book?.feed) { recompute(animated: false) }
+        .task(id: selectedId) {
+            guard selectedId != nil else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                withAnimation(.linear(duration: 1)) { tick = Date() }
+            }
+        }
         .onChange(of: picked) {
             selectedId = nil
             openGroup = nil
@@ -143,23 +160,47 @@ struct HuntView: View {
             selectedId = id
             if let pin = shown.first(where: { $0.id == id }) { keepClearOfCard(pin) }
         })
+        let selectedPin = shown.first { $0.id == selectedId }
+        let now = selectedPin.flatMap(creeping)
         return Map(position: $position, interactionModes: .all, selection: selection) {
-            // The selected vehicle's recent path, fading out behind it.
-            if let pin = shown.first(where: { $0.id == selectedId }) {
+            if let pin = selectedPin {
+                // Its recent path, fading out behind it.
                 let trail = live.trails.trail(pin.id).map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
                 // MapKit won't draw a gradient along a line: fade it one segment at a time.
-                let path = trail + [pin.coordinate]
+                let path = trail + [now.map(\.coordinate).map(CLLocationCoordinate2D.init) ?? pin.coordinate]
                 ForEach(0..<max(0, path.count - 1), id: \.self) { i in
                     MapPolyline(coordinates: [path[i], path[i + 1]])
                         .stroke(pin.accent.opacity(0.25 + 0.75 * Double(i + 1) / Double(path.count - 1)),
                                 style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                }
+                // Where it goes next: dashed along its route to the next few stops, fainter
+                // the further ahead.
+                if let now {
+                    let ahead = now.upcoming(stops: 4)
+                    let legs = legs(of: now, to: ahead.stops)
+                    ForEach(legs.indices, id: \.self) { i in
+                        MapPolyline(coordinates: legs[i])
+                            .stroke(pin.accent.opacity(0.9 - 0.18 * Double(i)),
+                                    style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round, dash: [7, 7]))
+                    }
+                    ForEach(Array(ahead.stops.enumerated()), id: \.offset) { i, stop in
+                        Annotation(stop.name, coordinate: CLLocationCoordinate2D(latitude: stop.latitude, longitude: stop.longitude),
+                                   anchor: .center) {
+                            Circle()
+                                .fill(Palette.bg)
+                                .strokeBorder(pin.accent.opacity(0.95 - 0.18 * Double(i)), lineWidth: 2.5)
+                                .frame(width: 11, height: 11)
+                                .accessibilityHidden(true)
+                        }
+                        .annotationTitles(.hidden)
+                    }
                 }
             }
             UserAnnotation()
             // Rarest on top: SwiftUI draws later annotations above earlier ones.
             ForEach(groups(shown).reversed()) { g in
                 if g.pins.count == 1 {
-                    Annotation(g.lead.model.name, coordinate: g.lead.coordinate, anchor: .bottom) {
+                    Annotation(g.lead.model.name, coordinate: mapCoordinate(g.lead, selected: now), anchor: .bottom) {
                         WantedPinView(pin: g.lead, selected: g.id == selectedId,
                                       heading: live.trails.heading(g.lead.id).map { $0 - mapHeading })
                     }
@@ -432,6 +473,7 @@ struct HuntView: View {
             if let selected {
                 PinCard(pin: selected, owned: sightings.stats.ownedCount(modelId: selected.model.id),
                         showDistance: hasFix, motion: motion(of: selected),
+                        nextStops: creeping(selected)?.upcoming(stops: 3).stops.map(\.name) ?? [],
                         onOpen: { router.openModel(selected.model.id) },
                         onCatch: { withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { router.tab = .catchTab } },
                         onClose: { withAnimation(.snappy) { selectedId = nil } })
@@ -675,11 +717,33 @@ struct HuntView: View {
                                 lat: user.latitude, lon: user.longitude, from: (user.latitude, user.longitude))
                 .filter { !ids.contains($0.id) }
         }
+        // Only what the map can show gets placed on its route: it's the costly part.
+        var placed: [String: RouteMatch] = [:]
+        var coordinates: [String: CLLocationCoordinate2D] = [:]
+        if let book = routes.book {
+            let now = Date()
+            let region = mapRegion
+            for pin in next where region.map({ r in
+                abs(pin.vehicle.latitude - r.center.latitude) < r.span.latitudeDelta
+                    && abs(pin.vehicle.longitude - r.center.longitude) < r.span.longitudeDelta
+            }) ?? true {
+                guard let m = Self.match(pin, book: book, trails: live.trails) else { continue }
+                placed[pin.id] = m
+                let ahead = m.advanced(by: now.timeIntervalSince(pin.vehicle.time), stopped: live.trails.isStopped(pin.id))
+                coordinates[pin.id] = CLLocationCoordinate2D(ahead.coordinate)
+            }
+        }
+        matches = placed
         // Vehicles glide to where they are now rather than jumping.
         if animated {
-            withAnimation(.easeInOut(duration: 1.2)) { pins = next }
+            withAnimation(.easeInOut(duration: 1.2)) {
+                pins = next
+                nowCoordinates = coordinates
+                tick = Date()
+            }
         } else {
             pins = next
+            nowCoordinates = coordinates
         }
         if let selectedId, !next.contains(where: { $0.id == selectedId }) { self.selectedId = nil }
         // The selected vehicle drove off the edge: follow it, keeping the zoom.
@@ -692,9 +756,48 @@ struct HuntView: View {
         }
     }
 
+    /// The straight-line guess from its trail, checked against its route when there is one:
+    /// heading for you but turning off first isn't coming your way.
     private func motion(of pin: WantedPin) -> Motion? {
         guard let here = location.recent(maxAge: 300)?.coordinate else { return nil }
-        return live.trails.motion(pin.id, lat: here.latitude, lon: here.longitude)
+        let guess = live.trails.motion(pin.id, lat: here.latitude, lon: here.longitude)
+        guard let match = routeMatch(pin) else { return guess }
+        return match.motion(fallback: guess, lat: here.latitude, lon: here.longitude)
+    }
+
+    private func routeMatch(_ pin: WantedPin) -> RouteMatch? {
+        if let m = matches[pin.id] { return m }
+        guard let book = routes.book else { return nil }
+        return Self.match(pin, book: book, trails: live.trails)
+    }
+
+    private static func match(_ pin: WantedPin, book: RouteBook, trails: LiveTrails) -> RouteMatch? {
+        let v = pin.vehicle
+        guard !v.line.isEmpty else { return nil }
+        return book.match(line: v.line, kind: v.kind, trail: trails.trail(pin.id),
+                          position: LiveTrails.Point(latitude: v.latitude, longitude: v.longitude, time: v.time))
+    }
+
+    /// Where it probably is right now: its route match slid forward by the fix's age.
+    private func advanced(_ pin: WantedPin, at date: Date) -> RouteMatch? {
+        routeMatch(pin)?.advanced(by: date.timeIntervalSince(pin.vehicle.time), stopped: live.trails.isStopped(pin.id))
+    }
+
+    /// The selected vehicle, moved on to this second.
+    private func creeping(_ pin: WantedPin) -> RouteMatch? { advanced(pin, at: tick) }
+
+    private func mapCoordinate(_ pin: WantedPin, selected now: RouteMatch?) -> CLLocationCoordinate2D {
+        if pin.id == selectedId, let now { return CLLocationCoordinate2D(now.coordinate) }
+        return nowCoordinates[pin.id] ?? pin.coordinate
+    }
+
+    /// The path ahead cut at each stop, so each leg can fade a little more.
+    private func legs(of match: RouteMatch, to stops: [RouteStop]) -> [[CLLocationCoordinate2D]] {
+        var from = match.along
+        return stops.map { stop in
+            defer { from = stop.along }
+            return match.shape.path(from: from, to: stop.along).map(CLLocationCoordinate2D.init)
+        }.filter { $0.count >= 2 }
     }
 
     /// From the list: select the pin and fly to it.
@@ -707,6 +810,10 @@ struct HuntView: View {
 }
 
 // MARK: - Pieces
+
+private extension CLLocationCoordinate2D {
+    init(_ c: (latitude: Double, longitude: Double)) { self.init(latitude: c.latitude, longitude: c.longitude) }
+}
 
 private extension WantedPin {
     var coordinate: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: vehicle.latitude, longitude: vehicle.longitude) }
@@ -833,6 +940,8 @@ private struct PinCard: View {
     let showDistance: Bool
     /// Which way it's going relative to you; nil until it's been seen moving.
     let motion: Motion?
+    /// Its next stops, when it's been placed on its route.
+    let nextStops: [String]
     let onOpen: () -> Void
     /// Off to the camera to catch it.
     let onCatch: () -> Void
@@ -867,6 +976,18 @@ private struct PinCard: View {
                 SeenAgo(time: pin.vehicle.time)
             }
             .animation(.easeInOut(duration: 0.3), value: motionLine.text)
+            if !nextStops.isEmpty {
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Mono("NEXT", size: 10, weight: 700, spacing: 0.12, color: pin.accent)
+                    Text(nextStops.joined(separator: " · "))
+                        .font(TaborFont.grotesk(13, 500))
+                        .foregroundStyle(Palette.routeInk)
+                        .lineLimit(1)
+                        .contentTransition(.opacity)
+                }
+                .animation(.easeInOut(duration: 0.3), value: nextStops)
+                .accessibilityElement(children: .combine)
+            }
             Text(pin.kind == .newModel ? "Not in your book yet — catching it opens a new page."
                     : "You have \(owned) of \(pin.model.fleet). This one isn't among them.")
                 .font(TaborFont.grotesk(13))
@@ -934,6 +1055,7 @@ private extension Motion {
         case .passing: String(localized: "GOING PAST")
         case .leaving: String(localized: "MOVING AWAY")
         case .stopped: String(localized: "STOPPED")
+        case .turnsOff: String(localized: "TURNS OFF BEFORE YOU")
         }
     }
 
@@ -944,6 +1066,7 @@ private extension Motion {
         case .passing: String(localized: "PASSING", comment: "Short: vehicle going past you")
         case .leaving: String(localized: "AWAY", comment: "Short: vehicle moving away from you")
         case .stopped: String(localized: "STOPPED")
+        case .turnsOff: String(localized: "TURNS OFF", comment: "Short: vehicle heading your way, but its route turns before reaching you")
         }
     }
 
@@ -952,6 +1075,7 @@ private extension Motion {
         case .approaching: Palette.green
         case .passing, .stopped: Palette.yellow
         case .leaving: Palette.sub
+        case .turnsOff: Palette.faint
         }
     }
 }
