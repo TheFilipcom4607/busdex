@@ -10,8 +10,10 @@
 
 import { fetchDane, fetchOld } from './city.js';
 
-// The city moves vehicles every ~10 s and phones poll every 15 s: fresher is wasted.
-const FRESH_SECONDS = 10;
+// The city moves vehicles every ~10 s, but each vehicle on its own clock, so any copy held
+// here only adds to how old a position is when it reaches the map. A few seconds still lets
+// every phone near one Cloudflare location share a single upstream call.
+const FRESH_SECONDS = 3;
 // When the city stumbles (it drops calls under load), a copy this old still beats nothing;
 // the app ignores positions older than a few minutes anyway.
 const FALLBACK_SECONDS = 120;
@@ -27,7 +29,7 @@ export default {
     const type = url.searchParams.get('type');
     if (type !== '1' && type !== '2') return json({ result: 'type must be 1 (buses) or 2 (trams)' }, 400);
 
-    // A phone polls twice (buses, trams) every 15 s, 8 calls a minute. The limit leaves room
+    // A phone polls twice (buses, trams) every 10 s, 12 calls a minute. The limit leaves room
     // for several phones behind one carrier NAT, and stops a script hammering the key.
     const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
     const { success } = await env.PER_IP.limit({ key: ip });

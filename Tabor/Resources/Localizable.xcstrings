@@ -93,12 +93,12 @@
         }
       }
     },
-    "%@ Trying again every 15 seconds.": {
+    "%@ Trying again every 10 seconds.": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ Próbuję ponownie co 15 sekund."
+            "value": "%@ Próbuję ponownie co 10 sekund."
           }
         }
       }
@@ -4186,6 +4186,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "ZNALEZIONO SEKRETNĄ ODZNAKĘ"
+          }
+        }
+      }
+    },
+    "SEEN %lld MIN AGO": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WIDZIANY %lld MIN TEMU"
+          }
+        }
+      }
+    },
+    "SEEN %lld S AGO": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WIDZIANY %lld S TEMU"
           }
         }
       }

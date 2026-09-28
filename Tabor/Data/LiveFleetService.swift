@@ -1,7 +1,7 @@
 import CoreLocation
 import Foundation
 
-/// Live GPS for every ZTM bus and tram, from Warsaw's open-data API. Polls every 15 s while
+/// Live GPS for every ZTM bus and tram, from Warsaw's open-data API. Polls every 10 s while
 /// the HUNT map is up, and every 30 s otherwise (the camera, or the app merely open), so
 /// trails are already drawn when you get to HUNT. Never in the background.
 /// It comes through TABOR's proxy (proxy/ in the repo), which holds the city key, unless
@@ -12,7 +12,7 @@ final class LiveFleetService {
 
     /// A key typed into Settings goes straight to the city instead of through the proxy.
     static let keyOverrideKey = "umApiKey"
-    static let interval: Duration = .seconds(15)
+    static let interval: Duration = .seconds(10)
     /// With only the app itself watching: half the rate, since each poll is ~180 KB
     /// (the API doesn't compress), and trails don't need more.
     static let idleInterval: Duration = .seconds(30)
@@ -82,7 +82,7 @@ final class LiveFleetService {
         guard poller == nil else {
             // A live screen opening mid-way through a slow wait gets a fresh snapshot now if
             // it's due; the poller picks up the screen's rate after its current sleep.
-            if client != Self.appClient, fresh(maxAge: fast ? 15 : 30) == nil { Task { await refresh() } }
+            if client != Self.appClient, fresh(maxAge: fast ? 10 : 30) == nil { Task { await refresh() } }
             return
         }
         poller = Task { [weak self] in

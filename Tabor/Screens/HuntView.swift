@@ -579,7 +579,7 @@ struct HuntView: View {
                                text: String(localized: "HUNT needs a free dane.um.warszawa.pl key. Add yours in ME › Settings › Live data."))
         case .error(let why) where live.fresh(maxAge: 120) == nil:
             return MessageCard(icon: "antenna.radiowaves.left.and.right.slash", title: String(localized: "The city's feed is down"),
-                               text: String(localized: "\(why) Trying again every 15 seconds."))
+                               text: String(localized: "\(why) Trying again every 10 seconds."))
         case .idle, .loading:
             if live.snapshot == nil {
                 return MessageCard(icon: "dot.radiowaves.left.and.right", title: String(localized: "Finding what's running…"), text: nil)
@@ -856,14 +856,17 @@ private struct PinCard: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Mono(pin.subtitle(showDistance: showDistance, showKind: false), size: 11, weight: 600, color: Palette.routeInk)
-            if showDistance {
-                HStack(spacing: 6) {
+            HStack(spacing: 6) {
+                if showDistance {
                     Circle().fill(motionLine.color).frame(width: 6, height: 6)
                     Mono(motionLine.text, size: 11, weight: 600, color: motionLine.color)
+                        .lineLimit(1)
                         .contentTransition(.opacity)
                 }
-                .animation(.easeInOut(duration: 0.3), value: motionLine.text)
+                Spacer(minLength: 8)
+                SeenAgo(time: pin.vehicle.time)
             }
+            .animation(.easeInOut(duration: 0.3), value: motionLine.text)
             Text(pin.kind == .newModel ? "Not in your book yet — catching it opens a new page."
                     : "You have \(owned) of \(pin.model.fleet). This one isn't among them.")
                 .font(TaborFont.grotesk(13))
@@ -901,6 +904,25 @@ private struct PinCard: View {
         }
         .padding(16)
         .huntCard(radius: 20, stroke: pin.accent.opacity(0.35))
+    }
+}
+
+/// How old the position on the map is: the city's feed lags a few seconds behind, and a
+/// vehicle that's stopped reporting sits still at its last fix.
+private struct SeenAgo: View {
+    let time: Date
+    /// Past this, the pin may well be somewhere else by now.
+    static let stale: TimeInterval = 60
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { ctx in
+            let age = max(0, ctx.date.timeIntervalSince(time))
+            let seconds = Int(age)
+            Mono(age < Self.stale ? "SEEN \(seconds) S AGO" : "SEEN \(seconds / 60) MIN AGO",
+                 size: 10, weight: 600, spacing: 0.08, color: age < Self.stale ? Palette.sub : Palette.faint)
+                .lineLimit(1)
+                .fixedSize()
+        }
     }
 }
 
