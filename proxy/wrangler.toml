@@ -11,6 +11,12 @@ compatibility_date = "2026-09-01"
 workers_dev = false
 routes = [{ pattern = "taborapi.thefilip.com", custom_domain = true }]
 
+# Run next to the city's servers (GCP europe-central2 is Warsaw): ZTM drops connections from
+# abroad (a 522 from Newark, 2026-09-28), which is where GitHub's runners reach Cloudflare,
+# and phones in Warsaw lose nothing by it.
+[placement]
+region = "gcp:europe-central2"
+
 [[ratelimits]]
 name = "PER_IP"
 namespace_id = "1001"
