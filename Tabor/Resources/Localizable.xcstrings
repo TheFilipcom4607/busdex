@@ -200,7 +200,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, potem do zajezdni"
+            "value": "%@, potem zjazd do zajezdni"
           }
         }
       }
@@ -210,7 +210,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, tu zawraca"
+            "value": "%@, gdzie zawraca"
           }
         }
       }
@@ -220,7 +220,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, tu kończy kurs"
+            "value": "%@, gdzie kończy kurs"
           }
         }
       }
@@ -580,9 +580,33 @@
     "%lld YEARS OLD": {
       "localizations": {
         "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld LAT"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ROK"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld LATA"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld LAT"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld LAT"
+                }
+              }
+            }
           }
         }
       }
@@ -734,7 +758,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld siedzących"
+            "value": "siedzących: %lld"
           }
         }
       }
@@ -752,9 +776,33 @@
     "%lld vehicles in a special livery": {
       "localizations": {
         "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld pojazdów w nietypowym malowaniu"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pojazd w nietypowym malowaniu"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pojazdy w nietypowym malowaniu"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pojazdów w nietypowym malowaniu"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pojazdów w nietypowym malowaniu"
+                }
+              }
+            }
           }
         }
       }
@@ -1196,7 +1244,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "ZEZWÓL NA APARAT"
+            "value": "DAJ DOSTĘP DO APARATU"
           }
         }
       }
@@ -1206,7 +1254,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "ZEZWÓL NA LOKALIZACJĘ"
+            "value": "DAJ DOSTĘP DO LOKALIZACJI"
           }
         }
       }
@@ -1468,7 +1516,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "ROK %@"
+            "value": "ROCZNIK %@"
           }
         }
       }
@@ -1752,7 +1800,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Złap każdy autobus i tramwaj w Warszawie."
+            "value": "Złap każdy autobus i tramwaj w Warszawie."
           }
         }
       }
@@ -2331,7 +2379,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "ZDOBYTE DZIĘKI"
+            "value": "DZIĘKI TYM POJAZDOM"
           }
         }
       }
@@ -2431,7 +2479,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Każdy model ma swoją stronę, a każdy pojazd — swoje miejsce. Rzadkość zależy od tego, ile ich jeździ: legendarnych jest najwyżej tuzin. Po drodze zdobywasz odznaki."
+            "value": "Każdy model ma w albumie swoją stronę, a każdy pojazd swoje miejsce. O rzadkości decyduje liczba egzemplarzy: model legendarny ma ich najwyżej dwanaście. Po drodze zdobywasz odznaki."
           }
         }
       }
@@ -2621,7 +2669,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wypełnij album, model po modelu."
+            "value": "Wypełniaj album model po modelu."
           }
         }
       }
@@ -2741,7 +2789,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Przód, bok albo tył — byle numer taborowy był w kadrze: numer namalowany na pojeździe, nie numer linii. TABOR go odczyta, rozpozna model i wytnie pojazd jako twoją naklejkę. Im rzadszy, tym efektowniej się odsłania."
+            "value": "Przód, bok czy tył, byle z numerem taborowym w kadrze. Chodzi o numer namalowany na pojeździe, a nie o numer linii. TABOR go odczyta, rozpozna model i wytnie pojazd jako twoją naklejkę. Im rzadszy pojazd, tym efektowniejsze odsłonięcie."
           }
         }
       }
@@ -2842,7 +2890,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zmieść cały autobus w kadrze."
+            "value": "Zmieść cały autobus w kadrze."
           }
         }
       }
@@ -2872,7 +2920,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "HUNT pokazuje na mapie każdy pobliski autobus i tramwaj, którego nie masz jeszcze w albumie, i dokąd jedzie. Lokalizacja jest używana tylko, gdy TABOR jest otwarty."
+            "value": "HUNT pokazuje na mapie autobusy i tramwaje w pobliżu, których nie masz jeszcze w albumie, razem z kierunkiem jazdy. TABOR korzysta z lokalizacji tylko wtedy, gdy jest otwarty."
           }
         }
       }
@@ -4679,7 +4727,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "NA RAZIE"
+            "value": "JAK DOTĄD"
           }
         }
       }
@@ -4916,7 +4964,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zrób zdjęcie, a pojazd trafi do twojego albumu jako naklejka. Niektórych modeli jeżdżą setki, innych ledwie kilka sztuk. Pojazdów do znalezienia: %@."
+            "value": "Zrób zdjęcie, a pojazd trafi do twojego albumu jako naklejka. Niektóre modele jeżdżą w setkach egzemplarzy, inne tylko w kilku. Pojazdów do znalezienia: %@."
           }
         }
       }
