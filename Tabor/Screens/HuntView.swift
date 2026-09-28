@@ -173,23 +173,24 @@ struct HuntView: View {
                         .stroke(pin.accent.opacity(0.25 + 0.75 * Double(i + 1) / Double(path.count - 1)),
                                 style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
                 }
-                // Where it goes next: dashed along its route to the next few stops, fainter
-                // the further ahead.
+                // Where it goes next: a dotted line along its route to the next few stops, a
+                // small bead at each, fainter the further ahead. Lighter than the solid trail
+                // behind it, since it's a forecast.
                 if let now {
                     let ahead = now.upcoming(stops: 4)
                     let legs = legs(of: now, to: ahead.stops)
                     ForEach(legs.indices, id: \.self) { i in
                         MapPolyline(coordinates: legs[i])
-                            .stroke(pin.accent.opacity(0.9 - 0.18 * Double(i)),
-                                    style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round, dash: [7, 7]))
+                            .stroke(pin.accent.opacity(Self.aheadOpacity(i)),
+                                    style: StrokeStyle(lineWidth: 3.5, lineCap: .round, lineJoin: .round, dash: [0.01, 7]))
                     }
                     ForEach(Array(ahead.stops.enumerated()), id: \.offset) { i, stop in
                         Annotation(stop.name, coordinate: CLLocationCoordinate2D(latitude: stop.latitude, longitude: stop.longitude),
                                    anchor: .center) {
                             Circle()
-                                .fill(Palette.bg)
-                                .strokeBorder(pin.accent.opacity(0.95 - 0.18 * Double(i)), lineWidth: 2.5)
-                                .frame(width: 11, height: 11)
+                                .fill(pin.accent.opacity(Self.aheadOpacity(i)))
+                                .overlay(Circle().strokeBorder(Palette.bg.opacity(0.85), lineWidth: 1.5))
+                                .frame(width: 8, height: 8)
                                 .accessibilityHidden(true)
                         }
                         .annotationTitles(.hidden)
@@ -790,6 +791,9 @@ struct HuntView: View {
         if pin.id == selectedId, let now { return CLLocationCoordinate2D(now.coordinate) }
         return nowCoordinates[pin.id] ?? pin.coordinate
     }
+
+    /// Leg by leg, the route ahead fades.
+    private static func aheadOpacity(_ leg: Int) -> Double { max(0.35, 0.95 - 0.2 * Double(leg)) }
 
     /// The path ahead cut at each stop, so each leg can fade a little more.
     private func legs(of match: RouteMatch, to stops: [RouteStop]) -> [[CLLocationCoordinate2D]] {
