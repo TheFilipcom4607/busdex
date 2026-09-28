@@ -201,15 +201,17 @@ public enum Achievements {
         }
     }
 
-    /// Vehicles caught in anything but ZTM's red and yellow. Hidden with a fleet file that
-    /// doesn't know liveries.
+    /// Vehicles caught in a paint of their own, unlike the rest of their model (so not the
+    /// suburban blue). Hidden until the fleet file lists some.
     static func specialLivery(_ c: Context) -> Achievement? {
-        guard c.catalog.models.contains(where: { !($0.liveries ?? [:]).isEmpty }) else { return nil }
+        let special = { (m: VehicleModel, n: Int) in m.livery(of: n).flatMap { $0.special ? $0 : nil } }
+        guard c.catalog.models.contains(where: { m in (m.liveries ?? [:]).keys.contains { Int($0).flatMap { special(m, $0) } != nil } })
+        else { return nil }
         let painted = c.stats.vehicles.compactMap { v in
-            c.catalog.model(id: v.modelId)?.livery(of: v.number).map { Achievement.Proof(modelId: v.modelId, number: v.number, note: $0.name) }
+            c.catalog.model(id: v.modelId).flatMap { special($0, v.number) }.map { Achievement.Proof(modelId: v.modelId, number: v.number, note: $0.name) }
         }.sorted { $0.number < $1.number }
         return tiered(id: "special-livery", title: String(localized: "Dressed up"), symbol: "paintbrush.fill",
-                      value: painted.count, thresholds: [1, 5, 20], proof: painted) {
+                      value: painted.count, thresholds: [1, 3], proof: painted) {
             $0 == 1 ? String(localized: "A vehicle in a special livery") : String(localized: "\($0) vehicles in a special livery")
         }
     }

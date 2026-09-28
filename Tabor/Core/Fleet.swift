@@ -63,8 +63,8 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     public let trialPl: String?
     /// From the city's open data; older fleet files and vehicles it doesn't list have none.
     public let specs: ModelSpecs?
-    /// Vehicles not in ZTM's usual paint, by fleet number (JSON keys are strings): the city's
-    /// scheme name, see `Livery`.
+    /// Vehicles not in ZTM's usual paint, by fleet number (JSON keys are strings), from a
+    /// hand-checked list in fetch_fleet.py; see `Livery`.
     public let liveries: [String: String]?
 
     public init(id: String, name: String, make: String, code: String? = nil, kind: VehicleKind,
@@ -222,21 +222,23 @@ public struct ModelSpecs: Codable, Hashable, Sendable {
     }
 }
 
-/// A paint job other than ZTM's red and yellow, as the city's open data calls it.
+/// A paint job other than ZTM's red and yellow. Only what photos confirm: the city's own paint
+/// data is years out of date.
 public enum Livery: String, Sendable, CaseIterable {
-    /// The maker's own paint, as delivered.
-    case maker = "producencki"
-    case other = "inny"
-    /// Tramwaje Warszawskie's own, on a few historic trams.
-    case tw = "TW"
+    /// The Urbino 18 hybrids' grey with a red skirt.
+    case greyRed
+    /// The blue of the suburban (L) lines: whole models wear it, so it's no badge.
+    case suburbanBlue
 
     public var name: String {
         switch self {
-        case .maker: String(localized: "MAKER'S PAINT")
-        case .other: String(localized: "OTHER LIVERY")
-        case .tw: String(localized: "TW LIVERY")
+        case .greyRed: String(localized: "GREY & RED")
+        case .suburbanBlue: String(localized: "SUBURBAN BLUE")
         }
     }
+
+    /// One vehicle standing out from its fleet, rather than a whole model's colours.
+    public var special: Bool { self != .suburbanBlue }
 }
 
 public struct Depot: Codable, Hashable, Sendable {

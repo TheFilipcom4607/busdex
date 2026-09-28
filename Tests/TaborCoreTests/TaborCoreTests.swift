@@ -935,9 +935,11 @@ private func drive(from lon0: Double, step: Double, fixes: Int, lat: Double = ro
     #expect(e18.specs?.metres == 18)
     #expect(e18.specs?.floor == .low)
     #expect((e18.specs?.places ?? 0) > (e18.specs?.seats ?? 0))
-    // #5869 came in the maker's own paint; its neighbours are in ZTM's.
-    #expect(e18.livery(of: 5869) == .maker)
-    #expect(e18.livery(of: 5868) == nil)
+    // Liveries only where photos confirm one: the grey hybrids, the blue suburban models.
+    // #5869 was silver once and the city still says so, but it's red and yellow now.
+    #expect(e18.livery(of: 5869) == nil)
+    #expect(catalog.model(id: "bus-solaris-urbino-18h")?.livery(of: 8396) == .greyRed)
+    #expect(catalog.model(id: "bus-mercus-syn2z")?.liveries?.values.allSatisfy { $0 == "suburbanBlue" } == true)
     // Trams are all electric: the city gives no drive for them.
     #expect(catalog.model(id: "tram-hrc-140n")?.specs?.drive == nil)
 }
@@ -950,13 +952,17 @@ private func drive(from lon0: Double, step: Double, fixes: Int, lat: Double = ro
 }
 
 @Test func specialLiveryBadgeCountsPaintedVehicles() {
-    let e18 = catalog.model(id: "bus-solaris-urbino-18e")!
     let hybrid = catalog.model(id: "bus-solaris-urbino-18h")!
-    let painted = [5869].map { any(e18.id, number: $0) } + [8396, 8397].map { any(hybrid.id, number: $0) }
-    #expect(eval([any(e18.id, number: 5868)])["special-livery"]?.level == 0)
+    let blue = catalog.model(id: "bus-mercus-syn2z")!
+    let blueNumber = Int(blue.liveries!.keys.first!)!
+    #expect(eval([any(hybrid.id, number: 8398)])["special-livery"]?.level == 0)
+    // The suburban blue is a whole model's colour, not a vehicle standing out: no credit.
+    #expect(eval([any(blue.id, number: blueNumber)])["special-livery"]?.progress == 0)
+    let painted = [8396, 8397].map { any(hybrid.id, number: $0) }
     let badge = eval(painted + painted)["special-livery"]!
     // Each vehicle counts once, however often it's caught.
-    #expect(badge.progress == 3 && badge.level == 1)
+    #expect(badge.progress == 2 && badge.level == 1)
+    #expect(eval(painted + [any(hybrid.id, number: 8399)])["special-livery"]!.maxed)
 }
 
 @Test func badgesSayWhichVehiclesEarnedThem() {
@@ -970,9 +976,9 @@ private func drive(from lon0: Double, step: Double, fixes: Int, lat: Double = ro
     // Not earned yet: the oldest so far, as the closest.
     #expect(eval([any(young.id, number: youngNumber, date: day(2026, 6, 1))])["veteran"]!.proof.map(\.number) == [youngNumber])
     // Dressed up: every painted vehicle once, however often caught.
-    let e18 = catalog.model(id: "bus-solaris-urbino-18e")!
-    let painted = eval([any(e18.id, number: 5869), any(e18.id, number: 5869), any(e18.id, number: 5868)])["special-livery"]!
-    #expect(painted.proof == [Achievement.Proof(modelId: e18.id, number: 5869, note: Livery.maker.name)])
+    let hybrid = catalog.model(id: "bus-solaris-urbino-18h")!
+    let painted = eval([any(hybrid.id, number: 8399), any(hybrid.id, number: 8399), any(hybrid.id, number: 8398)])["special-livery"]!
+    #expect(painted.proof == [Achievement.Proof(modelId: hybrid.id, number: 8399, note: Livery.greyRed.name)])
     // A secret keeps its vehicles hidden until earned; once earned it names them.
     let m = catalog.models.max { $0.fleet < $1.fleet }!
     let pair = m.numbers.first { m.numbers.contains($0 + 1) }!

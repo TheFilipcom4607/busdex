@@ -7,7 +7,7 @@ Two sources, plus the hand-kept lists below:
   wins, so model ids never change.
 - The city's open-data vehicle list (dane.um.warszawa.pl, get_ztm_pojazdy), refreshed daily,
   data/ztm-pojazdy.json. It adds the vehicles the scrape hasn't got, each joining the model
-  most of its type (idMarki) belongs to, plus each model's specs and special liveries.
+  most of its type (idMarki) belongs to, plus each model's specs.
 
 Usage:  python3 scripts/fetch_fleet.py            # fetch the city's list + build
         python3 scripts/fetch_fleet.py --offline  # rebuild from the saved files
@@ -157,7 +157,7 @@ def fetch_city():
     vehicles = [{
         "kind": kind, "number": v["numerTaborowy"], "idMarki": v["idMarki"], "year": v["rokProdukcji"],
         "carrier": v["nazwaOperatora"] or "", "depot": v["nazwaZajezdni"] or "",
-        "livery": v["schematMalowania"],
+        "colour": v["kolorPojazdu"],
     } for key, kind in (("busy", "BUS"), ("tramwaje", "TRAM")) for v in d[key]]
     keep = ("idMarki", "marka", "typ", "dlugosc", "rodzajZasilania", "zasilanie",
             "liczMiejscSiedzacychTab", "liczMiejscTab", "klimatyzacja", "podloga")
@@ -233,7 +233,19 @@ DRIVES = {
     ("Spalinowy", "ON"): "diesel", ("Spalinowy", "CNG"): "cng", ("Spalinowy", "LNG"): "lng",
     ("EV", "EV"): "electric", ("EV", "H2"): "hydrogen",
 }
-LIVERIES = {"producencki", "inny", "TW"}
+# Vehicles in anything but ZTM's red and yellow, checked against photos: the city's list
+# can't be trusted with this. Its scheme field says who specified the paint, not how it looks
+# (#8802, "producencki", is plain red and yellow), and its colour field misses repaints (#5869
+# is still "srebrny", silver, but has been red and yellow since at least May 2025).
+# (kind, number) -> a `Livery` in the app. Photos from phototrans.eu.
+LIVERIES = {
+    ("BUS", 8396): "greyRed",  # Urbino 18 hybrid: grey with a red skirt, Wawelska, March 2026
+    ("BUS", 8397): "greyRed",  # the same, 2023 (no newer photo)
+    ("BUS", 8399): "greyRed",  # the same, 16 July 2026
+}
+# The one colour the city's list gets right: suburban (L) buses are blue, whole models of
+# them (confirmed on the street, 2026-09-28).
+SUBURBAN_BLUE = "RAL 5010 (L)"
 
 
 def specs(t, kind):
@@ -491,7 +503,8 @@ def build(vehicles, city=None):
         in_city = [city_rows[(kind, v["number"])] for v in vs if (kind, v["number"]) in city_rows]
         majority = Counter(c["idMarki"] for c in in_city).most_common(1)
         model_specs = specs(types[(kind, majority[0][0])], kind) if majority and (kind, majority[0][0]) in types else None
-        liveries = {c["number"]: c["livery"] for c in in_city if c["livery"] in LIVERIES}
+        liveries = {c["number"]: "suburbanBlue" for c in in_city if c.get("colour") == SUBURBAN_BLUE}
+        liveries |= {v["number"]: LIVERIES[(kind, int(v["number"]))] for v in vs if (kind, int(v["number"])) in LIVERIES}
         models.append({
             "id": model_id,
             "name": display_name(make, model),

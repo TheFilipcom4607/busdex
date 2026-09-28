@@ -2817,6 +2817,16 @@
         }
       }
     },
+    "GREY & RED": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SZARO-CZERWONY"
+          }
+        }
+      }
+    },
     "Geotag catches": {
       "localizations": {
         "pl": {
@@ -3430,16 +3440,6 @@
         }
       }
     },
-    "MAKER'S PAINT": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MALOWANIE PRODUCENTA"
-          }
-        }
-      }
-    },
     "MATCH · %@": {
       "localizations": {
         "pl": {
@@ -4041,16 +4041,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "OTWÓRZ MAPĘ"
-          }
-        }
-      }
-    },
-    "OTHER LIVERY": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "INNE MALOWANIE"
           }
         }
       }
@@ -4764,6 +4754,16 @@
         }
       }
     },
+    "SUBURBAN BLUE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PODMIEJSKI NIEBIESKI"
+          }
+        }
+      }
+    },
     "SUMMER": {
       "localizations": {
         "pl": {
@@ -5169,16 +5169,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "SKRĘCA, NIM DO CIEBIE DOJEDZIE"
-          }
-        }
-      }
-    },
-    "TW LIVERY": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MALOWANIE TW"
           }
         }
       }
