@@ -32,6 +32,14 @@ KINDS = {"0": "TRAM", "3": "BUS"}
 # How far a stop may sit from its shape and still be put on it. Stops sit at the kerb or on
 # an island, a few metres off the road's centreline.
 STOP_SNAP = 400
+# Depot runs end at a technical stop named after the depot's code. The trams' match the depots
+# in fleet.json (code and letter); the buses' are ZTM's second codes ('R-2 "Kleszczowa" (R-11)'
+# in the vehicle database).
+DEPOT_STOPS = {
+    "R1(W)": "Zajezdnia Wola", "R2(P)": "Zajezdnia Praga", "R3(M)": "Zajezdnia Mokotów",
+    "R4(Z)": "Zajezdnia Żoliborz", "R5(A)": "Zajezdnia Annopol",
+    "R11(K)": "Zajezdnia Kleszczowa", "R14(P)": "Zajezdnia Płochocińska",
+}
 
 
 def download():
@@ -188,7 +196,16 @@ def build(z, today=None):
         cumulative = [0.0]
         for a, b in zip(path, path[1:]):
             cumulative.append(cumulative[-1] + metres(a, b))
-        stops = [stop_names[s] for _, s in sorted(stop_seq[shape]) if s in stop_names]
+        stops = []
+        for _, s in sorted(stop_seq[shape]):
+            if s not in stop_names:
+                continue
+            name, lat, lon = stop_names[s]
+            name = DEPOT_STOPS.get(name, name)
+            # The yard right behind the depot's own passenger stop: one stop, not two.
+            if stops and stops[-1][0] == name:
+                continue
+            stops.append((name, lat, lon))
         entry["shapes"][encoded] = {
             "id": shape, "trips": trips[shape], "path": encoded,
             "stops": place_stops(path, cumulative, stops),

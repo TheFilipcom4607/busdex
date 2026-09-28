@@ -195,6 +195,36 @@
         }
       }
     },
+    "%@, then into the depot": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, potem do zajezdni"
+          }
+        }
+      }
+    },
+    "%@, where it turns back": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, tu zawraca"
+          }
+        }
+      }
+    },
+    "%@, where its run ends": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, tu kończy kurs"
+          }
+        }
+      }
+    },
     "%lld": {
       "localizations": {
         "pl": {
@@ -369,6 +399,16 @@
         }
       }
     },
+    "%lld MIN AGO": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld MIN TEMU"
+          }
+        }
+      }
+    },
     "%lld OF %lld": {
       "localizations": {
         "en": {
@@ -469,6 +509,16 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "%lld S AGO": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld S TEMU"
           }
         }
       }
@@ -2202,6 +2252,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Edytuj obserwację"
+          }
+        }
+      }
+    },
+    "End of its run at %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koniec kursu: %@"
           }
         }
       }
@@ -4029,6 +4089,16 @@
         }
       }
     },
+    "Pulling into %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zjeżdża: %@"
+          }
+        }
+      }
+    },
     "Put your book on your Home Screen": {
       "localizations": {
         "pl": {
@@ -4186,26 +4256,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "ZNALEZIONO SEKRETNĄ ODZNAKĘ"
-          }
-        }
-      }
-    },
-    "SEEN %lld MIN AGO": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "WIDZIANY %lld MIN TEMU"
-          }
-        }
-      }
-    },
-    "SEEN %lld S AGO": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "WIDZIANY %lld S TEMU"
           }
         }
       }
@@ -5115,6 +5165,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Włącz ją, by zobaczyć, co jeździ wokół ciebie — albo przesuń mapę, by rozejrzeć się gdzie indziej."
+          }
+        }
+      }
+    },
+    "Turning back at %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zawraca: %@"
           }
         }
       }

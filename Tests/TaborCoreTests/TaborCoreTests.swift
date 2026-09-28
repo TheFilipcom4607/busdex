@@ -900,3 +900,29 @@ private func drive(from lon0: Double, step: Double, fixes: Int, lat: Double = ro
     // Metres along agree with the script's (both haversine), within a metre.
     #expect(abs(s[0].project((52.23, 21.005))!.along - 342) < 1.5)
 }
+
+@Test func routeMatchKnowsHowItsRouteEnds() {
+    // Out east and back west from the same loop: east ends where west starts, so it turns back.
+    let book = RouteBook(shapes: [RouteBook.key(.bus, "175"): [eastbound, shape("west", trips: 90, street(lat: routeLat, from: 21.03, to: 21.00), stopsEvery: 10)]])
+    let near = drive(from: 21.022, step: 0.001, fixes: 4)
+    let m = book.match(line: "175", kind: .bus, trail: near.trail, position: near.position)!
+    #expect(m.end == .turnsBack("east60"))
+    // Two stops before the end it's among the next three; well before, it isn't.
+    #expect(m.ending(within: 3)?.end == .turnsBack("east60") && m.ending(within: 3)?.arrived == false)
+    #expect(RouteMatch(shape: eastbound, along: 100, speed: 5, end: m.end).ending(within: 3) == nil)
+    // At the last stop, where the shape ends.
+    #expect(RouteMatch(shape: eastbound, along: eastbound.length - 5, speed: 5, end: m.end).ending()?.arrived == true)
+    // A last stop at the depot, and one nothing starts from.
+    let depot = RouteShape(id: "d", trips: 3, points: street(lat: routeLat, from: 21.0, to: 21.01),
+                           stops: [RouteStop(name: "Zajezdnia Woronicza", latitude: routeLat, longitude: 21.01, along: 680)])!
+    #expect(RouteBook.end(of: depot, among: [depot, eastbound]) == .depot("Zajezdnia Woronicza"))
+    #expect(RouteBook.end(of: eastbound, among: [eastbound]) == .ends("east60"))
+    let yard = RouteShape(id: "y", trips: 3, points: street(lat: routeLat, from: 21.0, to: 21.01),
+                          stops: [RouteStop(name: "R4(Z)", latitude: routeLat, longitude: 21.01, along: 680)])!
+    #expect(RouteBook.end(of: yard, among: [yard, eastbound]) == .depot("R4(Z)"))
+    // A short working sharing the street with the full route: can't tell which, so no end.
+    let short = shape("short", trips: 20, street(lat: routeLat, from: 21.00, to: 21.02), stopsEvery: 10)
+    let shared = RouteBook(shapes: [RouteBook.key(.bus, "175"): [eastbound, short]])
+    let early = drive(from: 21.012, step: 0.001, fixes: 4)
+    #expect(shared.match(line: "175", kind: .bus, trail: early.trail, position: early.position)?.end == nil)
+}

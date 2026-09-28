@@ -183,11 +183,14 @@ struct HuntView: View {
                     ForEach(Array(ahead.stops.enumerated()), id: \.offset) { i, stop in
                         Annotation(stop.name, coordinate: CLLocationCoordinate2D(now.shape.coordinate(at: stop.along)),
                                    anchor: .center) {
-                            Circle()
+                            // The last stop of its run: a square, like a line's end on a transit map.
+                            let terminus = now.end != nil && stop == now.shape.stops.last
+                            RoundedRectangle(cornerRadius: terminus ? 2 : 3.5, style: .continuous)
                                 .fill(Palette.ink)
-                                .overlay(Circle().strokeBorder(Palette.bg, lineWidth: 1.5))
-                                .frame(width: 7, height: 7)
-                                .opacity(Self.aheadOpacity(i))
+                                .overlay(RoundedRectangle(cornerRadius: terminus ? 2 : 3.5, style: .continuous)
+                                    .strokeBorder(Palette.bg, lineWidth: 1.5))
+                                .frame(width: terminus ? 9 : 7, height: terminus ? 9 : 7)
+                                .opacity(terminus ? 1 : Self.aheadOpacity(i))
                                 .accessibilityHidden(true)
                         }
                         .annotationTitles(.hidden)
@@ -472,6 +475,7 @@ struct HuntView: View {
                 PinCard(pin: selected, owned: sightings.stats.ownedCount(modelId: selected.model.id),
                         showDistance: hasFix, motion: motion(of: selected),
                         nextStops: creeping(selected)?.upcoming(stops: 3).stops.map(\.name) ?? [],
+                        ending: creeping(selected)?.ending(within: 3),
                         onOpen: { router.openModel(selected.model.id) },
                         onCatch: { withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { router.tab = .catchTab } },
                         onClose: { withAnimation(.snappy) { selectedId = nil } })
@@ -967,10 +971,30 @@ private struct PinCard: View {
     let motion: Motion?
     /// Its next stops, when it's been placed on its route.
     let nextStops: [String]
+    /// Its route ends within those stops, or it's at the last one.
+    let ending: (end: RouteEnd, arrived: Bool)?
     let onOpen: () -> Void
     /// Off to the camera to catch it.
     let onCatch: () -> Void
     let onClose: () -> Void
+
+    /// Where it goes next, in one line: its next stops, and how its route ends once that's
+    /// among them. The last stop coming up next, or reached, is said in words.
+    private var routeLine: (label: String?, symbol: String?, text: Text)? {
+        if let ending, ending.arrived {
+            return (nil, ending.end.symbol, Text(ending.end.arrivedText))
+        }
+        guard !nextStops.isEmpty else { return nil }
+        let next = String(localized: "NEXT")
+        if let ending, nextStops.count == 1 {
+            return (next, nil, Text(ending.end.comingText))
+        }
+        var text = Text(nextStops.joined(separator: " · "))
+        if let ending {
+            text = text + Text(" ") + Text(Image(systemName: ending.end.symbol)).foregroundStyle(Palette.sub)
+        }
+        return (next, nil, text)
+    }
 
     private var motionLine: (text: String, color: Color) {
         motion.map { (text: $0.text, color: $0.color) } ?? (text: String(localized: "WATCHING WHICH WAY IT GOES…"), color: Palette.faint)
@@ -989,22 +1013,31 @@ private struct PinCard: View {
                 .em(-0.03, size: 24)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-            Mono(pin.subtitle(showDistance: showDistance, showKind: false), size: 11, weight: 600, color: Palette.routeInk)
-            HStack(spacing: 6) {
-                if showDistance {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Mono(pin.subtitle(showDistance: showDistance, showKind: false), size: 11, weight: 600, color: Palette.routeInk)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                SeenAgo(time: pin.vehicle.time)
+            }
+            if showDistance {
+                HStack(spacing: 6) {
                     Circle().fill(motionLine.color).frame(width: 6, height: 6)
                     Mono(motionLine.text, size: 11, weight: 600, color: motionLine.color)
                         .lineLimit(1)
                         .contentTransition(.opacity)
                 }
-                Spacer(minLength: 8)
-                SeenAgo(time: pin.vehicle.time)
+                .animation(.easeInOut(duration: 0.3), value: motionLine.text)
             }
-            .animation(.easeInOut(duration: 0.3), value: motionLine.text)
-            if !nextStops.isEmpty {
+            if let route = routeLine {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    Mono("NEXT", size: 10, weight: 700, spacing: 0.12, color: pin.accent)
-                    Text(nextStops.joined(separator: " · "))
+                    if let label = route.label {
+                        Mono(label, size: 10, weight: 700, spacing: 0.12, color: pin.accent)
+                    } else if let symbol = route.symbol {
+                        Image(systemName: symbol)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(pin.accent)
+                    }
+                    route.text
                         .font(TaborFont.grotesk(13, 500))
                         .foregroundStyle(Palette.routeInk)
                         .lineLimit(1)
@@ -1064,10 +1097,38 @@ private struct SeenAgo: View {
         TimelineView(.periodic(from: .now, by: 1)) { ctx in
             let age = max(0, ctx.date.timeIntervalSince(time))
             let seconds = Int(age)
-            Mono(age < Self.stale ? "SEEN \(seconds) S AGO" : "SEEN \(seconds / 60) MIN AGO",
+            Mono(age < Self.stale ? "\(seconds) S AGO" : "\(seconds / 60) MIN AGO",
                  size: 10, weight: 600, spacing: 0.08, color: age < Self.stale ? Palette.sub : Palette.faint)
                 .lineLimit(1)
                 .fixedSize()
+        }
+    }
+}
+
+private extension RouteEnd {
+    /// The last stop, coming up next.
+    var comingText: String {
+        switch self {
+        case .depot(let stop): String(localized: "\(stop), then into the depot")
+        case .turnsBack(let stop): String(localized: "\(stop), where it turns back")
+        case .ends(let stop): String(localized: "\(stop), where its run ends")
+        }
+    }
+
+    /// At the last stop.
+    var arrivedText: String {
+        switch self {
+        case .depot(let stop): String(localized: "Pulling into \(stop)")
+        case .turnsBack(let stop): String(localized: "Turning back at \(stop)")
+        case .ends(let stop): String(localized: "End of its run at \(stop)")
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .depot: "house.fill"
+        case .turnsBack: "arrow.uturn.backward"
+        case .ends: "flag.checkered"
         }
     }
 }

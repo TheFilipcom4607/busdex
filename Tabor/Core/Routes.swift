@@ -93,7 +93,26 @@ public struct RouteBook: Sendable {
             guard let first = bearings.first, bearings.allSatisfy({ Self.angle($0, first) < 45 }) else { return nil }
         }
         let pick = close.max { a, b in (a.shape.trips, -a.score) < (b.shape.trips, -b.score) }!
-        return RouteMatch(shape: pick.shape, along: pick.along, speed: pick.speed)
+        // Where it ends, but only when every way it could be going ends at the same stop: a
+        // short working and the full route share the street, and the feed doesn't say which.
+        let ends = Set(close.compactMap { $0.shape.stops.last?.name })
+        let end = ends.count == 1 ? Self.end(of: pick.shape, among: shapes) : nil
+        return RouteMatch(shape: pick.shape, along: pick.along, speed: pick.speed, end: end)
+    }
+
+    /// A last stop called "Zajezdnia …", or a depot's code ("R4(Z)", which newer routes files
+    /// already name), is the depot. One where another of the line's main ways starts close by
+    /// is a terminus it turns back at (a pętla). Anything else, a short working ending
+    /// mid-route, just ends.
+    static func end(of shape: RouteShape, among shapes: [RouteShape]) -> RouteEnd? {
+        guard let last = shape.stops.last else { return nil }
+        if last.name.hasPrefix("Zajezdnia") || last.name.wholeMatch(of: /R\d+\([A-Z]\)/) != nil { return .depot(last.name) }
+        let busiest = shapes.map(\.trips).max() ?? 0
+        let turnsBack = shapes.contains { other in
+            other.id != shape.id && Double(other.trips) >= Double(busiest) * 0.2
+                && Geo.km((other.points[0].latitude, other.points[0].longitude), (last.latitude, last.longitude)) * 1000 <= 400
+        }
+        return turnsBack ? .turnsBack(last.name) : .ends(last.name)
     }
 
     static func angle(_ a: Double, _ b: Double) -> Double {
@@ -279,6 +298,22 @@ public struct RouteShape: Sendable {
     }
 }
 
+/// How a route ends.
+public enum RouteEnd: Sendable, Equatable {
+    /// At the depot: in for the night, or for a break between shifts.
+    case depot(String)
+    /// At a terminus loop, where it turns back the other way.
+    case turnsBack(String)
+    /// Somewhere else: a short working.
+    case ends(String)
+
+    public var stop: String {
+        switch self {
+        case .depot(let s), .turnsBack(let s), .ends(let s): s
+        }
+    }
+}
+
 /// A vehicle placed on its route.
 public struct RouteMatch: Sendable {
     public let shape: RouteShape
@@ -286,6 +321,8 @@ public struct RouteMatch: Sendable {
     public let along: Double
     /// Metres a second along the shape over its recent fixes, dwell at stops included.
     public let speed: Double
+    /// How its route ends; nil when it isn't clear which way it's going to end.
+    public let end: RouteEnd?
 
     /// Faster than any bus or tram gets in the city: a GPS jump, not travel.
     public static let maxSpeed = 15.0
@@ -293,10 +330,19 @@ public struct RouteMatch: Sendable {
     /// is has too little to do with where it was.
     public static let maxAdvance: TimeInterval = 45
 
-    public init(shape: RouteShape, along: Double, speed: Double) {
+    public init(shape: RouteShape, along: Double, speed: Double, end: RouteEnd? = nil) {
         self.shape = shape
         self.along = along
         self.speed = speed
+        self.end = end
+    }
+
+    /// Where it stands with the end of its route: coming up within the next `stops`, or
+    /// arrived at the last stop (shapes end there; the loop or the depot comes after).
+    public func ending(within stops: Int = 3) -> (end: RouteEnd, arrived: Bool)? {
+        guard let end, let last = shape.stops.last else { return nil }
+        if along >= last.along - 15 { return (end, true) }
+        return upcoming(stops: stops).stops.last == last ? (end, false) : nil
     }
 
     public var coordinate: (latitude: Double, longitude: Double) { shape.coordinate(at: along) }
@@ -314,7 +360,7 @@ public struct RouteMatch: Sendable {
         guard !stopped, seconds > 0 else { return self }
         var target = along + speed * min(seconds, Self.maxAdvance)
         if let stop = shape.stops.first(where: { $0.along > along + 15 }) { target = min(target, stop.along) }
-        return RouteMatch(shape: shape, along: min(target, shape.length), speed: speed)
+        return RouteMatch(shape: shape, along: min(target, shape.length), speed: speed, end: end)
     }
 
     /// Coming your way only if its route actually comes past you: within `near` metres of you
