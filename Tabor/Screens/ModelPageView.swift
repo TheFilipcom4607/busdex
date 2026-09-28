@@ -111,14 +111,16 @@ struct ModelPageView: View {
                 OwnedCount(owned: owned.count, fleet: model.fleet)
             }
             .padding(.horizontal, 22)
-            .padding(.bottom, 14)
+            // With specs, the scroll's own top margin makes up the gap.
+            .padding(.bottom, model.specs == nil ? 14 : 4)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     // At the top of the scroll rather than above it, so the stickers keep the room.
+                    // Starts below the soft top edge, which should only fade what's scrolled up.
                     if let specs = model.specs {
                         specsRow(specs, kind: model.kind)
-                            .padding(.top, 2)
+                            .padding(.top, Self.softEdge)
                             .padding(.bottom, 16)
                     }
                     ForEach(Array(model.batches.enumerated()), id: \.offset) { i, batch in
@@ -172,7 +174,7 @@ struct ModelPageView: View {
                 .padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)
-            .softTopEdge()
+            .softTopEdge(Self.softEdge)
         }
         .taborScreen()
         // String(n): a fleet number is an id, never "1,075".
@@ -208,6 +210,8 @@ struct ModelPageView: View {
         deleting = nil
         Haptics.shared.nope()
     }
+
+    private static let softEdge: CGFloat = 16
 
     /// Length, drive and room, from the city's open data; each tile only if it's known.
     private func specsRow(_ s: ModelSpecs, kind: VehicleKind) -> some View {
