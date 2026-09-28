@@ -748,3 +748,155 @@ private func nearby(_ vehicles: [LiveVehicle]) -> [NearbyVehicle] {
     #expect(HuntTargets(rawValue: mixed.rawValue) == mixed)
     #expect(HuntTargets(rawValue: "kind:BOAT") == HuntTargets())
 }
+
+// MARK: - Routes
+
+/// A straight street east along one latitude, a point every 0.0005° (about 34 m).
+private func street(lat: Double, from lon0: Double, to lon1: Double) -> [(latitude: Double, longitude: Double)] {
+    let steps = Int((abs(lon1 - lon0) / 0.0005).rounded())
+    return (0...steps).map { (lat, lon0 + (lon1 - lon0) * Double($0) / Double(steps)) }
+}
+
+private func shape(_ id: String, trips: Int, _ points: [(latitude: Double, longitude: Double)],
+                   stopsEvery: Int = 0) -> RouteShape {
+    let bare = RouteShape(id: id, trips: trips, points: points, stops: [])!
+    let stops = stopsEvery > 0
+        ? stride(from: stopsEvery, to: points.count, by: stopsEvery).map { i in
+            RouteStop(name: "\(id)\(i)", latitude: points[i].latitude, longitude: points[i].longitude,
+                      along: bare.project((points[i].latitude, points[i].longitude))!.along)
+        }
+        : []
+    return RouteShape(id: id, trips: trips, points: points, stops: stops)!
+}
+
+private let routeLat = 52.23
+/// East along the street to 21.03.
+private let eastbound = shape("east", trips: 100, street(lat: routeLat, from: 21.00, to: 21.03), stopsEvery: 10)
+/// The same street the other way.
+private let westbound = shape("west", trips: 90, street(lat: routeLat, from: 21.03, to: 21.00))
+/// Shares the street with `eastbound` to 21.02, then turns north: fewer trips run it.
+private let forkNorth = shape("north", trips: 10, street(lat: routeLat, from: 21.00, to: 21.02)
+                                + (1...20).map { (routeLat + 0.0005 * Double($0), 21.02) })
+
+/// A vehicle driving along the street, a fix every 10 s, `metres` apart; the last is its position.
+private func drive(from lon0: Double, step: Double, fixes: Int, lat: Double = routeLat)
+    -> (trail: [LiveTrails.Point], position: LiveTrails.Point) {
+    let points = (0..<fixes).map { i in
+        LiveTrails.Point(latitude: lat, longitude: lon0 + step * Double(i), time: fixtureNow + Double(i) * 10)
+    }
+    return (Array(points.dropLast()), points.last!)
+}
+
+@Test func polylineRoundTrips() {
+    // Google's own example.
+    let decoded = Polyline.decode("_p~iF~ps|U_ulLnnqC_mqNvxq`@")
+    #expect(decoded.count == 3)
+    #expect(abs(decoded[0].latitude - 38.5) < 1e-9 && abs(decoded[0].longitude + 120.2) < 1e-9)
+    #expect(abs(decoded[2].latitude - 43.252) < 1e-9 && abs(decoded[2].longitude + 126.453) < 1e-9)
+    #expect(Polyline.encode(decoded) == "_p~iF~ps|U_ulLnnqC_mqNvxq`@")
+    let street = street(lat: 52.23, from: 21.0, to: 21.01)
+    let back = Polyline.decode(Polyline.encode(street))
+    #expect(back.count == street.count)
+    #expect(zip(back, street).allSatisfy { abs($0.latitude - $1.latitude) < 1e-5 && abs($0.longitude - $1.longitude) < 1e-5 })
+}
+
+@Test func routeMatchPicksTheWayTheTrailRuns() {
+    let book = RouteBook(shapes: [RouteBook.key(.bus, "175"): [eastbound, westbound]])
+    // Driving west (about 70 m every 10 s): the westbound shape, though fewer trips run it.
+    let west = drive(from: 21.015, step: -0.001, fixes: 4)
+    let m = book.match(line: "175", kind: .bus, trail: west.trail, position: west.position)
+    #expect(m?.shape.id == "west")
+    // About 7 m/s along the shape.
+    #expect(abs((m?.speed ?? 0) - 6.8) < 0.5)
+    let east = drive(from: 21.010, step: 0.001, fixes: 4)
+    #expect(book.match(line: "175", kind: .bus, trail: east.trail, position: east.position)?.shape.id == "east")
+    // Another line, or the tram with the same number: nothing to match.
+    #expect(book.match(line: "176", kind: .bus, trail: east.trail, position: east.position) == nil)
+    #expect(book.match(line: "175", kind: .tram, trail: east.trail, position: east.position) == nil)
+    // Standing still, it could be facing either way: no guess.
+    #expect(book.match(line: "175", kind: .bus, trail: [], position: east.position) == nil)
+}
+
+@Test func routeMatchTakesTheUsualWayAtAFork() {
+    let book = RouteBook(shapes: [RouteBook.key(.bus, "175"): [forkNorth, eastbound]])
+    // On the shared stretch: the way most trips go.
+    let shared = drive(from: 21.010, step: 0.001, fixes: 4)
+    #expect(book.match(line: "175", kind: .bus, trail: shared.trail, position: shared.position)?.shape.id == "east")
+    // Past the fork, heading north: only the fork fits.
+    let north = (0..<4).map { i in
+        LiveTrails.Point(latitude: routeLat + 0.001 + 0.0008 * Double(i), longitude: 21.02, time: fixtureNow + Double(i) * 10)
+    }
+    #expect(book.match(line: "175", kind: .bus, trail: Array(north.dropLast()), position: north.last!)?.shape.id == "north")
+    // A still bus on a one-way stretch: every fit faces the same way, so it's safe to say.
+    #expect(book.match(line: "175", kind: .bus, trail: [], position: shared.position)?.shape.id == "east")
+}
+
+@Test func routeMatchRefusesAVehicleGoingTheWrongWayOrOffRoute() {
+    let book = RouteBook(shapes: [RouteBook.key(.bus, "175"): [eastbound]])
+    // Driving west on an eastbound-only route: a detour, or the feed has the wrong line.
+    let west = drive(from: 21.015, step: -0.001, fixes: 4)
+    #expect(book.match(line: "175", kind: .bus, trail: west.trail, position: west.position) == nil)
+    // A street 150 m north: off the route.
+    let off = drive(from: 21.010, step: 0.001, fixes: 4, lat: routeLat + 0.00135)
+    #expect(book.match(line: "175", kind: .bus, trail: off.trail, position: off.position) == nil)
+}
+
+@Test func routeMatchAdvancesButNotTooFar() {
+    let m = RouteMatch(shape: eastbound, along: 100, speed: 10)
+    // No further than the next stop (every 10 points, about 340 m), where it would wait.
+    let firstStop = eastbound.stops[0].along
+    #expect(m.advanced(by: 10).along == 200)
+    #expect(m.advanced(by: 40).along == firstStop)
+    // Past the stop: capped at 45 s of travel however old the fix is.
+    let later = RouteMatch(shape: eastbound, along: firstStop + 20, speed: 5)
+    #expect(later.advanced(by: 600).along == firstStop + 20 + 5 * RouteMatch.maxAdvance)
+    // Stopped, or no time passed: stays put.
+    #expect(m.advanced(by: 30, stopped: true).along == 100)
+    #expect(m.advanced(by: -5).along == 100)
+    // Never off the end.
+    #expect(RouteMatch(shape: westbound, along: westbound.length - 5, speed: 15).advanced(by: 45).along == westbound.length)
+}
+
+@Test func routeMatchListsTheNextStops() {
+    let m = RouteMatch(shape: eastbound, along: eastbound.stops[1].along - 50, speed: 8)
+    let next = m.upcoming(stops: 3)
+    #expect(next.stops.map(\.name) == ["east20", "east30", "east40"])
+    // The path runs from the vehicle to the third of them.
+    #expect(abs(next.path.first!.longitude - m.coordinate.longitude) < 1e-9)
+    #expect(abs(next.path.last!.longitude - eastbound.stops[3].longitude) < 1e-9)
+    // At a stop, it's the one after that comes next.
+    #expect(RouteMatch(shape: eastbound, along: eastbound.stops[1].along, speed: 0).upcoming(stops: 1).stops.first?.name == "east30")
+}
+
+@Test func routeMatchSaysWhenItTurnsOffBeforeYou() {
+    // You stand on the street, 700 m ahead; the bus is heading straight for you.
+    let you = (lat: routeLat, lon: 21.025)
+    let onStraight = RouteMatch(shape: eastbound, along: eastbound.project((routeLat, 21.015))!.along, speed: 8)
+    #expect(onStraight.motion(fallback: .approaching, lat: you.lat, lon: you.lon) == .approaching)
+    // Same place, but its route turns north at 21.02, before it reaches you.
+    let onFork = RouteMatch(shape: forkNorth, along: forkNorth.project((routeLat, 21.015))!.along, speed: 8)
+    #expect(onFork.motion(fallback: .approaching, lat: you.lat, lon: you.lon) == .turnsOff)
+    // Its route passes you even though the straight line says otherwise: coming.
+    let beside = (lat: routeLat + 0.005, lon: 21.0205)
+    #expect(onFork.motion(fallback: .passing, lat: beside.lat, lon: beside.lon) == .approaching)
+    // Already past you: the straight-line answer stands.
+    let behind = (lat: routeLat + 0.0005, lon: 21.012)
+    #expect(onStraight.motion(fallback: .leaving, lat: behind.lat, lon: behind.lon) == .leaving)
+    #expect(onStraight.motion(fallback: .stopped, lat: you.lat, lon: you.lon) == .stopped)
+}
+
+@Test func routeBookDecodesTheBuiltFile() throws {
+    let json = """
+    {"feed":"schedule_test","built":"2026-09-28","lines":{"175":{"kind":"BUS","shapes":[
+      {"id":"1","trips":3,"path":"\(Polyline.encode(street(lat: routeLat, from: 21.0, to: 21.01)))",
+       "stops":[["Centrum",52.23,21.005,342]]}]},
+      "9":{"kind":"TRAM","shapes":[]},"X":{"kind":"BOAT","shapes":[]}}}
+    """
+    let book = try RouteBook(json: Data(json.utf8))
+    #expect(book.feed == "schedule_test")
+    #expect(book.lineCount == 2)
+    let s = book.shapes(line: "175", kind: .bus)
+    #expect(s.count == 1 && s[0].stops.first?.name == "Centrum")
+    // Metres along agree with the script's (both haversine), within a metre.
+    #expect(abs(s[0].project((52.23, 21.005))!.along - 342) < 1.5)
+}

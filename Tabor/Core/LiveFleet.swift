@@ -342,6 +342,8 @@ extension Geo {
 /// Which way a vehicle is going, relative to you.
 public enum Motion: Sendable, Equatable {
     case approaching, leaving, passing, stopped
+    /// Heading your way, but its route turns off before it reaches you.
+    case turnsOff
 }
 
 /// Where each vehicle has been over the last few minutes, built up from successive feed
@@ -353,6 +355,12 @@ public struct LiveTrails: Sendable {
         public let longitude: Double
         /// When the vehicle reported this position.
         public let time: Date
+
+        public init(latitude: Double, longitude: Double, time: Date) {
+            self.latitude = latitude
+            self.longitude = longitude
+            self.time = time
+        }
     }
 
     /// Moves smaller than this are GPS jitter at a stop, not travel.
@@ -406,12 +414,15 @@ public struct LiveTrails: Sendable {
         return Geo.bearing((from.latitude, from.longitude), (to.latitude, to.longitude))
     }
 
+    /// Reporting in, but hasn't moved for a while.
+    public func isStopped(_ key: String) -> Bool {
+        guard let last = points[key]?.last, let seen = lastSeen[key] else { return false }
+        return seen.timeIntervalSince(last.time) >= Self.stoppedAfter
+    }
+
     /// Relative to someone standing at `lat`/`lon`. Nil while there's too little to go on.
     public func motion(_ key: String, lat: Double, lon: Double) -> Motion? {
-        if let last = points[key]?.last, let seen = lastSeen[key],
-           seen.timeIntervalSince(last.time) >= Self.stoppedAfter {
-            return .stopped
-        }
+        if isStopped(key) { return .stopped }
         guard let (from, to) = base(key) else { return nil }
         let before = Geo.km((lat, lon), (from.latitude, from.longitude)) * 1000
         let after = Geo.km((lat, lon), (to.latitude, to.longitude)) * 1000
