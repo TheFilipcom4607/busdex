@@ -299,3 +299,6 @@ so it's tested on a Mac in about a second:
 ```bash
 swift test
 ```
+
+GitHub Actions runs the same tests on every push to `main` and every pull request that
+touches `Tabor/Core`, the tests or `fleet.json`.

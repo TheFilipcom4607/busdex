@@ -1,0 +1,43 @@
+name: Tests
+
+# Runs the Core unit tests (`swift test`) whenever the code they cover changes. The tests read
+# the bundled fleet.json, so a fleet update runs them too. Only the platform-neutral package:
+# the iOS app itself isn't built here.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Tabor/Core/**"
+      - "Tabor/Resources/fleet.json"
+      - "Tests/**"
+      - "Package.swift"
+      - ".github/workflows/tests.yml"
+  pull_request:
+    paths:
+      - "Tabor/Core/**"
+      - "Tabor/Resources/fleet.json"
+      - "Tests/**"
+      - "Package.swift"
+      - ".github/workflows/tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      # The runner's default Xcode lags behind the one the app is built with: take the newest.
+      - name: Pick the newest Xcode
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          swift --version
+      - name: swift test
+        run: swift test
