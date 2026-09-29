@@ -89,6 +89,38 @@ private func sampleModel() -> VehicleModel {
     #expect(NumberExtractor.digitTokens("LINIA 119").map(\.value) == [119])
 }
 
+@Test func lookalikeLettersReadAsDigits() {
+    #expect(NumberExtractor.lookalikeTokens("1O23").map(\.value) == [1023])
+    #expect(NumberExtractor.lookalikeTokens("Nr I974").map(\.value) == [1974])
+    #expect(NumberExtractor.lookalikeTokens("1o7l").isEmpty)
+    // Plates, words and two letters in one run stay out.
+    #expect(NumberExtractor.lookalikeTokens("WX 2O43").isEmpty)
+    #expect(NumberExtractor.lookalikeTokens("WI 5814N").isEmpty)
+    #expect(NumberExtractor.lookalikeTokens("SOLARIS").isEmpty)
+    #expect(NumberExtractor.lookalikeTokens("IO23").isEmpty)
+    // Plain digits are digitTokens' job, not counted twice.
+    #expect(NumberExtractor.lookalikeTokens("8592").isEmpty)
+}
+
+@Test func extractorCorrectsLookalikesOnlyToKnownNumbers() {
+    func read(_ text: String) -> Int? {
+        NumberExtractor.best(in: [TextObservation(text: text, confidence: 1, height: 0.05)], mode: .auto, catalog: catalog)
+    }
+    #expect(read("1O23") == 1023)
+    #expect(read("I974") == 1974)
+    // 9099 and 1234 aren't in the fleet: a letter is too weak a guess on its own.
+    #expect(read("9O99") == nil)
+    #expect(read("1Z34") == nil)
+    #expect(read("WX 2O43") == nil)
+    #expect(read("WI 5814N") == nil)
+    #expect(read("SOLARIS") == nil)
+    #expect(read("IO23") == nil)
+    // The same number read cleanly wins over the lookalike.
+    let both = NumberExtractor.candidates(in: [TextObservation(text: "1O23 1023", confidence: 1, height: 0.05)],
+                                          mode: .auto, catalog: catalog)
+    #expect(both.count == 2 && abs(both[1].score - (both[0].score - 0.5)) < 1e-9)
+}
+
 @Test func extractorPrefersDatabaseHits() {
     let obs = [
         TextObservation(text: "0000", confidence: 1, height: 0.1),

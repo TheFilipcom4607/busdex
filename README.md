@@ -89,6 +89,8 @@ cd proxy && npx wrangler secret put DANE_TOKEN && npx wrangler deploy
     county code (`WX 2043F`, `WPI 12345`). "Nr 1974" still counts.
   - Times and decimals (`20:15`, `3.14`) are dropped.
   - A number the database doesn't know is only kept if it's four digits long.
+  - One letter that looks like a digit (`1O23`, `I974`) is read as that digit, but
+    only when that makes a number in the fleet, and it ranks below a clean read.
 - **It knows what's around you.** With a location fix and the live feed, a number
   that belongs to a vehicle within 300 m gets a boost. If the read is one digit
   off a vehicle within 150 m (OCR turning 4235 into 1235), that vehicle is

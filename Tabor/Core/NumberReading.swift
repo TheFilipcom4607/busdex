@@ -51,7 +51,11 @@ public enum NumberExtractor {
                                   catalog: FleetCatalog) -> [(number: Int, score: Double)] {
         var scored: [(number: Int, score: Double)] = []
         for obs in observations {
-            for (value, digits) in digitTokens(obs.text) {
+            let tokens = digitTokens(obs.text).map { (value: $0.value, digits: $0.digits, lookalike: false) }
+                + lookalikeTokens(obs.text).map { (value: $0.value, digits: $0.digits, lookalike: true) }
+            for (value, digits, lookalike) in tokens {
+                // A letter read as a digit only counts when it makes a real fleet number.
+                if lookalike, !catalog.isKnown(number: value) { continue }
                 // The mode is a preference: a number from the other kind still counts,
                 // it just ranks below one that fits the mode.
                 let knownHere = catalog.isKnown(number: value, kind: mode.kind)
@@ -60,6 +64,7 @@ public enum NumberExtractor {
                 var score = Double(obs.confidence) + obs.height * 4
                 if knownHere { score += 2 } else if knownAnywhere { score += 1.5 }
                 if digits < 3 { score -= 1 }
+                if lookalike { score -= 0.5 }
                 scored.append((value, score))
             }
         }
@@ -87,6 +92,42 @@ public enum NumberExtractor {
                !glue.contains(before), !glue.contains(after),
                let n = Int(String(chars[i..<j])) {
                 out.append((n, len))
+            }
+            i = j
+        }
+        return out
+    }
+
+    /// Letters Vision reads in place of the digits they look like.
+    static let lookalikes: [Character: Character] = [
+        "O": "0", "o": "0", "D": "0", "Q": "0",
+        "I": "1", "l": "1", "|": "1",
+        "Z": "2", "S": "5", "B": "8",
+    ]
+
+    /// 3–5 character runs of digits with one letter that looks like a digit, read as the
+    /// digit: "1O23" → 1023, "I974" → 1974. Only one: two or more is a word or a code more
+    /// often than a misread. The same boundaries as `digitTokens`, so "WX 2O43" (a plate)
+    /// and "SOLARIS" stay out. Runs with no letter are left to `digitTokens`.
+    public static func lookalikeTokens(_ text: String) -> [(value: Int, digits: Int)] {
+        var out: [(Int, Int)] = []
+        let chars = Array(text)
+        let glue: Set<Character> = [":", ".", ",", "/"]
+        let isDigit = { (c: Character) in c.isASCII && c.isNumber }
+        var i = 0
+        while i < chars.count {
+            guard isDigit(chars[i]) || lookalikes[chars[i]] != nil else { i += 1; continue }
+            var j = i
+            while j < chars.count, isDigit(chars[j]) || lookalikes[chars[j]] != nil { j += 1 }
+            let run = chars[i..<j]
+            let letters = run.filter { !isDigit($0) }.count
+            let before: Character = i > 0 ? chars[i - 1] : " "
+            let after: Character = j < chars.count ? chars[j] : " "
+            if (3...5).contains(run.count), letters == 1,
+               !before.isLetter, !after.isLetter, !platePrefix(chars, before: i),
+               !glue.contains(before), !glue.contains(after),
+               let n = Int(String(run.map { lookalikes[$0] ?? $0 })) {
+                out.append((n, run.count))
             }
             i = j
         }
