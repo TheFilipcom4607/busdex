@@ -194,6 +194,24 @@ struct CatchView: View {
 
     // MARK: - Pieces
 
+    private var noCameraSymbol: String {
+        switch camera.status {
+        case .denied: "camera.badge.ellipsis"
+        case .interrupted: "pause.circle"
+        case .failed: "exclamationmark.triangle"
+        default: "camera.metering.unknown"
+        }
+    }
+
+    private var noCameraText: LocalizedStringKey {
+        switch camera.status {
+        case .denied: "CAMERA ACCESS IS OFF"
+        case .interrupted: "CAMERA IN USE ELSEWHERE"
+        case .failed: "THE CAMERA STOPPED"
+        default: "NO CAMERA ON THIS DEVICE"
+        }
+    }
+
     @ViewBuilder private var viewfinder: some View {
         switch camera.status {
         case .running:
@@ -221,21 +239,25 @@ struct CatchView: View {
                 .onEnded { _ in pinchStart = nil })
         case .idle:
             Color.black
-        case .denied, .unavailable:
+        case .denied, .unavailable, .interrupted, .failed:
             ZStack {
                 Color(hex: 0x0E1013)
                 VStack(spacing: 14) {
-                    Image(systemName: camera.status == .denied ? "camera.badge.ellipsis" : "camera.metering.unknown")
+                    Image(systemName: noCameraSymbol)
                         .font(.system(size: 34, weight: .light))
                         .foregroundStyle(Palette.faint)
-                    Mono(camera.status == .denied ? "CAMERA ACCESS IS OFF" : "NO CAMERA ON THIS DEVICE",
-                         size: 11, color: Palette.sub)
+                    Mono(noCameraText, size: 11, color: Palette.sub)
                     if camera.status == .denied {
                         Button("Open Settings") {
                             if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                         }
                         .font(TaborFont.grotesk(14, 600))
                         .tint(Palette.yellow)
+                    }
+                    if camera.status == .failed {
+                        Button("Try again") { Task { await camera.retry() } }
+                            .font(TaborFont.grotesk(14, 600))
+                            .tint(Palette.yellow)
                     }
                     PhotosPicker(selection: $pickerItem, matching: .images) {
                         Mono("IMPORT A PHOTO INSTEAD", size: 11, weight: 600, color: Palette.bg)
@@ -505,6 +527,7 @@ struct CatchView: View {
         switch camera.status {
         case .running: break
         case .idle: return String(localized: "WAKING THE CAMERA")
+        case .interrupted: return String(localized: "WAITING FOR THE CAMERA")
         default: return String(localized: "IMPORT A SHOT TO CATCH IT")
         }
         guard camera.reading != nil else { return String(localized: "GET THE WHOLE VEHICLE IN FRAME") }

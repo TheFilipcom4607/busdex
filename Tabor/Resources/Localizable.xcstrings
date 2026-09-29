@@ -1613,6 +1613,16 @@
         }
       }
     },
+    "CAMERA IN USE ELSEWHERE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "APARAT JEST TERAZ ZAJĘTY"
+          }
+        }
+      }
+    },
     "CANCEL": {
       "localizations": {
         "pl": {
@@ -5139,6 +5149,16 @@
         }
       }
     },
+    "THE CAMERA STOPPED": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "APARAT PRZESTAŁ DZIAŁAĆ"
+          }
+        }
+      }
+    },
     "THIS NUMBER EXISTS ON": {
       "localizations": {
         "pl": {
@@ -5517,6 +5537,16 @@
         }
       }
     },
+    "Try again": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spróbuj ponownie"
+          }
+        }
+      }
+    },
     "Turn it on to see what's running around you — or pan the map to look anywhere.": {
       "localizations": {
         "pl": {
@@ -5684,6 +5714,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Weteran"
+          }
+        }
+      }
+    },
+    "WAITING FOR THE CAMERA": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CZEKAM NA APARAT"
           }
         }
       }

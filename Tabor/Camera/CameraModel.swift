@@ -1,4 +1,5 @@
 import AVFoundation
+import os
 import SwiftUI
 import Vision
 
@@ -8,7 +9,9 @@ import Vision
 final class CameraModel: NSObject, @unchecked Sendable {
     static let shared = CameraModel()
 
-    enum Status { case idle, running, denied, unavailable }
+    /// `unavailable` is no camera at all; `interrupted` is another app or a call holding it;
+    /// `failed` is a session that died and wouldn't come back.
+    enum Status { case idle, running, denied, unavailable, interrupted, failed }
 
     private(set) var status: Status = .idle
     /// A fleet number that has been stable across several frames.
@@ -50,6 +53,10 @@ final class CameraModel: NSObject, @unchecked Sendable {
         return r
     }()
     @ObservationIgnored private var configured = false
+    /// CATCH is on screen and wants the camera; recovery only restarts it then. Guarded by `lock`.
+    @ObservationIgnored private var _wantsRunning = false
+    private var wantsRunning: Bool { lock.withLock { _wantsRunning } }
+    @ObservationIgnored private let log = Logger(subsystem: "com.filipmanikowski.tabor", category: "camera")
     @ObservationIgnored private var device: AVCaptureDevice?
     @ObservationIgnored private var photoContinuation: CheckedContinuation<Data?, Never>?
     /// Tracks how the phone is held so stills and OCR stay upright even though the UI is portrait-only.
@@ -90,6 +97,11 @@ final class CameraModel: NSObject, @unchecked Sendable {
 
     // MARK: - Lifecycle
 
+    override init() {
+        super.init()
+        observeSession()
+    }
+
     @MainActor
     func start() async {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -98,21 +110,138 @@ final class CameraModel: NSObject, @unchecked Sendable {
         case .authorized: break
         default: status = .denied; return
         }
-        let ok = await withCheckedContinuation { cont in
-            sessionQueue.async {
-                let ok = self.configure()
-                if ok, !self.session.isRunning { self.session.startRunning() }
-                cont.resume(returning: ok)
-            }
+        lock.withLock { _wantsRunning = true }
+        status = await withCheckedContinuation { cont in
+            sessionQueue.async { cont.resume(returning: self.startSession()) }
         }
-        status = ok ? .running : .unavailable
     }
 
     func stop() {
+        lock.withLock { _wantsRunning = false }
         sessionQueue.async { if self.session.isRunning { self.session.stopRunning() } }
         Task { @MainActor in
             self.reading = nil
             self.torchOn = false
+        }
+    }
+
+    /// Try again after the camera stopped: build the session from scratch.
+    @MainActor
+    func retry() async {
+        status = .idle
+        await withCheckedContinuation { cont in
+            sessionQueue.async {
+                self.tearDown()
+                cont.resume()
+            }
+        }
+        await start()
+    }
+
+    /// Called on sessionQueue.
+    private func startSession() -> Status {
+        guard configure() else { return Self.hasCamera ? .failed : .unavailable }
+        if !session.isRunning { session.startRunning() }
+        if session.isRunning { return .running }
+        // A call or another app has it; it comes back when that ends.
+        if session.isInterrupted { return .interrupted }
+        // Configured before and won't start: a session left dead by an error nobody saw.
+        // Rebuild it once before giving up.
+        record("session wouldn't start; rebuilding it")
+        tearDown()
+        guard configure() else { return .failed }
+        session.startRunning()
+        return session.isRunning ? .running : .failed
+    }
+
+    private static var hasCamera: Bool {
+        AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) != nil
+    }
+
+    /// Called on sessionQueue. Back to nothing, so `configure()` builds it all again.
+    private func tearDown() {
+        if session.isRunning { session.stopRunning() }
+        session.beginConfiguration()
+        session.inputs.forEach(session.removeInput)
+        session.outputs.forEach(session.removeOutput)
+        session.commitConfiguration()
+        rotationObservation = nil
+        rotation = nil
+        pressureObservation = nil
+        device = nil
+        configured = false
+        // A shot in flight won't finish now.
+        photoContinuation?.resume(returning: nil)
+        photoContinuation = nil
+        Task { @MainActor in
+            self.reading = nil
+            self.torchOn = false
+        }
+    }
+
+    // MARK: - Recovery
+
+    /// Without these, a session that hit an error stayed stopped until the phone restarted:
+    /// nothing started it again, and `configured` kept `start()` from rebuilding it.
+    private func observeSession() {
+        let center = NotificationCenter.default
+        center.addObserver(forName: AVCaptureSession.runtimeErrorNotification, object: session, queue: nil) { [weak self] note in
+            let error = note.userInfo?[AVCaptureSessionErrorKey] as? AVError
+            self?.sessionQueue.async { self?.recover(from: error) }
+        }
+        center.addObserver(forName: AVCaptureSession.wasInterruptedNotification, object: session, queue: nil) { [weak self] note in
+            guard let self else { return }
+            let reason = (note.userInfo?[AVCaptureSessionInterruptionReasonKey] as? Int)
+                .flatMap(AVCaptureSession.InterruptionReason.init(rawValue:))
+            // Going to the background interrupts it too, after CATCH has let go: not news.
+            guard wantsRunning else { return }
+            record("interrupted: \(reason.map(Self.describe) ?? "unknown reason")")
+            Task { @MainActor in self.status = .interrupted }
+        }
+        center.addObserver(forName: AVCaptureSession.interruptionEndedNotification, object: session, queue: nil) { [weak self] _ in
+            guard let self, wantsRunning else { return }
+            record("interruption ended")
+            sessionQueue.async {
+                guard self.wantsRunning else { return }
+                let status = self.session.isRunning ? .running : self.startSession()
+                Task { @MainActor in self.status = status }
+            }
+        }
+    }
+
+    /// Called on sessionQueue.
+    private func recover(from error: AVError?) {
+        record("runtime error \(error.map { "\($0.code.rawValue): \($0.localizedDescription)" } ?? "unknown")")
+        // The media server restarted under us: the session may just need starting again.
+        if error?.code == .mediaServicesWereReset, wantsRunning {
+            session.startRunning()
+            if session.isRunning {
+                Task { @MainActor in self.status = .running }
+                return
+            }
+        }
+        tearDown()
+        guard wantsRunning else { return }
+        let status = startSession()
+        Task { @MainActor in self.status = status }
+    }
+
+    /// Camera trouble goes to the system log, and, in debug mode, gets its own folder, so a
+    /// tester's ZIP has it next time the camera dies.
+    private func record(_ what: String) {
+        log.error("\(what, privacy: .public)")
+        DebugRecord.begin(source: "camera", mode: mode)?.update { $0.error = what }
+    }
+
+    private static func describe(_ reason: AVCaptureSession.InterruptionReason) -> String {
+        switch reason {
+        case .videoDeviceNotAvailableInBackground: "in background"
+        case .audioDeviceInUseByAnotherClient: "audio in use elsewhere"
+        case .videoDeviceInUseByAnotherClient: "camera in use elsewhere"
+        case .videoDeviceNotAvailableWithMultipleForegroundApps: "several apps in the foreground"
+        case .videoDeviceNotAvailableDueToSystemPressure: "system pressure"
+        case .sensitiveContentMitigationActivated: "sensitive content"
+        @unknown default: "reason \(reason.rawValue)"
         }
     }
 
