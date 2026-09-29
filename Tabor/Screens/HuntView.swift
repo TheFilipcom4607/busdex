@@ -48,6 +48,8 @@ struct HuntView: View {
     /// Moves on while a vehicle is selected, so its pin creeps along between polls.
     @State private var tick = Date()
     @State private var selectedId: String?
+    /// The map keeps the selected vehicle in view as it drives, until you move the map yourself.
+    @State private var following = false
     /// A small bubble you tapped: its vehicles, listed so you can pick one.
     @State private var openGroup: [String]?
     /// What the map is showing: pins cover it, however far you zoom out.
@@ -88,6 +90,10 @@ struct HuntView: View {
                 Spacer()
                 HStack(spacing: 8) {
                     Spacer()
+                    if let selected, !following {
+                        followButton(selected)
+                            .transition(.scale(scale: 0.8, anchor: .trailing).combined(with: .opacity))
+                    }
                     if offDefaultView {
                         resetButton
                             .transition(.scale(scale: 0.8, anchor: .trailing).combined(with: .opacity))
@@ -100,6 +106,7 @@ struct HuntView: View {
                     .padding(.bottom, 10)
             }
             .animation(.snappy, value: offDefaultView)
+            .animation(.snappy, value: following)
             .animation(.snappy, value: picked)
         }
         .background(Palette.bg.ignoresSafeArea())
@@ -149,10 +156,10 @@ struct HuntView: View {
     // MARK: - Map
 
     private func map(_ shown: [WantedPin]) -> some View {
-        // Picked on the map itself: make sure the card that opens doesn't cover it.
+        // Picked on the map itself: follow it, above the card that opens.
         let selection = Binding<String?>(get: { selectedId }, set: { id in
             selectedId = id
-            if let pin = shown.first(where: { $0.id == id }) { keepClearOfCard(pin) }
+            if let pin = shown.first(where: { $0.id == id }) { follow(pin) }
         })
         let selectedPin = shown.first { $0.id == selectedId }
         let now = selectedPin.flatMap(creeping)
@@ -226,10 +233,15 @@ struct HuntView: View {
         .onMapCameraChange(frequency: .continuous) { ctx in mapHeading = ctx.camera.heading }
         .onMapCameraChange(frequency: .onEnd) { ctx in
             mapRegion = ctx.region
+            // Moved by hand: leave the map where it was put. Moves made in code don't count.
+            if position.positionedByUser { following = false }
             recompute(animated: false)
         }
         .onChange(of: selectedId) { _, id in
-            guard let id else { return }
+            guard let id else {
+                following = false
+                return
+            }
             Haptics.shared.tick()
             guard id.hasPrefix("group:"), let g = groups(shown).first(where: { $0.id == id }) else {
                 // Picked from the open list: keep it, so closing the card goes back to it.
@@ -261,17 +273,21 @@ struct HuntView: View {
         return Wanted.group(rest, cellLon: cell, latitude: 52.23) + lone
     }
 
-    /// The card opens over the bottom of the map; a vehicle picked down there glides up into
-    /// the open part instead of hiding behind the card it just opened.
-    private func keepClearOfCard(_ pin: WantedPin) {
-        // North-up only: rotated, latitude no longer runs up the screen.
-        guard let region = mapRegion, mapHeading < 1 || mapHeading > 359 else { return }
-        let span = region.span.latitudeDelta
-        // The card's top edge sits a little below the middle of the screen.
-        guard pin.vehicle.latitude < region.center.latitude - span * 0.05 else { return }
-        let center = CLLocationCoordinate2D(latitude: pin.vehicle.latitude - span * 0.15,
-                                            longitude: region.center.longitude)
-        withAnimation(.easeInOut(duration: 0.5)) { position = .region(MKCoordinateRegion(center: center, span: region.span)) }
+    /// Where the map centres to keep a vehicle in view at the current zoom. The card opens over
+    /// the bottom of the map, its top edge a little below the middle, so the vehicle sits in
+    /// the open part above it. North-up, so latitude runs up the screen.
+    private func region(showing coordinate: CLLocationCoordinate2D) -> MKCoordinateRegion? {
+        guard let span = mapRegion?.span else { return nil }
+        return MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: coordinate.latitude - span.latitudeDelta * 0.15,
+                                                                 longitude: coordinate.longitude),
+                                  span: span)
+    }
+
+    /// Glide to a vehicle, keeping the zoom, and keep it in view from now on.
+    private func follow(_ pin: WantedPin) {
+        following = true
+        guard let region = region(showing: pin.coordinate) else { return }
+        withAnimation(.easeInOut(duration: 0.5)) { position = .region(region) }
     }
 
     private func zoom(into g: PinGroup) {
@@ -422,6 +438,27 @@ struct HuntView: View {
         .accessibilityLabel("Back to 3 kilometres around you")
     }
 
+    /// Back to following the selected vehicle: shown once you've moved the map away from it.
+    private func followButton(_ pin: WantedPin) -> some View {
+        Button {
+            Haptics.shared.tick()
+            follow(pin)
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "scope")
+                    .font(.system(size: 10.5, weight: .bold))
+                Mono("FOLLOW", size: 11, weight: 600, spacing: 0.1, color: Palette.radar)
+            }
+            .foregroundStyle(Palette.radar)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .glass(Capsule())
+            .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Follow #\(pin.vehicle.number) on the map")
+    }
+
     /// Flips between the plain map and satellite; shows the one you'd switch to.
     private var mapStyleButton: some View {
         Button {
@@ -466,6 +503,7 @@ struct HuntView: View {
     private func resetView() {
         guard let region = defaultRegion() else { return }
         Haptics.shared.tick()
+        following = false
         withAnimation(.easeInOut(duration: 0.7)) { position = .region(region) }
     }
 
@@ -507,7 +545,7 @@ struct HuntView: View {
             }
             pinList(members, visibleRows: 4.5) { pin in
                 withAnimation(.snappy) { selectedId = pin.id }
-                keepClearOfCard(pin)
+                follow(pin)
             }
         }
         .padding(14)
@@ -749,13 +787,13 @@ struct HuntView: View {
             nowCoordinates = coordinates
         }
         if let selectedId, !next.contains(where: { $0.id == selectedId }) { self.selectedId = nil }
-        // The selected vehicle drove off the edge: follow it, keeping the zoom.
-        if let selectedId, let pin = next.first(where: { $0.id == selectedId }), let region = mapRegion,
-           abs(pin.vehicle.latitude - region.center.latitude) > region.span.latitudeDelta * 0.3
-            || abs(pin.vehicle.longitude - region.center.longitude) > region.span.longitudeDelta * 0.4 {
-            withAnimation(.easeInOut(duration: 1.2)) {
-                position = .region(MKCoordinateRegion(center: pin.coordinate, span: region.span))
-            }
+        // Following the selected vehicle and it's leaving the open part above the card: catch up,
+        // keeping the zoom. Not after you've moved the map yourself.
+        if following, let selectedId, let pin = next.first(where: { $0.id == selectedId }), let region = mapRegion,
+           let target = self.region(showing: pin.coordinate),
+           abs(target.center.latitude - region.center.latitude) > region.span.latitudeDelta * 0.2
+            || abs(target.center.longitude - region.center.longitude) > region.span.longitudeDelta * 0.3 {
+            withAnimation(.easeInOut(duration: 1.2)) { position = .region(target) }
         }
     }
 
@@ -833,6 +871,7 @@ struct HuntView: View {
     /// From the list: select the pin and fly to it.
     private func select(_ pin: WantedPin) {
         withAnimation(.snappy) { selectedId = pin.id }
+        following = true
         withAnimation(.easeInOut(duration: 0.6)) {
             position = .camera(MapCamera(centerCoordinate: pin.coordinate, distance: 1800))
         }

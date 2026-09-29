@@ -153,6 +153,9 @@ every 15 seconds while the map is on screen, and never in the background.
   keeps the last ten minutes of positions and draws an arrow once a vehicle has
   gone 30 m. The card says whether it's coming your way, going past, heading
   away or stopped.
+- **The map follows the one you pick.** It keeps the vehicle in view above the
+  card as it drives. Move the map yourself and it stays where you put it, and a
+  FOLLOW button brings it back to the vehicle.
 - **A wanted list.** The filter takes whole tiers or particular models. While it's on,
   HUNT searches the whole city, not just the 3 km around you, and sorts by
   distance: if you're after one particular model, how far away it is matters most.
