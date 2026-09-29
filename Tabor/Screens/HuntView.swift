@@ -158,10 +158,11 @@ struct HuntView: View {
         let now = selectedPin.flatMap(creeping)
         return Map(position: $position, interactionModes: .all, selection: selection) {
             if let pin = selectedPin {
-                // Its recent path, fading out behind it.
-                let trail = live.trails.trail(pin.id).map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+                // Its recent path, fading out behind it: along the streets once it's on its route.
+                let fixes = live.trails.trail(pin.id)
+                let path = now.map { $0.trail(fixes).map(CLLocationCoordinate2D.init) }
+                    ?? fixes.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) } + [pin.coordinate]
                 // MapKit won't draw a gradient along a line: fade it one segment at a time.
-                let path = trail + [now.map(\.coordinate).map(CLLocationCoordinate2D.init) ?? pin.coordinate]
                 ForEach(0..<max(0, path.count - 1), id: \.self) { i in
                     MapPolyline(coordinates: [path[i], path[i + 1]])
                         .stroke(pin.accent.opacity(0.25 + 0.75 * Double(i + 1) / Double(path.count - 1)),

@@ -347,6 +347,30 @@ public struct RouteMatch: Sendable {
 
     public var coordinate: (latitude: Double, longitude: Double) { shape.coordinate(at: along) }
 
+    /// Its trail laid on the streets: raw fixes are 10 s apart, and straight lines between them
+    /// cut corners and wander off the road, so from the oldest fix that still sits on the route
+    /// behind it the trail follows the shape up to where it is now. Fixes from before that are
+    /// left out: they're the trip before it turned back at a loop, or a detour, and a straight
+    /// line from them runs through buildings. With no fix on the route, the raw fixes. Oldest first.
+    public func trail(_ fixes: [LiveTrails.Point]) -> [(latitude: Double, longitude: Double)] {
+        var from = along
+        var later = coordinate
+        var kept = fixes.count
+        // Newest back, each fix behind the one after it, no further back than it could have driven.
+        while kept > 0 {
+            let p = fixes[kept - 1]
+            let straight = Geo.km((p.latitude, p.longitude), (later.latitude, later.longitude)) * 1000
+            guard let fit = shape.project((p.latitude, p.longitude), in: (from - straight * 2.5 - 100)...(from + 10)),
+                  fit.offset <= RouteBook.maxOffset else { break }
+            from = min(from, fit.along)
+            later = (p.latitude, p.longitude)
+            kept -= 1
+        }
+        guard kept < fixes.count else { return fixes.map { ($0.latitude, $0.longitude) } + [coordinate] }
+        let onRoute = shape.path(from: from, to: along)
+        return onRoute.isEmpty ? [coordinate] : onRoute
+    }
+
     /// The next stops, and the path to the last of them. A stop the vehicle is standing at
     /// (within a few metres) counts as passed.
     public func upcoming(stops count: Int = 4) -> (stops: [RouteStop], path: [(latitude: Double, longitude: Double)]) {

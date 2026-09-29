@@ -857,6 +857,30 @@ private func drive(from lon0: Double, step: Double, fixes: Int, lat: Double = ro
     #expect(RouteMatch(shape: westbound, along: westbound.length - 5, speed: 15).advanced(by: 45).along == westbound.length)
 }
 
+@Test func routeMatchLaysTheTrailOnTheStreet() {
+    // Fixes 20 m north of the street, wobbling: the trail runs on the street itself instead.
+    let fixes = (0..<4).map { i in
+        LiveTrails.Point(latitude: routeLat + (i % 2 == 0 ? 0.00018 : 0.00005), longitude: 21.010 + 0.001 * Double(i),
+                         time: fixtureNow + Double(i) * 10)
+    }
+    let m = RouteMatch(shape: forkNorth, along: forkNorth.project((routeLat, 21.0145))!.along, speed: 7)
+    let trail = m.trail(fixes)
+    #expect(trail.allSatisfy { abs($0.latitude - routeLat) < 1e-9 })
+    #expect(abs(trail.first!.longitude - 21.010) < 1e-6 && abs(trail.last!.longitude - 21.0145) < 1e-6)
+    // Round the corner: the trail turns it with the street rather than cutting across.
+    let corner = [LiveTrails.Point(latitude: routeLat, longitude: 21.018, time: fixtureNow)]
+    let north = RouteMatch(shape: forkNorth, along: forkNorth.project((routeLat + 0.002, 21.02))!.along, speed: 7)
+    #expect(north.trail(corner).contains { abs($0.latitude - routeLat) < 1e-9 && abs($0.longitude - 21.02) < 1e-9 })
+    // A fix from before it joined the route (the trip before a loop) is left out.
+    let joined = [LiveTrails.Point(latitude: routeLat + 0.003, longitude: 21.009, time: fixtureNow)] + fixes
+    #expect(m.trail(joined).allSatisfy { abs($0.latitude - routeLat) < 1e-9 })
+    // No fix on the route at all: the raw fixes, then where it is.
+    let off = [LiveTrails.Point(latitude: routeLat + 0.003, longitude: 21.009, time: fixtureNow)]
+    #expect(m.trail(off).count == 2 && abs(m.trail(off)[0].latitude - (routeLat + 0.003)) < 1e-9)
+    // Nothing behind it yet: just where it is.
+    #expect(m.trail([]).count == 1)
+}
+
 @Test func routeMatchListsTheNextStops() {
     let m = RouteMatch(shape: eastbound, along: eastbound.stops[1].along - 50, speed: 8)
     let next = m.upcoming(stops: 3)
