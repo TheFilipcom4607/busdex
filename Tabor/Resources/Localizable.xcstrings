@@ -4113,6 +4113,16 @@
         }
       }
     },
+    "OPEN": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OTWÓRZ"
+          }
+        }
+      }
+    },
     "OPEN MAP": {
       "localizations": {
         "pl": {
@@ -4231,6 +4241,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Jedno stuknięcie i aparat gotowy"
+          }
+        }
+      }
+    },
+    "Open #%lld in the book": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz #%lld w albumie"
           }
         }
       }

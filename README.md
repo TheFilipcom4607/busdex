@@ -219,6 +219,8 @@ it was on. Swipe a sighting to fix its number, model or line, or delete it.
   each geotagged catch in Open-Meteo's archive afterwards. That's the one thing
   TABOR sends off the phone: a catch's time and its rough position (to about
   1 km). It can be switched off in Settings.
+- **Where you spot:** a map of every geotagged catch. Open it and tap a pin
+  for that catch's sticker, when and where it was, and a way to its page.
 - **Share a catch** as a 4:5 card: the sticker under a spotlight in its tier's
   colour, the number tag, and where and on which line you caught it.
 

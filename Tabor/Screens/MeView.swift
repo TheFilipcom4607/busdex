@@ -99,7 +99,10 @@ struct MeView: View {
         }
         .fullScreenCover(isPresented: $showMap) {
             ZStack(alignment: .topLeading) {
-                SpotMap(sightings: sightings, interactive: true).ignoresSafeArea()
+                SpotMap(sightings: sightings, interactive: true) { s in
+                    showMap = false
+                    router.openVehicle(modelId: s.modelId, number: s.number)
+                }
                 Button {
                     showMap = false
                 } label: {
@@ -266,28 +269,109 @@ private struct StatsStrip: View {
 struct SpotMap: View {
     let sightings: [Sighting]
     let interactive: Bool
+    /// Interactive only: a picked catch's OPEN, to its page in the book.
+    var onOpen: ((Sighting) -> Void)?
+    /// The catch whose card is open. Tapping empty map clears it.
+    @State private var selectedId: UUID?
     private static let warsaw = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 52.2297, longitude: 21.0122),
         span: MKCoordinateSpan(latitudeDelta: 0.22, longitudeDelta: 0.22))
 
     var body: some View {
         let pins = sightings.filter { $0.latitude != nil && $0.longitude != nil }
-        Map(initialPosition: pins.isEmpty ? .region(Self.warsaw) : .automatic,
-            interactionModes: interactive ? .all : []) {
-            ForEach(pins) { s in
-                let color = (Fleet.catalog.model(id: s.modelId)?.tier ?? .common).mapColor
-                Annotation("", coordinate: CLLocationCoordinate2D(latitude: s.latitude!, longitude: s.longitude!)) {
-                    ZStack {
-                        Circle().fill(color.opacity(0.28)).frame(width: 22, height: 22).blur(radius: 4)
-                        Circle().fill(color).frame(width: 7, height: 7)
-                            .overlay(Circle().stroke(Palette.bg.opacity(0.8), lineWidth: 2))
+        let selected = pins.first { $0.id == selectedId }
+        ZStack(alignment: .bottom) {
+            Map(initialPosition: pins.isEmpty ? .region(Self.warsaw) : .automatic,
+                interactionModes: interactive ? .all : [],
+                selection: interactive ? $selectedId : .constant(nil)) {
+                ForEach(pins) { s in
+                    let color = (Fleet.catalog.model(id: s.modelId)?.tier ?? .common).mapColor
+                    let picked = s.id == selectedId
+                    Annotation("", coordinate: CLLocationCoordinate2D(latitude: s.latitude!, longitude: s.longitude!)) {
+                        ZStack {
+                            Circle().fill(color.opacity(picked ? 0.45 : 0.28)).frame(width: picked ? 34 : 22, height: picked ? 34 : 22)
+                                .blur(radius: 4)
+                            Circle().fill(color).frame(width: picked ? 13 : 7, height: picked ? 13 : 7)
+                                .overlay(Circle().stroke(picked ? Palette.ink : Palette.bg.opacity(0.8), lineWidth: 2))
+                        }
+                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: picked)
                     }
+                    .annotationTitles(.hidden)
+                    .tag(s.id)
                 }
-                .annotationTitles(.hidden)
+            }
+            .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
+            .environment(\.colorScheme, .dark)
+            .ignoresSafeArea(edges: interactive ? .all : [])
+
+            if let selected, let onOpen {
+                SpotCard(sighting: selected, sightings: sightings) { onOpen(selected) }
+                    .id(selected.id)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 10)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
-        .environment(\.colorScheme, .dark)
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: selectedId)
+        .onChange(of: selectedId) { _, id in if id != nil { Haptics.shared.tick() } }
+    }
+}
+
+/// A catch picked on the full-screen map: its sticker, when and where, and a way to its page.
+private struct SpotCard: View {
+    let sighting: Sighting
+    let sightings: [Sighting]
+    let onOpen: () -> Void
+
+    var body: some View {
+        let s = sighting
+        let model = Fleet.catalog.model(id: s.modelId)
+        let tier = model?.tier ?? .common
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 14) {
+                // This sighting's own sticker, else the vehicle's best.
+                DieCut(number: s.number,
+                       sticker: s.stickerFile ?? sightings.sticker(number: s.number, modelId: s.modelId),
+                       photo: s.photoFile ?? sightings.photo(number: s.number, modelId: s.modelId),
+                       height: 92, tagSize: 11, maxPixel: 420) { EmptyView() }
+                    .frame(width: 128)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(model?.name ?? s.modelId)
+                        .font(TaborFont.grotesk(19, 700))
+                        .em(-0.03, size: 19)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                    Text(VehicleView.stamp.string(from: s.date))
+                        .font(TaborFont.grotesk(13))
+                        .foregroundStyle(Palette.sub)
+                    if let line = s.line {
+                        Mono("LINE \(line)", size: 10.5, weight: 600, color: Palette.routeInk)
+                    }
+                    if let place = [s.street, s.district].compactMap({ $0 }).joined(separator: " · ").nonEmpty {
+                        Mono(place.uppercased(), size: 10.5, color: Palette.dim)
+                            .lineLimit(2)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            Button(action: onOpen) {
+                HStack(spacing: 7) {
+                    Image(systemName: AppTab.book.symbol)
+                        .font(.system(size: 12, weight: .bold))
+                    Mono("OPEN", size: 12, weight: 700, spacing: 0.12, color: tier.onMapColor)
+                }
+                .foregroundStyle(tier.onMapColor)
+                .frame(maxWidth: .infinity)
+                .padding(13)
+                .background(tier.mapColor, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            }
+            .buttonStyle(StickerPressStyle())
+            .accessibilityLabel("Open #\(s.number) in the book")
+        }
+        .padding(16)
+        .background(Palette.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(tier.mapColor.opacity(0.35)))
+        .shadow(color: .black.opacity(0.45), radius: 16, y: 8)
     }
 }
 
