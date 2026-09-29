@@ -72,6 +72,7 @@ final class Router {
 struct RootView: View {
     @State private var router = Router()
     @State private var badges = BadgeTracker()
+    @State private var undo = SightingUndo()
     @Query private var sightings: [Sighting]
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
@@ -86,6 +87,19 @@ struct RootView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(alignment: .bottom) {
+            if undo.pending != nil {
+                UndoToast {
+                    let reopen = undo.closedPage
+                    Haptics.shared.tick()
+                    guard let back = withAnimation(.snappy, { undo.undo(in: context) }) else { return }
+                    if reopen { router.openVehicle(modelId: back.modelId, number: back.number) }
+                }
+                .padding(.bottom, 12)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: undo.pending?.id)
         // An inset rather than a stacked row: lists scroll on under the frosted bar.
         .safeAreaInset(edge: .bottom, spacing: 0) {
             TabBar(selection: $router.tab) { tab in
@@ -95,11 +109,15 @@ struct RootView: View {
         }
         .background(Palette.bg.ignoresSafeArea())
         .environment(router)
+        .environment(undo)
         // Keep the live feed ticking on every tab, so HUNT opens with trails already drawn.
         .onAppear { LiveFleetService.shared.start(LiveFleetService.appClient) }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { LiveFleetService.shared.start(LiveFleetService.appClient) }
-            if phase == .background { LiveFleetService.shared.stop(LiveFleetService.appClient) }
+            if phase == .background {
+                LiveFleetService.shared.stop(LiveFleetService.appClient)
+                undo.finish()
+            }
         }
         // The Lock Screen / Control Center control lands here.
         .onReceive(NotificationCenter.default.publisher(for: .taborOpenCatch)) { _ in

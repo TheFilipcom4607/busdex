@@ -194,7 +194,8 @@ They aren't rare, they're seasonal or passing through.
 
 A vehicle's page has its age, when you first saw it, how many times you've
 seen it, and every sighting: when, where (district and street), and which line
-it was on. Swipe a sighting to fix its number, model or line, or delete it.
+it was on. Swipe a sighting to fix its number, model or line, or delete it. A
+deleted sighting can be brought back with UNDO for a few seconds.
 
 ---
 

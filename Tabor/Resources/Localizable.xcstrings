@@ -2304,16 +2304,6 @@
         }
       }
     },
-    "Delete this sighting?": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Usunąć tę obserwację?"
-          }
-        }
-      }
-    },
     "Dismiss": {
       "localizations": {
         "pl": {
@@ -3205,26 +3195,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wczytaj zdjęcie"
-          }
-        }
-      }
-    },
-    "It's your only sighting of %@, so it leaves your book. Its photo and sticker go too.": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "To twoja jedyna obserwacja #%@, więc zniknie z albumu. Razem ze zdjęciem i naklejką."
-          }
-        }
-      }
-    },
-    "Its photo and sticker go too. Shots already saved to your Photos stay.": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zdjęcie i naklejka też znikną. Ujęcia zapisane już w Zdjęciach zostaną."
           }
         }
       }
@@ -5009,6 +4979,16 @@
         }
       }
     },
+    "Sighting deleted": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obserwacja usunięta"
+          }
+        }
+      }
+    },
     "Snap one and it becomes a sticker in your book. Some models run by the hundred; a few, only a handful. %@ vehicles to find.": {
       "localizations": {
         "pl": {
@@ -5663,6 +5643,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "NIEZŁAPANE, TERAZ NA TRASIE"
+          }
+        }
+      }
+    },
+    "UNDO": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "COFNIJ"
+          }
+        }
+      }
+    },
+    "Undo deleting the sighting": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cofnij usunięcie obserwacji"
           }
         }
       }

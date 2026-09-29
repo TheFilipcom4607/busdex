@@ -10,7 +10,7 @@ struct VehicleView: View {
     @Environment(Router.self) private var router
     @State private var share: CatchShare?
     @State private var editing: Sighting?
-    @State private var deleting: Sighting?
+    @Environment(SightingUndo.self) private var undo
 
     var body: some View {
         let model = Fleet.catalog.model(id: modelId)
@@ -154,13 +154,13 @@ struct VehicleView: View {
                 .contentShape(Rectangle())
                 .plainRow()
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button(role: .destructive) { deleting = s } label: { Label("Delete", systemImage: "trash") }
+                    Button(role: .destructive) { delete(s, wasLast: mine.count == 1) } label: { Label("Delete", systemImage: "trash") }
                     Button { editing = s } label: { Label("Edit", systemImage: "pencil") }
                         .tint(Palette.dim)
                 }
                 .contextMenu {
                     Button { editing = s } label: { Label("Fix number, model or line", systemImage: "pencil") }
-                    Button(role: .destructive) { deleting = s } label: { Label("Delete sighting", systemImage: "trash") }
+                    Button(role: .destructive) { delete(s, wasLast: mine.count == 1) } label: { Label("Delete sighting", systemImage: "trash") }
                 }
             }
 
@@ -184,20 +184,6 @@ struct VehicleView: View {
                 if moved { router.openVehicle(modelId: s.modelId, number: s.number) }
             }
         }
-        .confirmationDialog("Delete this sighting?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
-                            titleVisibility: .visible, presenting: deleting) { s in
-            Button("Delete sighting", role: .destructive) {
-                let wasLast = mine.count == 1
-                context.deleteSighting(s)
-                try? context.save()
-                Haptics.shared.nope()
-                if wasLast { dismiss() }
-            }
-        } message: { s in
-            Text(mine.count == 1
-                 ? "It's your only sighting of \(String(s.number)), so it leaves your book. Its photo and sticker go too."
-                 : "Its photo and sticker go too. Shots already saved to your Photos stay.")
-        }
         // Render the share card up front so SHARE opens instantly.
         .task(id: mine.first?.id) {
             guard let latest = mine.first else { return share = nil }
@@ -206,6 +192,14 @@ struct VehicleView: View {
                                     photo: sightings.photo(number: number, modelId: modelId),
                                     owned: sightings.stats.ownedCount(modelId: modelId))
         }
+    }
+
+    /// No dialog: it goes at once, and the toast at the bottom can bring it back.
+    private func delete(_ s: Sighting, wasLast: Bool) {
+        withAnimation { undo.delete(s, in: context, closingPage: wasLast) }
+        Haptics.shared.nope()
+        // Its only sighting: the vehicle has left the book, so its page goes too.
+        if wasLast { dismiss() }
     }
 
     private func age(_ year: Int?) -> String {
