@@ -420,9 +420,6 @@ struct SettingsSheet: View {
                 if showsDebug {
                     Section {
                         Toggle("Debug mode", isOn: $debugMode)
-                        if debugMode {
-                            NavigationLink("Haptics lab") { HapticsLab() }
-                        }
                         if debugMode || debugCount > 0 {
                             LabeledContent("Logged shots", value: "\(debugCount)")
                             Button(exporting ? "Zipping…" : "Share as ZIP") {
@@ -540,23 +537,6 @@ struct SettingsSheet: View {
                 debugCount = 0
             }
         }
-    }
-}
-
-/// Plays every haptic moment on demand, for tuning on a real phone.
-struct HapticsLab: View {
-    var body: some View {
-        List {
-            Section {
-                ForEach(Haptics.shared.labMoments, id: \.name) { m in
-                    Button(m.name, action: m.play)
-                }
-            } footer: {
-                Text("Tap each one a few times. Tell Claude which feel wrong and what they remind you of — too buzzy, too weak, too long, late, like a phone ringing…")
-            }
-        }
-        .navigationTitle("Haptics lab")
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

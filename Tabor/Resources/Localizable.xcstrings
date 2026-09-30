@@ -2995,16 +2995,6 @@
         }
       }
     },
-    "Haptics lab": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Haptics lab"
-          }
-        }
-      }
-    },
     "Heatwave": {
       "localizations": {
         "pl": {
@@ -5287,16 +5277,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Stuknij Edycja w lewym górnym rogu, a potem Dodaj widżet."
-          }
-        }
-      }
-    },
-    "Tap each one a few times. Tell Claude which feel wrong and what they remind you of — too buzzy, too weak, too long, late, like a phone ringing…": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tap each one a few times. Tell Claude which feel wrong and what they remind you of — too buzzy, too weak, too long, late, like a phone ringing…"
           }
         }
       }

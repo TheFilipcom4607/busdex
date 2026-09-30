@@ -256,51 +256,6 @@ final class Haptics {
         holdStep = -1
     }
 
-    // MARK: - Lab
-
-    /// Every moment, for tuning on a real phone (Me → Settings → Haptics lab).
-    var labMoments: [(name: String, play: () -> Void)] {
-        [
-            ("Tick (chips, toggles)", { self.tick() }),
-            ("Number locked", { self.numberLocked(isNew: false) }),
-            ("Number locked · new", { self.numberLocked(isNew: true) }),
-            ("Shutter", { self.shutter() }),
-            ("Reveal · common", { self.reveal(tier: .common, isNewModel: false) }),
-            ("Reveal · common, new model", { self.reveal(tier: .common, isNewModel: true) }),
-            ("Reveal · rare", { self.reveal(tier: .rare, isNewModel: false) }),
-            ("Reveal · gold", { self.reveal(tier: .gold, isNewModel: false) }),
-            ("Reveal · legendary", { self.reveal(tier: .legendary, isNewModel: false) }),
-            ("Reveal · vintage", { self.reveal(tier: .vintage, isNewModel: false) }),
-            ("Reveal · on test", { self.reveal(tier: .onTest, isNewModel: true) }),
-            ("Hold to stick (0.55 s)", { self.demoHold() }),
-            ("Stick", { self.stick() }),
-            ("Completed", { self.completed() }),
-            ("Nope", { self.nope() }),
-            ("Digit", { self.detent() }),
-            ("Sticker press", { self.press() }),
-            ("Badge · bronze", { self.badgeUnlocked(medal: .bronze, secret: false) }),
-            ("Badge · gold", { self.badgeUnlocked(medal: .gold, secret: false) }),
-            ("Badge · platinum", { self.badgeUnlocked(medal: .platinum, secret: false) }),
-            ("Badge · secret", { self.badgeUnlocked(medal: .gold, secret: true) }),
-            ("Medal spin tick", { self.medalTick() }),
-            ("Locked badge", { self.locked() }),
-        ]
-    }
-
-    private func demoHold() {
-        beginHold()
-        Task { @MainActor in
-            let start = Date()
-            while true {
-                let p = Date().timeIntervalSince(start) / 0.55
-                if p >= 1 { break }
-                updateHold(progress: p)
-                try? await Task.sleep(for: .milliseconds(16))
-            }
-            endHold()
-        }
-    }
-
     // MARK: - Building blocks
 
     private func tap(_ t: TimeInterval, _ intensity: Float, _ sharpness: Float) -> CHHapticEvent {
