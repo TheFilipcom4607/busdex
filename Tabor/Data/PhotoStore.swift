@@ -47,7 +47,38 @@ enum PhotoStore {
         cache.removeAllObjects()
     }
 
-    /// "heic" for library imports shot on an iPhone, "jpg" for camera catches — so shared
+    /// The book's own copy of a catch: the app never shows it bigger than a screen, so it keeps
+    /// 1600 px on the long side as HEIC, 300–400 KB instead of 1–2 MB of JPEG (JPEG at the same
+    /// size would need to look visibly worse). Upright, with its metadata. The shot saved to
+    /// Photos stays full size. Nil if it can't be re-encoded or wouldn't be smaller.
+    static func compact(_ data: Data, maxPixel: Int = 1600, quality: Double = 0.6) -> Data? {
+        guard let src = CGImageSourceCreateWithData(data as CFData, nil),
+              var props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any]
+        else { return nil }
+        let opts: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+        ]
+        guard let image = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) else { return nil }
+        // Drawn upright already: drop the rotation and the old size from the metadata.
+        props[kCGImagePropertyOrientation] = 1
+        if var tiff = props[kCGImagePropertyTIFFDictionary] as? [CFString: Any] {
+            tiff[kCGImagePropertyTIFFOrientation] = 1
+            props[kCGImagePropertyTIFFDictionary] = tiff
+        }
+        props[kCGImagePropertyPixelWidth] = nil
+        props[kCGImagePropertyPixelHeight] = nil
+        props[kCGImageDestinationLossyCompressionQuality] = quality
+        let out = NSMutableData()
+        guard let dest = CGImageDestinationCreateWithData(out, UTType.heic.identifier as CFString, 1, nil) else { return nil }
+        CGImageDestinationAddImage(dest, image, props as CFDictionary)
+        guard CGImageDestinationFinalize(dest) else { return nil }
+        // Already small (an old or low-res photo): the original is as good and no bigger.
+        return out.length < data.count ? out as Data : nil
+    }
+
+    /// "heic" for the book's own copies and imports shot on an iPhone, "jpg" for other shots — so shared
     /// files open everywhere with the right type.
     static func fileExtension(of data: Data) -> String {
         guard let src = CGImageSourceCreateWithData(data as CFData, nil),

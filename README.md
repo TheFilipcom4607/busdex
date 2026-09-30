@@ -280,6 +280,9 @@ Settings › Backup exports the whole book as a ZIP: every sighting, photo, stic
 and hand-picked model. Importing a backup only adds what's missing, so importing
 the same file twice changes nothing.
 
+The book keeps its own copy of each catch's photo at 1600 px, a few hundred KB
+as HEIC. The shot saved to Photos stays full size.
+
 Location is only used while the app is on screen: it geotags a catch and tells
 HUNT and the camera what's nearby. There's no background location mode at all.
 

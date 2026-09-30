@@ -462,6 +462,20 @@ struct RevealView: View {
             context.assign(number: number, to: model.id, existing: manual)
         }
         try? context.save()
+        // Shrinking a full-size shot takes a moment: off the main thread, then the sighting
+        // points at the small copy (HEIC, so a new name) and the full-size one goes.
+        if let file = s.photoFile {
+            let original = draft.photo
+            Task { @MainActor in
+                guard let small = await Task.detached(priority: .utility, operation: { PhotoStore.compact(original) }).value,
+                      // Deleted (or edited) meanwhile: leave it be.
+                      !s.isDeleted, s.modelContext != nil, s.photoFile == file,
+                      let smallFile = PhotoStore.save(small, ext: "heic") else { return }
+                s.photoFile = smallFile
+                try? context.save()
+                PhotoStore.delete(file)
+            }
+        }
         // After the reveal, never during it: the Photos permission prompt may appear here.
         if draft.fromCamera, saveToGallery {
             let data = draft.photo
