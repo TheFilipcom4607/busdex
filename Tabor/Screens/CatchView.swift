@@ -43,6 +43,9 @@ struct CatchView: View {
     @State private var draft: CatchDraft?
     @State private var flash = false
     @State private var capturing = false
+    /// The shot being read, held still in the brackets until the reveal opens: the live
+    /// preview carrying on looked like the shutter hadn't fired.
+    @State private var frozen: UIImage?
     @State private var pickerItem: PhotosPickerItem?
     @State private var focusPoint: CGPoint?
     @State private var shutterDown = false
@@ -87,6 +90,10 @@ struct CatchView: View {
                 }
                 .ignoresSafeArea(edges: .top)
 
+            Color.black.opacity(frozen == nil ? 0 : 0.6)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+
             LinearGradient(stops: [
                 .init(color: Color(hex: 0x060709, opacity: 0.8), location: 0),
                 .init(color: Color(hex: 0x060709, opacity: 0.05), location: 0.24),
@@ -110,6 +117,7 @@ struct CatchView: View {
                 // A 3:2 landscape frame, like a photo: the shot is cropped to it.
                 ViewfinderBrackets(locked: camera.reading != nil)
                     .opacity(camera.status == .running ? 1 : 0)
+                    .overlay { frozenShot }
                     .aspectRatio(3 / 2, contentMode: .fit)
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
                         bracketGlobal = $0
@@ -184,6 +192,7 @@ struct CatchView: View {
         }
         .sheet(isPresented: $showControlHowTo) { CatchControlHowTo() }
         .fullScreenCover(item: $draft, onDismiss: {
+            frozen = nil
             camera.resetReading()
             if visible { Task { await camera.start() } }
         }) { d in
@@ -193,6 +202,26 @@ struct CatchView: View {
     }
 
     // MARK: - Pieces
+
+    @ViewBuilder private var frozenShot: some View {
+        if let frozen {
+            Image(uiImage: frozen)
+                .resizable()
+                .scaledToFill()
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay {
+                    ProgressView()
+                        .controlSize(.large)
+                        .tint(.white)
+                        .padding(18)
+                        .background(.black.opacity(0.45), in: Circle())
+                }
+                .shadow(color: .black.opacity(0.5), radius: 16, y: 8)
+                .transition(.scale(scale: 1.04).combined(with: .opacity))
+                .accessibilityElement()
+                .accessibilityLabel(Text("READING THE NUMBER…"))
+        }
+    }
 
     private var noCameraSymbol: String {
         switch camera.status {
@@ -614,6 +643,10 @@ struct CatchView: View {
     }
 
     private func begin(with data: Data, live: Int?, fromCamera: Bool, record: DebugRecord? = nil) async {
+        let preview = await Task.detached(priority: .userInitiated) {
+            PhotoStore.downsample(data, maxPixel: 900).map(UIImage.init(cgImage:))
+        }.value
+        withAnimation(.easeOut(duration: 0.2)) { frozen = preview }
         let record = record ?? DebugRecord.begin(source: fromCamera ? "camera" : "import", mode: mode)
         record?.attach(photo: data)
         // Start cutting the sticker immediately; it finishes while the reveal builds up.
@@ -656,9 +689,6 @@ struct CatchView: View {
                 }
             }
         }
-        let preview = await Task.detached(priority: .userInitiated) {
-            PhotoStore.downsample(data, maxPixel: 900).map(UIImage.init(cgImage:))
-        }.value
         var d = CatchDraft(photo: data, number: number, fromCamera: fromCamera, sticker: sticker, preview: preview,
                            debug: record)
         if let n = number {
