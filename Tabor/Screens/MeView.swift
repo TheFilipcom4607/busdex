@@ -94,7 +94,9 @@ struct MeView: View {
         .taborScreen()
         .sheet(isPresented: $showSettings) { SettingsSheet() }
         .sheet(isPresented: $showWidgetHowTo) { WidgetHowTo() }
-        .task {
+        // Every time ME comes up, not once: the tab stays alive behind the others.
+        .task(id: router.tab == .me) {
+            guard router.tab == .me else { return }
             if !widgetTipSeen, await WidgetTip.anyInstalled() { widgetTipSeen = true }
         }
         .fullScreenCover(isPresented: $showMap) {

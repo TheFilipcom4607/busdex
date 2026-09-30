@@ -73,19 +73,22 @@ struct RootView: View {
     @State private var router = Router()
     @State private var badges = BadgeTracker()
     @State private var undo = SightingUndo()
+    /// Tabs opened so far. They stay alive behind the current one, so switching back is
+    /// instant and keeps where you were: HUNT's map and pins, how far down the book you were.
+    @State private var opened: Set<AppTab> = []
     @Query private var sightings: [Sighting]
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
-            switch router.tab {
-            case .catchTab: CatchView()
-            case .hunt: HuntView()
-            case .book: BookTab()
-            case .me: MeView()
-            }
+            // CATCH goes when you leave it: that's what turns the camera off.
+            if router.tab == .catchTab { CatchView() }
+            if keeps(.hunt) { HuntView().tabLayer(on: router.tab == .hunt) }
+            if keeps(.book) { BookTab().tabLayer(on: router.tab == .book) }
+            if keeps(.me) { MeView().tabLayer(on: router.tab == .me) }
         }
+        .onChange(of: router.tab, initial: true) { _, tab in opened.insert(tab) }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay(alignment: .bottom) {
             if undo.pending != nil {
@@ -166,6 +169,8 @@ struct RootView: View {
         .task(id: widgetKey) { await WidgetBridge.publish(sightings) }
     }
 
+    private func keeps(_ tab: AppTab) -> Bool { router.tab == tab || opened.contains(tab) }
+
     private var widgetKey: String {
         let latest = sightings.max { $0.date < $1.date }
         let vehicles = Set(sightings.map { "\($0.modelId)#\($0.number)" }).count
@@ -188,6 +193,16 @@ struct BookTab: View {
                     }
                 }
         }
+    }
+}
+
+private extension View {
+    /// A kept-alive tab: on top when it's the current one, otherwise invisible and out of the way.
+    func tabLayer(on: Bool) -> some View {
+        opacity(on ? 1 : 0)
+            .allowsHitTesting(on)
+            .accessibilityHidden(!on)
+            .zIndex(on ? 1 : 0)
     }
 }
 

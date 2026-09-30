@@ -114,17 +114,20 @@ struct HuntView: View {
         .sheet(isPresented: $showFilters) {
             HuntFilterSheet(targets: $targets, running: cityWide(), hasFix: hasFix)
         }
-        .onAppear {
+        // The tab stays alive behind the others once opened, so it comes back at once: the
+        // fast polling and the refreshes only run while it's the one on screen.
+        .onChange(of: onScreen, initial: true) { _, on in
+            guard on else { return live.stop("hunt") }
             live.start("hunt")
             routes.prepare()
             centerOnceOnYou()
             // Models a fleet update dropped can't match anything; don't leave them as ghost chips.
             let known = targets.models.filter { catalog.model(id: $0) != nil }
             if known != targets.models { targets.models = known }
+            recompute(animated: false)
         }
-        .onDisappear { live.stop("hunt") }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { live.start("hunt") }
+            if phase == .active, onScreen { live.start("hunt") }
             if phase == .background { live.stop("hunt") }
         }
         .onChange(of: live.snapshot?.fetched, initial: true) { recompute(animated: true) }
@@ -135,7 +138,7 @@ struct HuntView: View {
         }
         .onChange(of: sightings.count) { recompute(animated: false) }
         .onChange(of: routes.book?.feed) { recompute(animated: false) }
-        .task(id: selectedId) { await creep() }
+        .task(id: onScreen ? selectedId : nil) { await creep() }
         .onChange(of: picked) {
             selectedId = nil
             openGroup = nil
@@ -735,7 +738,10 @@ struct HuntView: View {
                            from: user.map { ($0.latitude, $0.longitude) })
     }
 
+    private var onScreen: Bool { router.tab == .hunt }
+
     private func recompute(animated: Bool) {
+        guard onScreen else { return }
         let user = location.recent(maxAge: 300)?.coordinate
         guard let snapshot = live.snapshot, let center = mapCenter ?? user else { return }
         // Half the visible diagonal, and never less than the 3 km the list needs.
