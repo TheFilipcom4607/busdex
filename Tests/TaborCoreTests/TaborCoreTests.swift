@@ -1255,3 +1255,25 @@ private let n13 = catalog.model(id: "tram-konstal-13n")!
     let old = Data(#"{"version":1,"exported":"2026-09-01T10:00:00Z","manual":[],"sightings":[{"id":"\#(UUID().uuidString)","number":1281,"modelId":"x","date":"2026-09-01T10:00:00Z"}]}"#.utf8)
     #expect(try BackupManifest.decode(old).sightings.first?.pairedWith == nil)
 }
+
+// MARK: - Erasing people
+
+/// A 10×6 mask, row by row: "#" is in.
+private func mask(_ rows: [String]) -> [UInt8] { rows.joined().map { $0 == "#" ? 255 : 0 } }
+
+@Test func erasingSomeoneMidVehicleIsABite() {
+    // A bus with someone standing in front of its middle (columns 4–5).
+    let before = mask(["##########", "##########", "##########", "##########", "##########", "....##...."])
+    let after = mask(["##########", "####..####", "####..####", "####..####", "####..####", ".........."])
+    let person = CGRect(x: 0.4, y: 1.0 / 6, width: 0.2, height: 5.0 / 6)
+    let share = Notch.shares(before: before, after: after, width: 10, height: 6, boxes: [person])[0]
+    #expect(share > Notch.limit)
+}
+
+@Test func erasingSomeoneAtTheEndIsClean() {
+    // Someone at the bus's left end: the bus carries on to one side of them only.
+    let before = mask(["##########", "##########", "##########", "##########", "##########", "##........"])
+    let after = mask(["..########", "..########", "..########", "..########", "..########", ".........."])
+    let person = CGRect(x: 0, y: 0, width: 0.2, height: 1)
+    #expect(Notch.shares(before: before, after: after, width: 10, height: 6, boxes: [person]) == [0])
+}

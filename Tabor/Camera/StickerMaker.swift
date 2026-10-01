@@ -191,7 +191,8 @@ enum StickerMaker {
         return (people.map { lift.people[$0] }, grown, below)
     }
 
-    /// One object of the lift as a sticker, without anyone standing in front of it.
+    /// One object of the lift as a sticker, without anyone standing in front of it, unless
+    /// erasing them would bite into it (see `Notch`).
     static func cut(_ lift: Lift, instance: Int, options: Options = Options()) -> Result<CGImage, Failure> {
         let cg = lift.image
         var maskBuffer: CVPixelBuffer
@@ -204,9 +205,22 @@ enum StickerMaker {
         let image = CIImage(cgImage: cg)
         let full = image.extent
         let erase = standing(in: lift, instance: instance)
-        if !erase.people.isEmpty, let people = lift.personMask,
-           let without = erasing(erase.people, outside: erase.outline, below: erase.below, people: people, from: maskBuffer, extent: full) {
-            maskBuffer = without
+        if !erase.people.isEmpty, let people = lift.personMask {
+            // Whoever would leave a bite stays; the rest are erased again without them.
+            var gone = erase.people
+            while !gone.isEmpty {
+                let below = erase.below.filter { b in gone.contains { abs($0.midX - b.midX) < 1e-6 } }
+                guard let without = erasing(gone, outside: erase.outline, below: below, people: people,
+                                            from: maskBuffer, extent: full) else { break }
+                let shares = Notch.shares(before: bytes(maskBuffer), after: bytes(without),
+                                          width: Int(full.width), height: Int(full.height), boxes: gone)
+                let clean = zip(gone, shares).filter { $0.1 <= Notch.limit }.map(\.0)
+                if clean.count == gone.count {
+                    maskBuffer = without
+                    break
+                }
+                gone = clean
+            }
         }
         guard let box = boundingBox(of: maskBuffer), box.width > 20, box.height > 20 else { return .failure(.tinySubject) }
 
@@ -349,6 +363,25 @@ enum StickerMaker {
         guard let dest = CGImageDestinationCreateWithData(data, "public.png" as CFString, 1, nil) else { return nil }
         CGImageDestinationAddImage(dest, image, nil)
         return CGImageDestinationFinalize(dest) ? data as Data : nil
+    }
+
+    /// The mask as one byte a pixel, row by row, whichever format it came in.
+    private static func bytes(_ buf: CVPixelBuffer) -> [UInt8] {
+        CVPixelBufferLockBaseAddress(buf, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(buf, .readOnly) }
+        let w = CVPixelBufferGetWidth(buf), h = CVPixelBufferGetHeight(buf)
+        guard let base = CVPixelBufferGetBaseAddress(buf) else { return [UInt8](repeating: 0, count: w * h) }
+        let stride = CVPixelBufferGetBytesPerRow(buf)
+        let isFloat = CVPixelBufferGetPixelFormatType(buf) == kCVPixelFormatType_OneComponent32Float
+        var out = [UInt8](repeating: 0, count: w * h)
+        for y in 0..<h {
+            let row = base.advanced(by: y * stride)
+            for x in 0..<w {
+                out[y * w + x] = isFloat ? UInt8(max(0, min(1, row.assumingMemoryBound(to: Float.self)[x])) * 255)
+                                         : row.assumingMemoryBound(to: UInt8.self)[x]
+            }
+        }
+        return out
     }
 
     /// Bounding box of the mask in top-left-origin pixel coordinates.
