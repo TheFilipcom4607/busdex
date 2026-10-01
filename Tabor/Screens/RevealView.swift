@@ -208,6 +208,8 @@ struct RevealView: View {
             .frame(maxWidth: .infinity)
             .padding(14)
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.14)))
+            // A plain button only takes taps on what's drawn: make the whole box count.
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     /// The lifter found more than one object and kept the wrong one: cut the next instead.
