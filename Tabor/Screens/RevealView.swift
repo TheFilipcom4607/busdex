@@ -251,6 +251,8 @@ struct RevealView: View {
         }
         .frame(width: 286, height: 196)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        // A tall imported photo would otherwise take taps outside the card.
+        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
             .fill(Color.white.opacity(developing ? 0.45 * (1 - charge) + 0.12 : 0)))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.white.opacity(0.14)))

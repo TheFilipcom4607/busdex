@@ -18,6 +18,9 @@ struct CatchPhoto: View {
                         .scaledToFill()
                         .frame(width: geo.size.width, height: geo.size.height)
                         .clipped()
+                        // Clipping only hides the overflow; without this a tall photo still takes
+                        // taps meant for whatever sits above or below it (BACK and SHARE on a vehicle page).
+                        .contentShape(Rectangle())
                 } else if let placeholder {
                     Mono(placeholder, size: 11, spacing: 0.04, color: Palette.stickerCount)
                 }
