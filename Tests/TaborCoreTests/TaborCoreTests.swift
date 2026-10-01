@@ -1102,6 +1102,8 @@ private func subject(_ label: Int, pixels: Int, x: Double, y: Double, w: Double,
     #expect(pick?.order == [2, 1])
     #expect(pick?.reason == .largest)
     #expect(SubjectPicker.rank([], numberBox: nil) == nil)
+    // The number was read but the bus wasn't lifted: no sticker beats a portrait.
+    #expect(SubjectPicker.rank([small, big], numberBox: CGRect(x: 0.6, y: 0.5, width: 0.05, height: 0.03)) == nil)
     // Crumbs aren't offered as other cut-outs.
     let crumb = subject(3, pixels: 50, x: 0.9, y: 0.9, w: 0.01, h: 0.01)
     #expect(SubjectPicker.rank([big, crumb], numberBox: nil, framePixels: 10_000)?.order == [2])

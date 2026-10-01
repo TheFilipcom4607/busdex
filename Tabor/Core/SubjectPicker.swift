@@ -32,7 +32,7 @@ public enum PickReason: String, Codable, Sendable {
     case notPerson
     /// No number, no people: the biggest object, weighted towards the middle.
     case central
-    /// Only people: the biggest of them.
+    /// Only people, and no number read: the biggest of them.
     case largest
 }
 
@@ -49,7 +49,9 @@ public enum SubjectPicker {
     /// and not offered as other cut-outs.
     static let minAlternative = 0.01
 
-    /// Every object worth offering, best first, and why the first one won. Nil without any.
+    /// Every object worth offering, best first, and why the first one won. Nil without any,
+    /// and nil when a number was read but only people were lifted: the vehicle itself wasn't,
+    /// and a catch of it shouldn't come out as somebody's portrait.
     /// `numberBox` is the fleet number's box (normalised, top-left), when it was read.
     public static func rank(_ subjects: [Subject], numberBox: CGRect?,
                             framePixels: Int? = nil) -> (order: [Int], reason: PickReason)? {
@@ -77,7 +79,7 @@ public enum SubjectPicker {
             first = s
             reason = people.isEmpty ? .central : .notPerson
         }
-        if first == nil, let s = subjects.max(by: { $0.pixels < $1.pixels }) {
+        if first == nil, numberBox == nil, let s = subjects.max(by: { $0.pixels < $1.pixels }) {
             first = s
             reason = .largest
         }

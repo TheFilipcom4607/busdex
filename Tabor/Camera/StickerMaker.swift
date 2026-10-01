@@ -18,13 +18,14 @@ enum StickerMaker {
 
     /// Why no sticker came out — recorded by debug mode.
     enum Failure: Error, CustomStringConvertible {
-        case decode, lifting(String), noSubject, mask(String), tinySubject, render
+        case decode, lifting(String), noSubject, onlyPeople, mask(String), tinySubject, render
 
         var description: String {
             switch self {
             case .decode: "couldn't decode the photo"
             case .lifting(let e): "subject lifting failed: \(e)"
             case .noSubject: "no subject found"
+            case .onlyPeople: "only people lifted, none with the number on"
             case .mask(let e): "mask generation failed: \(e)"
             case .tinySubject: "subject too small"
             case .render: "rendering the sticker failed"
@@ -374,7 +375,9 @@ struct StickerCut: Sendable {
 
     /// The best object, falling to the next whenever one won't cut (too small, say).
     static func make(_ lift: StickerMaker.Lift, numberBox: CGRect?) -> Result<StickerCut, StickerMaker.Failure> {
-        guard let pick = StickerMaker.rank(lift, numberBox: numberBox) else { return .failure(.noSubject) }
+        guard let pick = StickerMaker.rank(lift, numberBox: numberBox) else {
+            return .failure(lift.observation.allInstances.isEmpty ? .noSubject : .onlyPeople)
+        }
         var failure = StickerMaker.Failure.noSubject
         for (i, label) in pick.order.enumerated() {
             switch StickerMaker.cut(lift, instance: label) {
