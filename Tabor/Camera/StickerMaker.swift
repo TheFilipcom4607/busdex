@@ -48,6 +48,15 @@ enum StickerMaker {
             self.handler = handler
             self.people = people
         }
+
+        /// Exactly which pixels are people, worked out the first time a cut needs it.
+        private(set) lazy var personMask: CVPixelBuffer? = {
+            let request = VNGeneratePersonSegmentationRequest()
+            request.qualityLevel = .accurate
+            request.outputPixelFormat = kCVPixelFormatType_OneComponent8
+            try? handler.perform([request])
+            return request.results?.first?.pixelBuffer
+        }()
     }
 
     static func lift(_ data: Data, options: Options = Options()) -> Result<Lift, Failure> {
@@ -126,10 +135,51 @@ enum StickerMaker {
                                   framePixels: CVPixelBufferGetWidth(buf) * CVPixelBufferGetHeight(buf))
     }
 
-    /// One object of the lift as a sticker.
+    /// People who stand out of the object's outline, as in front of the bus: the lifter
+    /// merges whoever touches the bus into it. Passengers behind the windows sit inside
+    /// the outline, so they stay. Also returns that outline (without the people).
+    static func standing(in lift: Lift, instance: Int) -> (people: [CGRect], outline: CGRect) {
+        let none = ([CGRect](), CGRect.zero)
+        guard !lift.people.isEmpty else { return none }
+        let buf = lift.observation.instanceMask
+        CVPixelBufferLockBaseAddress(buf, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(buf, .readOnly) }
+        guard let base = CVPixelBufferGetBaseAddress(buf) else { return none }
+        let w = CVPixelBufferGetWidth(buf), h = CVPixelBufferGetHeight(buf)
+        let stride = CVPixelBufferGetBytesPerRow(buf)
+        let boxes = lift.people.map { r in
+            (x0: Int(r.minX * CGFloat(w)), x1: Int(r.maxX * CGFloat(w)), y0: Int(r.minY * CGFloat(h)), y1: Int(r.maxY * CGFloat(h)))
+        }
+        // The outline of the object without the people, and how much of it each person is.
+        var minX = w, minY = h, maxX = -1, maxY = -1, pixels = 0
+        var inside = [Int](repeating: 0, count: boxes.count)
+        for y in 0..<h {
+            let row = base.advanced(by: y * stride).assumingMemoryBound(to: UInt8.self)
+            for x in 0..<w where Int(row[x]) == instance {
+                pixels += 1
+                var person = false
+                for (i, b) in boxes.enumerated() where x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1 {
+                    inside[i] += 1
+                    person = true
+                }
+                if !person {
+                    minX = min(minX, x); maxX = max(maxX, x)
+                    minY = min(minY, y); maxY = max(maxY, y)
+                }
+            }
+        }
+        // Mostly people (or nothing but): it's a person's sticker, leave it whole.
+        guard maxX >= minX, Double(inside.reduce(0, +)) < Double(pixels) * SubjectPicker.personLimit else { return none }
+        let outline = CGRect(x: CGFloat(minX) / CGFloat(w), y: CGFloat(minY) / CGFloat(h),
+                             width: CGFloat(maxX - minX + 1) / CGFloat(w), height: CGFloat(maxY - minY + 1) / CGFloat(h))
+        let grown = outline.insetBy(dx: -outline.width * 0.05, dy: -outline.height * 0.05)
+        return (lift.people.indices.filter { inside[$0] > 0 && !grown.contains(lift.people[$0]) }.map { lift.people[$0] }, grown)
+    }
+
+    /// One object of the lift as a sticker, without anyone standing in front of it.
     static func cut(_ lift: Lift, instance: Int, options: Options = Options()) -> Result<CGImage, Failure> {
         let cg = lift.image
-        let maskBuffer: CVPixelBuffer
+        var maskBuffer: CVPixelBuffer
         do {
             maskBuffer = try lift.observation.generateScaledMaskForImage(forInstances: [instance], from: lift.handler)
         } catch {
@@ -138,6 +188,11 @@ enum StickerMaker {
 
         let image = CIImage(cgImage: cg)
         let full = image.extent
+        let erase = standing(in: lift, instance: instance)
+        if !erase.people.isEmpty, let people = lift.personMask,
+           let without = erasing(erase.people, outside: erase.outline, people: people, from: maskBuffer, extent: full) {
+            maskBuffer = without
+        }
         guard let box = boundingBox(of: maskBuffer), box.width > 20, box.height > 20 else { return .failure(.tinySubject) }
 
         // The white border scales with the subject, not the photo.
@@ -180,6 +235,37 @@ enum StickerMaker {
                                               colorSpace: CGColorSpace(name: CGColorSpace.sRGB))
         else { return .failure(.render) }
         return .success(out)
+    }
+
+    /// The mask minus the people's own pixels inside `boxes` (normalised, top-left origin),
+    /// grown a little so no fringe of them is left on the edge, and minus whatever else of
+    /// those boxes lies outside the object's `outline`: crumbs of shoe or shadow.
+    private static func erasing(_ boxes: [CGRect], outside outline: CGRect, people: CVPixelBuffer,
+                                from mask: CVPixelBuffer, extent full: CGRect) -> CVPixelBuffer? {
+        // Core Image counts from the bottom.
+        let pixels = { (b: CGRect) in
+            CGRect(x: b.minX * full.width, y: (1 - b.maxY) * full.height, width: b.width * full.width, height: b.height * full.height)
+        }
+        let p = CIImage(cvPixelBuffer: people)
+        let scaled = p.transformed(by: CGAffineTransform(scaleX: full.width / p.extent.width, y: full.height / p.extent.height))
+        let black = CIImage(color: .black).cropped(to: full)
+        let area = boxes.reduce(black) { CIImage(color: .white).cropped(to: pixels($1)).composited(over: $0) }
+        let grow = CIFilter.morphologyMaximum()
+        grow.inputImage = scaled.applyingFilter("CIMultiplyCompositing", parameters: [kCIInputBackgroundImageKey: area])
+        grow.radius = Float(max(2, full.width * 0.004))
+        guard let person = grow.outputImage?.cropped(to: full) else { return nil }
+        let beyond = CIImage(color: .black).cropped(to: pixels(outline)).composited(over: area)
+        let keep = person.applyingFilter("CIMaximumCompositing", parameters: [kCIInputBackgroundImageKey: beyond])
+            .cropped(to: full)
+            .applyingFilter("CIColorInvert")
+        let out = CIImage(cvPixelBuffer: mask)
+            .applyingFilter("CIMultiplyCompositing", parameters: [kCIInputBackgroundImageKey: keep])
+            .cropped(to: full)
+        var buffer: CVPixelBuffer?
+        CVPixelBufferCreate(nil, Int(full.width), Int(full.height), kCVPixelFormatType_OneComponent8, nil, &buffer)
+        guard let buffer else { return nil }
+        context.render(out, to: buffer, bounds: full, colorSpace: nil)
+        return buffer
     }
 
     static func pngData(_ image: CGImage) -> Data? {
