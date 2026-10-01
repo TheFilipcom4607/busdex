@@ -138,9 +138,11 @@ enum StickerMaker {
 
     /// People who stand out of the object's outline, as in front of the bus: the lifter
     /// merges whoever touches the bus into it. Passengers behind the windows sit inside
-    /// the outline, so they stay. Also returns that outline (without the people).
-    static func standing(in lift: Lift, instance: Int) -> (people: [CGRect], outline: CGRect) {
-        let none = ([CGRect](), CGRect.zero)
+    /// the outline, so they stay. Also returns that outline (without the people), and
+    /// `below`: the ground around each of those people under the vehicle's bottom edge, where
+    /// what they ride or stand by (a bike, a pole's foot) sticks out.
+    static func standing(in lift: Lift, instance: Int) -> (people: [CGRect], outline: CGRect, below: [CGRect]) {
+        let none = ([CGRect](), CGRect.zero, [CGRect]())
         guard !lift.people.isEmpty else { return none }
         let buf = lift.observation.instanceMask
         CVPixelBufferLockBaseAddress(buf, .readOnly)
@@ -151,6 +153,10 @@ enum StickerMaker {
         let boxes = lift.people.map { r in
             (x0: Int(r.minX * CGFloat(w)), x1: Int(r.maxX * CGFloat(w)), y0: Int(r.minY * CGFloat(h)), y1: Int(r.maxY * CGFloat(h)))
         }
+        // A bike reaches out sideways from its rider; the vehicle's bottom edge is measured
+        // away from all that.
+        let around = boxes.map { b in (x0: b.x0 - (b.x1 - b.x0), x1: b.x1 + (b.x1 - b.x0)) }
+        var bottom = -1
         // The outline of the object without the people, and how much of it each person is.
         var minX = w, minY = h, maxX = -1, maxY = -1, pixels = 0
         var inside = [Int](repeating: 0, count: boxes.count)
@@ -167,6 +173,7 @@ enum StickerMaker {
                     minX = min(minX, x); maxX = max(maxX, x)
                     minY = min(minY, y); maxY = max(maxY, y)
                 }
+                if !around.contains(where: { x >= $0.x0 && x < $0.x1 }) { bottom = max(bottom, y) }
             }
         }
         // Mostly people (or nothing but): it's a person's sticker, leave it whole.
@@ -174,7 +181,14 @@ enum StickerMaker {
         let outline = CGRect(x: CGFloat(minX) / CGFloat(w), y: CGFloat(minY) / CGFloat(h),
                              width: CGFloat(maxX - minX + 1) / CGFloat(w), height: CGFloat(maxY - minY + 1) / CGFloat(h))
         let grown = outline.insetBy(dx: -outline.width * 0.05, dy: -outline.height * 0.05)
-        return (lift.people.indices.filter { inside[$0] > 0 && !grown.contains(lift.people[$0]) }.map { lift.people[$0] }, grown)
+        let people = lift.people.indices.filter { inside[$0] > 0 && !grown.contains(lift.people[$0]) }
+        // A margin under the bottom edge, for the vehicle's own shadow and tyres.
+        let floor = bottom < 0 ? 1 : CGFloat(bottom) / CGFloat(h) + 0.02
+        let below = people.map { i -> CGRect in
+            let b = lift.people[i]
+            return CGRect(x: b.minX - b.width, y: floor, width: b.width * 3, height: max(0, 1 - floor))
+        }.filter { $0.height > 0 }
+        return (people.map { lift.people[$0] }, grown, below)
     }
 
     /// One object of the lift as a sticker, without anyone standing in front of it.
@@ -191,7 +205,7 @@ enum StickerMaker {
         let full = image.extent
         let erase = standing(in: lift, instance: instance)
         if !erase.people.isEmpty, let people = lift.personMask,
-           let without = erasing(erase.people, outside: erase.outline, people: people, from: maskBuffer, extent: full) {
+           let without = erasing(erase.people, outside: erase.outline, below: erase.below, people: people, from: maskBuffer, extent: full) {
             maskBuffer = without
         }
         guard let box = boundingBox(of: maskBuffer), box.width > 20, box.height > 20 else { return .failure(.tinySubject) }
@@ -242,7 +256,7 @@ enum StickerMaker {
     /// grown a little so no fringe of them is left on the edge, and minus whatever else of
     /// those boxes lies outside the object's `outline`: crumbs of shoe or shadow. Hard-edged,
     /// and without islands the cut leaves behind.
-    private static func erasing(_ boxes: [CGRect], outside outline: CGRect, people: CVPixelBuffer,
+    private static func erasing(_ boxes: [CGRect], outside outline: CGRect, below: [CGRect], people: CVPixelBuffer,
                                 from mask: CVPixelBuffer, extent full: CGRect) -> CVPixelBuffer? {
         // Core Image counts from the bottom.
         let pixels = { (b: CGRect) in
@@ -260,7 +274,9 @@ enum StickerMaker {
         grow.inputImage = sure.outputImage
         grow.radius = Float(max(3, full.width * 0.008))
         guard let person = grow.outputImage?.cropped(to: full) else { return nil }
-        let beyond = CIImage(color: .black).cropped(to: pixels(outline)).composited(over: area)
+        let beyond = below.reduce(CIImage(color: .black).cropped(to: pixels(outline)).composited(over: area)) {
+            CIImage(color: .white).cropped(to: pixels($1)).composited(over: $0)
+        }
         let keep = person.applyingFilter("CIMaximumCompositing", parameters: [kCIInputBackgroundImageKey: beyond])
             .cropped(to: full)
             .applyingFilter("CIColorInvert")
