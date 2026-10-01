@@ -1140,17 +1140,23 @@ private let n13 = catalog.model(id: "tram-konstal-13n")!
     #expect(out[0].score == 1.2 + LiveHints.boost)
 }
 
-@Test func otherOneDigitReadsAreStillRescued() {
-    // Not a coupled model: a 120N read one digit off a 120N running past is rescued.
-    let swing = catalog.model(id: "tram-pesa-120n")!
-    let (read, real) = swing.numbers.lazy.flatMap { a in swing.numbers.lazy.map { (a, $0) } }
-        .first { LiveHints.oneDigitOff($0.0, $0.1) }!
-    let one = LiveHints.adjust([(read, 1.2)], nearby: nearby([live(real, .tram, metres: 60)]), catalog: catalog)
-    #expect(one.adjustment.rescued == [LiveHints.Rescue(from: read, to: real)])
-    // 1390 is a 105Na, 1391 a 105N2k: not the same set, so the rescue stands.
+@Test func aRealNumberIsNotRescuedIntoItsNeighbour() {
+    // From the debug logs: 1219 read clean, rescued into 1212 at 33 m; 4229 and 4219, the
+    // trams at the Wilanów loop, swapped both ways. Each time the read was right.
+    for (read, near, kind) in [(1219, 1212, VehicleKind.bus), (4229, 4219, .tram), (4219, 4229, .tram)] {
+        let (out, adj) = LiveHints.adjust([(read, 3.1)], nearby: nearby([live(near, kind, metres: 60)]), catalog: catalog)
+        #expect(adj.rescued.isEmpty)
+        #expect(out.max { $0.score < $1.score }?.number == read)
+        // Still offered, below the read.
+        #expect(out.map(\.number) == [read, near])
+    }
+    // 1390 is a 105Na, 1391 a 105N2k: not the same set, and both real, so 1390 stands.
     let other = LiveHints.adjust([(1390, 1.2)], nearby: nearby([live(1391, .tram, metres: 60)]), catalog: catalog)
-    #expect(other.adjustment.rescued == [LiveHints.Rescue(from: 1390, to: 1391)])
-    #expect(other.adjustment.partners.isEmpty)
+    #expect(other.adjustment.rescued.isEmpty && other.adjustment.partners.isEmpty)
+    #expect(other.candidates.max { $0.score < $1.score }?.number == 1390)
+    // A number no tram has is still rescued: 4729 by the 4229 right there.
+    let stranger = LiveHints.adjust([(4729, 1.0)], nearby: nearby([live(4229, .tram, metres: 28)]), catalog: catalog)
+    #expect(stranger.adjustment.rescued == [LiveHints.Rescue(from: 4729, to: 4229)])
     // Two 105Na sets right there: no telling which is ours.
     let two = LiveHints.adjust([(1281, 1.2)], nearby: nearby([live(1282, .tram, metres: 60), live(1284, .tram, metres: 80)]),
                                catalog: catalog)

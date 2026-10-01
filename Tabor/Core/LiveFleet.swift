@@ -149,7 +149,7 @@ public enum LiveHints {
     }
 
     /// Boosts candidates that are running nearby, and adds the nearby vehicle a read is
-    /// one digit off from (OCR turning 4235 into 1235). A coupled tram counts as running when
+    /// one digit off from (OCR turning 4235 into 1235, a number no tram has). A coupled tram counts as running when
     /// its set's lead car is: the feed only reports one car of a set, and the other car's
     /// number is one digit off it, so it would otherwise be "rescued" into the wrong car.
     public static func adjust(_ candidates: [(number: Int, score: Double)], nearby: [NearbyVehicle],
@@ -173,11 +173,18 @@ public enum LiveHints {
                 continue
             }
             out.append(c)
-            let fixes = Set(rescuers.map(\.vehicle.number).filter { oneDigitOff(c.number, $0) })
+            let fixes = rescuers.filter { oneDigitOff(c.number, $0.vehicle.number) }
             // Two nearby vehicles both one digit away: no way to tell which, so don't guess.
-            if fixes.count == 1, let to = fixes.first {
-                out.append((to, c.score + 1))
-                adj.rescued.append(Rescue(from: c.number, to: to))
+            if Set(fixes.map(\.vehicle.number)).count == 1, let to = fixes.first?.vehicle {
+                // A read that's a real number of the same kind is trusted: neighbouring numbers
+                // run together (4219 and 4229 on the 14 and 16), and the one read is often just
+                // missing from the feed, waiting at a terminus. Its neighbour is only offered.
+                if catalog.isKnown(number: c.number, kind: to.kind) {
+                    out.append((to.number, c.score - 0.5))
+                } else {
+                    out.append((to.number, c.score + 1))
+                    adj.rescued.append(Rescue(from: c.number, to: to.number))
+                }
             }
         }
         return (out, adj)
