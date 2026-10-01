@@ -21,6 +21,9 @@ final class Sighting {
     /// WMO weather code and °C at the catch, filled in from Open-Meteo for the weather badges.
     var weatherCode: Int?
     var temperature: Double?
+    /// A coupled tram's second car, added with the car you shot: that car's number. Only a
+    /// link for display and badges; each car keeps its own files and can go on its own.
+    var pairedWith: Int?
 
     init(id: UUID = UUID(), number: Int, modelId: String, date: Date = .now, line: String? = nil,
          photoFile: String? = nil, stickerFile: String? = nil) {
@@ -36,7 +39,7 @@ final class Sighting {
     var record: SightingRecord {
         SightingRecord(number: number, modelId: modelId, date: date, line: line, district: district, street: street,
                        latitude: latitude, longitude: longitude, weatherCode: weatherCode, temperature: temperature,
-                       hasSticker: stickerFile != nil)
+                       hasSticker: stickerFile != nil, pairedWith: pairedWith)
     }
 }
 

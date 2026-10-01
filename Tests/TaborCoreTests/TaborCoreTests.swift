@@ -611,7 +611,7 @@ private func nearby(_ vehicles: [LiveVehicle]) -> [NearbyVehicle] {
 }
 
 @Test func nearbyReadGetsBoosted() {
-    let (out, adj) = LiveHints.adjust([(8592, 3.0), (4235, 2.5)], nearby: nearby([live(4235)]))
+    let (out, adj) = LiveHints.adjust([(8592, 3.0), (4235, 2.5)], nearby: nearby([live(4235)]), catalog: catalog)
     #expect(adj.boosted == [4235])
     #expect(out.max { $0.score < $1.score }?.number == 4235)
 }
@@ -619,7 +619,7 @@ private func nearby(_ vehicles: [LiveVehicle]) -> [NearbyVehicle] {
 @Test func oneDigitRescueFixesTheCoachLogs() {
     // The camera read 1235 and 9215; the vehicles right there were 4235 and 4215.
     for (read, real) in [(1235, 4235), (9215, 4215)] {
-        let (out, adj) = LiveHints.adjust([(read, 1.2)], nearby: nearby([live(real, .tram, metres: 60), live(8592, metres: 90)]))
+        let (out, adj) = LiveHints.adjust([(read, 1.2)], nearby: nearby([live(real, .tram, metres: 60), live(8592, metres: 90)]), catalog: catalog)
         #expect(adj.rescued == [LiveHints.Rescue(from: read, to: real)])
         #expect(out.max { $0.score < $1.score }?.number == real)
     }
@@ -629,13 +629,13 @@ private func nearby(_ vehicles: [LiveVehicle]) -> [NearbyVehicle] {
 }
 
 @Test func noRescueWithoutAVehicleRightThere() {
-    let (out, adj) = LiveHints.adjust([(1235, 1.2)], nearby: nearby([live(4235, metres: 400)]))
+    let (out, adj) = LiveHints.adjust([(1235, 1.2)], nearby: nearby([live(4235, metres: 400)]), catalog: catalog)
     #expect(adj.rescued.isEmpty && adj.boosted.isEmpty)
     #expect(out.map(\.number) == [1235])
     // Two one-digit neighbours: can't tell which, so no guess.
-    let two = LiveHints.adjust([(1235, 1.2)], nearby: nearby([live(4235, metres: 40), live(1285, metres: 60)]))
+    let two = LiveHints.adjust([(1235, 1.2)], nearby: nearby([live(4235, metres: 40), live(1285, metres: 60)]), catalog: catalog)
     #expect(two.adjustment.rescued.isEmpty)
-    #expect(LiveHints.adjust([(1235, 1.2)], nearby: []).candidates.count == 1)
+    #expect(LiveHints.adjust([(1235, 1.2)], nearby: [], catalog: catalog).candidates.count == 1)
 }
 
 @Test func nearbyTramSettlesTheAmbiguousNumber() {
@@ -1122,4 +1122,130 @@ private func subject(_ label: Int, pixels: Int, x: Double, y: Double, w: Double,
     let mapped = NumberExtractor.ocrBox(CGRect(x: 0.5, y: 0.5, width: 0.25, height: 0.25), roi: tile)
     #expect(abs(mapped.minX - 0.8) < 1e-9 && abs(mapped.minY - 0.1) < 1e-9)
     #expect(abs(mapped.width - 0.1) < 1e-9 && abs(mapped.height - 0.1) < 1e-9)
+}
+
+// MARK: - Coupled trams
+
+private let n105 = catalog.model(id: "tram-konstal-105n")!
+private let n105Vintage = catalog.model(id: "tram-konstal-105n-vintage")!
+private let n2k = catalog.model(id: "tram-alstom-konstal-105n")!
+private let n13 = catalog.model(id: "tram-konstal-13n")!
+
+@Test func coupledCarIsKeptNotRescuedIntoItsLead() {
+    // The feed reports the set as 1282; the camera read the other car, 1281.
+    let (out, adj) = LiveHints.adjust([(1281, 1.2)], nearby: nearby([live(1282, .tram, metres: 60)]), catalog: catalog)
+    #expect(adj.rescued.isEmpty)
+    #expect(adj.partners == [LiveHints.Partner(number: 1281, lead: 1282)])
+    #expect(out.map(\.number) == [1281])
+    #expect(out[0].score == 1.2 + LiveHints.boost)
+}
+
+@Test func otherOneDigitReadsAreStillRescued() {
+    // Not a coupled model: a 120N read one digit off a 120N running past is rescued.
+    let swing = catalog.model(id: "tram-pesa-120n")!
+    let (read, real) = swing.numbers.lazy.flatMap { a in swing.numbers.lazy.map { (a, $0) } }
+        .first { LiveHints.oneDigitOff($0.0, $0.1) }!
+    let one = LiveHints.adjust([(read, 1.2)], nearby: nearby([live(real, .tram, metres: 60)]), catalog: catalog)
+    #expect(one.adjustment.rescued == [LiveHints.Rescue(from: read, to: real)])
+    // 1390 is a 105Na, 1391 a 105N2k: not the same set, so the rescue stands.
+    let other = LiveHints.adjust([(1390, 1.2)], nearby: nearby([live(1391, .tram, metres: 60)]), catalog: catalog)
+    #expect(other.adjustment.rescued == [LiveHints.Rescue(from: 1390, to: 1391)])
+    #expect(other.adjustment.partners.isEmpty)
+    // Two 105Na sets right there: no telling which is ours.
+    let two = LiveHints.adjust([(1281, 1.2)], nearby: nearby([live(1282, .tram, metres: 60), live(1284, .tram, metres: 80)]),
+                               catalog: catalog)
+    #expect(two.adjustment.partners.isEmpty && two.adjustment.rescued.isEmpty)
+}
+
+@Test func coupledCarTakesItsSetsLine() {
+    let snap = LiveSnapshot(vehicles: [live(1282, .tram, line: "9", metres: 60)], fetched: fixtureNow)
+    let near = nearby([live(1282, .tram, line: "9", metres: 60)])
+    #expect(LiveHints.line(for: 1281, kind: .tram, snapshot: snap, at: fixtureNow, model: n105, nearby: near) == "9")
+    #expect(LiveHints.line(for: 1281, kind: .tram, snapshot: snap, at: fixtureNow) == nil)
+    // No location: the one running neighbour, if there's only one.
+    #expect(LiveHints.line(for: 1283, kind: .tram, snapshot: snap, at: fixtureNow, model: n105) == "9")
+    let both = LiveSnapshot(vehicles: [live(1282, .tram, line: "9"), live(1284, .tram, line: "17")], fetched: fixtureNow)
+    #expect(LiveHints.line(for: 1283, kind: .tram, snapshot: both, at: fixtureNow, model: n105) == nil)
+    // Not a coupled car: nothing borrowed.
+    #expect(LiveHints.line(for: 795, kind: .tram, snapshot: LiveSnapshot(vehicles: [live(796, .tram)], fetched: fixtureNow),
+                           at: fixtureNow, model: n13) == nil)
+}
+
+@Test func runningSetSettlesTramOverBus() {
+    let match = catalog.match(number: 1000)
+    guard case .ambiguous = match else { Issue.record("1000 should be a bus and a tram"); return }
+    #expect(LiveHints.resolve(match, number: 1000, nearby: nearby([live(1001, .tram)]), catalog: catalog) == .certain(n105Vintage))
+    // The bus itself reporting right there wins.
+    let bus = catalog.model(id: "bus-solaris-urbino-10")!
+    #expect(LiveHints.resolve(match, number: 1000, nearby: nearby([live(1001, .tram), live(1000, .bus)]), catalog: catalog)
+            == .certain(bus))
+}
+
+@Test func partnerSuggestionsInOrder() {
+    let s = CoupledSet.suggestions(for: 1283, model: n105, photoNumbers: [1286], nearby: nearby([live(1282, .tram)]))
+    #expect(s.map(\.number) == [1286, 1282, 1284])
+    #expect(s.map(\.source) == [.photo, .feed, .neighbour])
+    let fixed = CoupledSet.suggestions(for: 1252, model: n105Vintage, photoNumbers: [1000], nearby: nearby([live(1001, .tram)]))
+    #expect(fixed.map(\.number) == [1251, 1000, 1001])
+    #expect(fixed.first?.source == .fixed)
+    // The caught number and numbers not in the model are skipped, and three is the most.
+    let capped = CoupledSet.suggestions(for: 1283, model: n105, photoNumbers: [1283, 99_999, 1286, 1289, 1290], nearby: [])
+    #expect(capped.map(\.number) == [1286, 1289, 1290])
+}
+
+@Test func partnerSuggestionsStayInTheModel() {
+    // 1390 is a 105Na: never offered for a 105N2k.
+    let s = CoupledSet.suggestions(for: 1391, model: n2k, photoNumbers: [1390], nearby: nearby([live(1390, .tram)]))
+    #expect(!s.map(\.number).contains(1390))
+    #expect(s.map(\.number) == [1392])
+    #expect(CoupledSet.suggestions(for: 821, model: n13, photoNumbers: [], nearby: []).map(\.number) == [818])
+    #expect(CoupledSet.suggestions(for: 795, model: n13, photoNumbers: [796], nearby: []).isEmpty)
+    let swing = catalog.model(id: "tram-pesa-120n")!
+    #expect(CoupledSet.suggestions(for: swing.numbers[1], model: swing, photoNumbers: [], nearby: []).isEmpty)
+}
+
+@Test func coupledFleetData() throws {
+    let coupled = Set(catalog.models.filter(\.coupled).map(\.id))
+    #expect(coupled == ["tram-konstal-105n", "tram-alstom-konstal-105n", "tram-hcp-123n", "tram-konstal-105n-vintage"])
+    #expect(!n13.coupled && n13.isCoupled(821) && n13.isCoupled(818) && !n13.isCoupled(795))
+    #expect(n13.fixedPartner(of: 821) == 818)
+    #expect(n105Vintage.fixedPartner(of: 1252) == 1251)
+    #expect(n105.fixedPartner(of: 1282) == nil)
+    #expect(!n105.isCoupled(99_999))
+    #expect(catalog.models.filter { $0.kind == .bus }.allSatisfy { !$0.coupled && $0.sets.isEmpty })
+    // Fleet files from before coupling decode as single cars.
+    let old = Data(#"{"id":"x","name":"X","make":"X","kind":"TRAM","operators":[],"fleet":1,"batches":[]}"#.utf8)
+    let m = try JSONDecoder().decode(VehicleModel.self, from: old)
+    #expect(!m.coupled && m.sets.isEmpty)
+}
+
+@Test func secondCarCountsForTheBookNotTheDayOut() {
+    let pair = [SightingRecord(number: 1282, modelId: n105.id, date: day(2026, 5, 5), hasSticker: true),
+                SightingRecord(number: 1281, modelId: n105.id, date: day(2026, 5, 5) - 0.001, hasSticker: true, pairedWith: 1282)]
+    #expect(!eval(pair)["twins"]!.earned)
+    // Caught on their own, they're twins.
+    #expect(eval([pair[0], SightingRecord(number: 1281, modelId: n105.id, date: day(2026, 6, 6))])["twins"]!.earned)
+    // Ten cars in ten catches, one of them a second car.
+    let cars = Array(n105.numbers.prefix(10))
+    let ten = cars.enumerated().map { i, n in
+        SightingRecord(number: n, modelId: n105.id, date: day(2026, 5, 5), hasSticker: true, pairedWith: i == 9 ? cars[8] : nil)
+    }
+    #expect(eval(ten)["trams-day"]!.progress == 9)
+    #expect(eval(ten)["photographer"]!.progress == 9)
+    #expect(eval(ten)["collector"]!.level == 1)
+    #expect(eval([SightingRecord(number: 1300, modelId: n105.id, date: .now, pairedWith: 1301)])["round-number"]!.earned)
+    let batch = n105.batches.first { $0.numbers.count == 2 }!
+    let both = [SightingRecord(number: batch.numbers[0], modelId: n105.id, date: .now),
+                SightingRecord(number: batch.numbers[1], modelId: n105.id, date: .now, pairedWith: batch.numbers[0])]
+    #expect(eval(both)["full-batch"]!.earned)
+}
+
+@Test func backupKeepsTheCoupledLink() throws {
+    let second = BackupManifest.Sighting(id: UUID(), number: 1281, modelId: n105.id, date: Date(timeIntervalSince1970: 1_790_000_000),
+                                         pairedWith: 1282)
+    let back = try BackupManifest.decode(BackupManifest(sightings: [second], manual: []).encoded())
+    #expect(back.sightings.first?.pairedWith == 1282)
+    // Backups from before coupling have no such key.
+    let old = Data(#"{"version":1,"exported":"2026-09-01T10:00:00Z","manual":[],"sightings":[{"id":"\#(UUID().uuidString)","number":1281,"modelId":"x","date":"2026-09-01T10:00:00Z"}]}"#.utf8)
+    #expect(try BackupManifest.decode(old).sightings.first?.pairedWith == nil)
 }

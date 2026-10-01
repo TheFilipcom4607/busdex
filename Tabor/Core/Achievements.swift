@@ -194,9 +194,10 @@ public enum Achievements {
                       thresholds: [10, 50, 100, 200]) { String(localized: "Caught on \($0) different lines") }
     }
 
+    /// A coupled tram's second car shares the first one's photo, so it's not another shot.
     static func photographer(_ c: Context) -> Achievement {
         tiered(id: "photographer", title: String(localized: "Photographer"), symbol: "camera.aperture",
-               value: c.sightings.filter(\.hasSticker).count, thresholds: [10, 50, 200]) {
+               value: c.sightings.filter { $0.hasSticker && $0.pairedWith == nil }.count, thresholds: [10, 50, 200]) {
             String(localized: "\($0) catches with a cut-out sticker")
         }
     }
@@ -288,8 +289,11 @@ public enum Achievements {
 
     // MARK: Days out
 
+    /// A coupled tram is one tram out on the street, so its second car doesn't add one.
     static func tramDay(_ c: Context) -> Achievement {
-        let trams = { (day: [SightingRecord]) in c.proof(day.filter { c.model($0)?.kind == .tram }.sorted { $0.date < $1.date }) }
+        let trams = { (day: [SightingRecord]) in
+            c.proof(day.filter { c.model($0)?.kind == .tram && $0.pairedWith == nil }.sorted { $0.date < $1.date })
+        }
         let best = c.byDay.values.map(trams).max { $0.count < $1.count } ?? []
         return Achievement(id: "trams-day", title: String(localized: "Tram day"), detail: String(localized: "\(tramsInADay) different trams in one day"),
                            symbol: "tram.fill", progress: best.count, goal: tramsInADay, proof: best)
@@ -445,10 +449,15 @@ public enum Achievements {
                            proof: c.proof(hits) { String(c.year($0.date)) })
     }
 
-    /// Two back-to-back fleet numbers of the same model.
+    /// Two back-to-back fleet numbers of the same model. A coupled tram's two cars are often
+    /// back to back, so a car added as the other's second car doesn't make a pair with it.
     static func twins(_ c: Context) -> Achievement {
+        let caught = Dictionary(grouping: c.sightings) { "\($0.modelId)#\($0.number)" }
+        let apart = { (id: String, n: Int, other: Int) in
+            caught["\(id)#\(n)"]?.contains { $0.pairedWith != other } ?? false
+        }
         let pairs = c.owned.flatMap { id, nums in
-            nums.filter { nums.contains($0 + 1) }.sorted().flatMap { n in
+            nums.filter { nums.contains($0 + 1) && apart(id, $0, $0 + 1) && apart(id, $0 + 1, $0) }.sorted().flatMap { n in
                 [Achievement.Proof(modelId: id, number: n), Achievement.Proof(modelId: id, number: n + 1)]
             }
         }

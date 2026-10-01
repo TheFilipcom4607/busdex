@@ -7,16 +7,17 @@ struct CatchShare {
     let message: String
 
     /// Renders the card for a vehicle's latest sighting. Main actor: ImageRenderer needs it.
+    /// `partner` is a coupled tram's other car, caught with it: "#1282+1281".
     @MainActor
     static func make(number: Int, model: VehicleModel?, sighting: Sighting, sticker: String?, photo: String?,
-                     owned: Int) -> CatchShare? {
+                     owned: Int, partner: Int? = nil) -> CatchShare? {
         let card = ShareCard(number: number, model: model, sighting: sighting, sticker: sticker, photo: photo, owned: owned)
         let renderer = ImageRenderer(content: card)
         renderer.scale = 3 // 360×450 pt → 1080×1350 px, Instagram's portrait size.
         guard let image = renderer.uiImage else { return nil }
 
         let name = model?.name ?? String(localized: "vehicle")
-        let n = String(number)
+        let n = partner.map { "\(number)+\($0)" } ?? String(number)
         let emoji = model?.kind == .tram ? "🚋" : "🚌"
         let place = sighting.district ?? sighting.street
         let today = Calendar.current.isDateInToday(sighting.date)

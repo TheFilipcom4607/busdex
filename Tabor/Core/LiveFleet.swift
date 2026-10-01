@@ -132,6 +132,15 @@ public enum LiveHints {
     public struct Adjustment: Sendable, Equatable {
         public var boosted: [Int] = []
         public var rescued: [Rescue] = []
+        /// Coupled cars kept as read because their set's lead car is right there.
+        public var partners: [Partner] = []
+    }
+
+    public struct Partner: Sendable, Equatable, Codable {
+        /// The car that was read.
+        public let number: Int
+        /// The set's car the feed reports.
+        public let lead: Int
     }
 
     public struct Rescue: Sendable, Equatable, Codable {
@@ -140,9 +149,11 @@ public enum LiveHints {
     }
 
     /// Boosts candidates that are running nearby, and adds the nearby vehicle a read is
-    /// one digit off from (OCR turning 4235 into 1235).
-    public static func adjust(_ candidates: [(number: Int, score: Double)],
-                              nearby: [NearbyVehicle]) -> (candidates: [(number: Int, score: Double)], adjustment: Adjustment) {
+    /// one digit off from (OCR turning 4235 into 1235). A coupled tram counts as running when
+    /// its set's lead car is: the feed only reports one car of a set, and the other car's
+    /// number is one digit off it, so it would otherwise be "rescued" into the wrong car.
+    public static func adjust(_ candidates: [(number: Int, score: Double)], nearby: [NearbyVehicle],
+                              catalog: FleetCatalog) -> (candidates: [(number: Int, score: Double)], adjustment: Adjustment) {
         guard !nearby.isEmpty else { return (candidates, Adjustment()) }
         let close = Set(nearby.filter { $0.distance <= boostRadius }.map(\.vehicle.number))
         let rescuers = nearby.filter { $0.distance <= rescueRadius }
@@ -152,6 +163,13 @@ public enum LiveHints {
             if close.contains(c.number) {
                 out.append((c.number, c.score + boost))
                 if !adj.boosted.contains(c.number) { adj.boosted.append(c.number) }
+                continue
+            }
+            if let set = CoupledSet.partner(of: c.number, catalog: catalog, nearby: nearby) {
+                out.append((c.number, c.score + boost))
+                if !adj.partners.contains(where: { $0.number == c.number }) {
+                    adj.partners.append(Partner(number: c.number, lead: set.lead.number))
+                }
                 continue
             }
             out.append(c)
@@ -173,10 +191,14 @@ public enum LiveHints {
     }
 
     /// When only one kind with this number is nearby, that settles bus-vs-tram — both for an
-    /// ambiguous match and for a mode that preferred the other kind.
+    /// ambiguous match and for a mode that preferred the other kind. A coupled tram's set
+    /// running right there counts too: vintage 1000 is also an Urbino 10's number.
     public static func resolve(_ match: ModelMatch, number: Int, nearby: [NearbyVehicle],
                                catalog: FleetCatalog) -> ModelMatch {
         let kinds = Set(nearby.filter { $0.vehicle.number == number && $0.distance <= boostRadius }.map(\.vehicle.kind))
+        if kinds.isEmpty, let set = CoupledSet.partner(of: number, catalog: catalog, nearby: nearby) {
+            return .certain(set.model)
+        }
         guard kinds.count == 1, let kind = kinds.first else { return match }
         let hits = match.candidates.filter { $0.kind == kind }
         if hits.count == 1 { return .certain(hits[0]) }
@@ -185,11 +207,79 @@ public enum LiveHints {
     }
 
     /// The line the vehicle was running on at `date`, if the feed saw it recently enough.
-    public static func line(for number: Int, kind: VehicleKind, snapshot: LiveSnapshot?, at date: Date) -> String? {
-        guard let v = snapshot?.vehicle(number: number, kind: kind), !v.line.isEmpty,
-              abs(date.timeIntervalSince(v.time)) <= lineWindow
-        else { return nil }
-        return v.line
+    /// A coupled car the feed doesn't report takes its set's line: the lead car right there,
+    /// else its fixed partner, else the one neighbouring number that's running.
+    public static func line(for number: Int, kind: VehicleKind, snapshot: LiveSnapshot?, at date: Date,
+                            model: VehicleModel? = nil, nearby: [NearbyVehicle] = []) -> String? {
+        func reported(_ n: Int) -> String? {
+            guard let v = snapshot?.vehicle(number: n, kind: kind), !v.line.isEmpty,
+                  abs(date.timeIntervalSince(v.time)) <= lineWindow
+            else { return nil }
+            return v.line
+        }
+        if let line = reported(number) { return line }
+        guard let model, model.kind == kind, model.isCoupled(number) else { return nil }
+        if let lead = CoupledSet.partner(of: number, model: model, nearby: nearby), let line = reported(lead.number) {
+            return line
+        }
+        if let fixed = model.fixedPartner(of: number) { return reported(fixed) }
+        let neighbours = [number - 1, number + 1].filter(model.isCoupled).compactMap(reported)
+        return neighbours.count == 1 ? neighbours[0] : nil
+    }
+}
+
+/// Trams that run as two coupled cars, each with its own number. The live feed has one row
+/// per set, under one car's number (usually the even one); the other car never shows up.
+public enum CoupledSet {
+    /// The feed's lead car for `number`'s set: a same-model coupled tram within the rescue
+    /// radius, and the only one, unless it's the fixed partner. Pairing isn't strict parity
+    /// (1381 and 1387 lead sets) and a ±1 neighbour can be another model, so it goes by model.
+    public static func partner(of number: Int, model: VehicleModel, nearby: [NearbyVehicle]) -> LiveVehicle? {
+        guard model.kind == .tram, model.isCoupled(number) else { return nil }
+        let leads = nearby.filter {
+            $0.distance <= LiveHints.rescueRadius && $0.vehicle.kind == .tram && $0.vehicle.number != number
+                && model.isCoupled($0.vehicle.number)
+        }.map(\.vehicle)
+        if let fixed = model.fixedPartner(of: number), let lead = leads.first(where: { $0.number == fixed }) { return lead }
+        return leads.count == 1 ? leads[0] : nil
+    }
+
+    /// The same across every tram model with this number.
+    public static func partner(of number: Int, catalog: FleetCatalog,
+                               nearby: [NearbyVehicle]) -> (model: VehicleModel, lead: LiveVehicle)? {
+        guard !nearby.isEmpty else { return nil }
+        let hits = catalog.match(number: number, kind: .tram).candidates.compactMap { m in
+            partner(of: number, model: m, nearby: nearby).map { (model: m, lead: $0) }
+        }
+        return hits.count == 1 ? hits[0] : nil
+    }
+
+    public struct Suggestion: Sendable, Equatable {
+        public enum Source: String, Sendable {
+            case fixed, photo, feed
+            case neighbour = "±1"
+        }
+        public let number: Int
+        public let source: Source
+    }
+
+    /// Up to three numbers for the car coupled to `number`, likeliest first: its fixed partner,
+    /// another number of the same model read in the photo, the feed's lead car, then n−1 and
+    /// n+1. Only real coupled cars of the same model, never the caught number itself.
+    public static func suggestions(for number: Int, model: VehicleModel, photoNumbers: [Int],
+                                   nearby: [NearbyVehicle]) -> [Suggestion] {
+        guard model.isCoupled(number) else { return [] }
+        var out: [Suggestion] = []
+        func add(_ n: Int?, _ source: Suggestion.Source) {
+            guard let n, n != number, model.isCoupled(n), !out.contains(where: { $0.number == n }) else { return }
+            out.append(Suggestion(number: n, source: source))
+        }
+        add(model.fixedPartner(of: number), .fixed)
+        photoNumbers.forEach { add($0, .photo) }
+        add(partner(of: number, model: model, nearby: nearby)?.number, .feed)
+        add(number - 1, .neighbour)
+        add(number + 1, .neighbour)
+        return Array(out.prefix(3))
     }
 }
 

@@ -918,6 +918,16 @@
         }
       }
     },
+    "+ SECOND CAR": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ DRUGI WAGON"
+          }
+        }
+      }
+    },
     "/%lld": {
       "localizations": {
         "pl": {
@@ -1268,6 +1278,26 @@
         }
       }
     },
+    "ALSO READ IN YOUR PHOTO": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TEŻ ODCZYTANY ZE ZDJĘCIA"
+          }
+        }
+      }
+    },
+    "ALWAYS RUNS WITH IT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZAWSZE JEŹDZI Z NIM"
+          }
+        }
+      }
+    },
     "ANY": {
       "comment": "Vehicle kind: bus or tram",
       "localizations": {
@@ -1327,6 +1357,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Przycisk akcji"
+          }
+        }
+      }
+    },
+    "Add": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dodaj"
+          }
+        }
+      }
+    },
+    "Add the second car": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dodaj drugi wagon"
           }
         }
       }
@@ -1770,6 +1820,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "ŁĄCZENIE"
+          }
+        }
+      }
+    },
+    "COUPLED TO %@?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W SKŁADZIE Z %@?"
+          }
+        }
+      }
+    },
+    "COUPLED WITH #%@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W SKŁADZIE Z #%@"
           }
         }
       }
@@ -3188,6 +3258,16 @@
         }
       }
     },
+    "ITS FLEET NUMBER": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JEGO NUMER TABOROWY"
+          }
+        }
+      }
+    },
     "Import a backup…": {
       "localizations": {
         "pl": {
@@ -3689,6 +3769,16 @@
         }
       }
     },
+    "NEW SPECIES · YOUR %@ & %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWY GATUNEK · TWÓJ %1$@ I %2$@"
+          }
+        }
+      }
+    },
     "NEW TRAM MODELS NEARBY": {
       "localizations": {
         "pl": {
@@ -3785,6 +3875,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "TERAZ ŻADEN NIE JEŹDZI"
+          }
+        }
+      }
+    },
+    "NOT A %@ NUMBER": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TEGO NUMERU NIE MA W MODELU %@"
           }
         }
       }
@@ -4142,6 +4242,16 @@
         }
       }
     },
+    "ONE NUMBER AWAY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SĄSIEDNI NUMER"
+          }
+        }
+      }
+    },
     "OPEN": {
       "localizations": {
         "pl": {
@@ -4158,6 +4268,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "OTWÓRZ MAPĘ"
+          }
+        }
+      }
+    },
+    "OR TYPE IT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ALBO WPISZ GO"
           }
         }
       }
@@ -4188,6 +4308,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Stary znajomy"
+          }
+        }
+      }
+    },
+    "Older trams run as two cars, each with its own number. Add the other car to your book with this one.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starsze tramwaje jeżdżą jako dwa wagony, każdy z własnym numerem. Dodaj drugi wagon do albumu razem z tym."
           }
         }
       }
@@ -4547,6 +4677,16 @@
         }
       }
     },
+    "RUNNING RIGHT HERE NOW": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JEDZIE TERAZ TUŻ OBOK"
+          }
+        }
+      }
+    },
     "Rain or shine": {
       "localizations": {
         "pl": {
@@ -4583,6 +4723,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Usuń %@ z filtra"
+          }
+        }
+      }
+    },
+    "Remove the second car": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń drugi wagon"
           }
         }
       }
@@ -4971,6 +5121,26 @@
         }
       }
     },
+    "Second car": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drugi wagon"
+          }
+        }
+      }
+    },
+    "Second car %@. Change it": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drugi wagon %@. Zmień go"
+          }
+        }
+      }
+    },
     "Secret": {
       "comment": "A secret badge's name until earned",
       "localizations": {
@@ -5218,6 +5388,26 @@
         }
       }
     },
+    "THAT CAR DOESN'T RUN COUPLED": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TEN WAGON NIE JEŹDZI W SKŁADZIE"
+          }
+        }
+      }
+    },
+    "THAT'S THE CAR YOU SHOT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TO TEN SAM WAGON"
+          }
+        }
+      }
+    },
     "THE CAMERA STOPPED": {
       "localizations": {
         "pl": {
@@ -5336,6 +5526,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "SKRĘCA, NIM DO CIEBIE DOJEDZIE"
+          }
+        }
+      }
+    },
+    "TWO NEW CARS · YOUR %@ & %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DWA NOWE WAGONY · TWOJE %1$@ I %2$@"
           }
         }
       }

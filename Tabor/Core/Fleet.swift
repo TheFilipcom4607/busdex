@@ -66,11 +66,17 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     /// Vehicles not in ZTM's usual paint, by fleet number (JSON keys are strings), from a
     /// hand-checked list in fetch_fleet.py; see `Livery`.
     public let liveries: [String: String]?
+    /// Its trams run as two coupled cars, each with its own fleet number.
+    public let coupled: Bool
+    /// Cars that always run together, e.g. [[1000, 1001]]. In a model that isn't `coupled`,
+    /// only these cars are.
+    public let sets: [[Int]]
 
     public init(id: String, name: String, make: String, code: String? = nil, kind: VehicleKind,
                 operators: [String], fleet: Int, firstYear: Int?, lastYear: Int?, batches: [Batch],
                 vintage: Bool = false, onTest: Bool = false, runs: String? = nil, trial: String? = nil,
-                runsPl: String? = nil, trialPl: String? = nil, specs: ModelSpecs? = nil, liveries: [String: String]? = nil) {
+                runsPl: String? = nil, trialPl: String? = nil, specs: ModelSpecs? = nil, liveries: [String: String]? = nil,
+                coupled: Bool = false, sets: [[Int]] = []) {
         self.id = id
         self.name = name
         self.make = make
@@ -89,11 +95,13 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         self.trialPl = trialPl
         self.specs = specs
         self.liveries = liveries
+        self.coupled = coupled
+        self.sets = sets
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, name, make, code, kind, operators, fleet, firstYear, lastYear, batches, vintage, onTest, runs, trial,
-             runsPl, trialPl, specs, liveries
+             runsPl, trialPl, specs, liveries, coupled, sets
     }
 
     public init(from decoder: Decoder) throws {
@@ -117,6 +125,8 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         // Optional extras: a malformed one is dropped rather than failing the whole file.
         specs = try? c.decodeIfPresent(ModelSpecs.self, forKey: .specs)
         liveries = try? c.decodeIfPresent([String: String].self, forKey: .liveries)
+        coupled = try c.decodeIfPresent(Bool.self, forKey: .coupled) ?? false
+        sets = (try? c.decodeIfPresent([[Int]].self, forKey: .sets)) ?? []
     }
 
     /// A special paint job, if this vehicle has one.
@@ -154,6 +164,18 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
 
     public func batch(containing number: Int) -> Batch? {
         batches.first { $0.numbers.contains(number) }
+    }
+
+    public func has(_ number: Int) -> Bool { batch(containing: number) != nil }
+
+    /// This car runs coupled to another, so a catch can add its partner.
+    public func isCoupled(_ number: Int) -> Bool {
+        has(number) && (coupled || sets.contains { $0.contains(number) })
+    }
+
+    /// The car it always runs with, if it's in a fixed set.
+    public func fixedPartner(of number: Int) -> Int? {
+        sets.first { $0.contains(number) }?.first { $0 != number }
     }
 }
 

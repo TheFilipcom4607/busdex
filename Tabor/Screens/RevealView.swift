@@ -31,6 +31,9 @@ struct RevealView: View {
     @State private var tilt: CGSize = .zero
     @State private var nudge = false
     @State private var revealRun = 0
+    @State private var pickingPartner = false
+    /// Every number read in the photo, once the read is done; feeds the partner suggestions.
+    @State private var photoNumbers: [Int] = []
 
     private let catalog = Fleet.catalog
     private let holdDuration = 0.55
@@ -57,6 +60,10 @@ struct RevealView: View {
         let existing = (model != nil && number != nil) ? stats.vehicle(number: number!, modelId: model!.id) : nil
         let isNewVehicle = existing == nil
         let modelOwned = model.map { stats.ownedCount(modelId: $0.id) } ?? 0
+        // A coupled tram's other car goes in the book too, so the counts include it.
+        let partner = secondCar(model: model, number: number)
+        let partnerIsNew = partner.map { p in model.map { stats.vehicle(number: p, modelId: $0.id) == nil } ?? false } ?? false
+        let added = (isNewVehicle ? 1 : 0) + (partnerIsNew ? 1 : 0)
         let isNewModel = modelOwned == 0
         let tier = model?.tier ?? .common
         let ready = model != nil && number != nil
@@ -84,7 +91,7 @@ struct RevealView: View {
                 .padding(.horizontal, 22)
 
                 VStack(alignment: .leading, spacing: 7) {
-                    Mono(kicker(isNewVehicle: isNewVehicle, isNewModel: isNewModel, modelOwned: modelOwned, existing: existing),
+                    Mono(kicker(isNewVehicle: isNewVehicle, isNewModel: isNewModel, modelOwned: modelOwned, added: added, existing: existing),
                          size: 12, spacing: 0.16, color: accent)
                     Text(model?.name ?? (number == nil ? String(localized: "What did you catch?") : String(localized: "Which model is it?")))
                         .font(TaborFont.grotesk(30, 700))
@@ -107,10 +114,10 @@ struct RevealView: View {
                     HStack(spacing: 10) {
                         let seen = (existing?.timesSeen ?? 0) + 1
                         StatTile(label: String(localized: "YOUR", comment: "Reveal tile: your Nth of this model"),
-                                 value: isNewVehicle ? Ordinal.string(modelOwned + 1) : "×\(seen)",
+                                 value: isNewVehicle ? Ordinal.string(modelOwned + added) : "×\(seen)",
                                  valueColor: Palette.yellow,
                                  caption: isNewVehicle ? String(localized: "of \(model.fleet)") : PluralCaption.sightings(seen))
-                        StatTile(label: String(localized: "MODEL"), value: isNewModel ? String(localized: "NEW", comment: "Reveal tile: a model new to you") : "\(modelOwned + (isNewVehicle ? 1 : 0))",
+                        StatTile(label: String(localized: "MODEL"), value: isNewModel ? String(localized: "NEW", comment: "Reveal tile: a model new to you") : "\(modelOwned + added)",
                                  valueColor: isNewModel ? Palette.green : Palette.ink,
                                  caption: isNewModel ? String(localized: "species") : String(localized: "of \(model.fleet)"))
                         if Calendar.current.isDateInToday(draft.date) {
@@ -129,7 +136,16 @@ struct RevealView: View {
                     .offset(y: landed ? 0 : 14)
                     .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: landed)
 
-                    let owned = Set(stats.owned(modelId: model.id).map(\.number)).union([number])
+                    if model.isCoupled(number) {
+                        partnerChip(partner: partner, isNew: partnerIsNew)
+                            .padding(.top, 12)
+                            .padding(.horizontal, 26)
+                            .opacity(landed ? 1 : 0)
+                            .offset(y: landed ? 0 : 16)
+                            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.14), value: landed)
+                    }
+
+                    let owned = Set(stats.owned(modelId: model.id).map(\.number)).union([number] + (partner.map { [$0] } ?? []))
                     Text(RevealHint.text(model: model, number: number, owned: owned,
                                          isNewVehicle: isNewVehicle, timesSeen: (existing?.timesSeen ?? 0) + 1))
                         .font(TaborFont.grotesk(13))
@@ -193,12 +209,88 @@ struct RevealView: View {
         .sheet(isPresented: $editing) {
             CorrectionSheet(draft: $draft)
         }
+        .sheet(isPresented: $pickingPartner) {
+            if let model, let number {
+                PartnerSheet(model: model, number: number, suggestions: draft.partnerSuggestions,
+                             owned: Set(stats.owned(modelId: model.id).map(\.number)), partner: $draft.partner)
+            }
+        }
         // One key, so fixing number and model together replays the reveal once.
         .onChange(of: "\(draft.number ?? -1)|\(draft.modelId ?? "")") { _, _ in edited() }
         .task {
             Haptics.shared.warmUp()
             await playReveal(run: 0)
+            // A live lock's still read may still be going: its numbers sharpen the suggestions.
+            if let read = draft.photoNumbers {
+                photoNumbers = await read.value
+                refreshPartner()
+            }
         }
+    }
+
+    /// The other car, while it still fits the number and model on screen.
+    private func secondCar(model: VehicleModel?, number: Int?) -> Int? {
+        guard let p = draft.partner, let model, let number, p != number, model.isCoupled(number), model.isCoupled(p)
+        else { return nil }
+        return p
+    }
+
+    /// "+ SECOND CAR", or the car you added, with a way to take it off again.
+    private func partnerChip(partner: Int?, isNew: Bool) -> some View {
+        HStack(spacing: 0) {
+            Button {
+                Haptics.shared.tick()
+                pickingPartner = true
+            } label: {
+                HStack(spacing: 7) {
+                    Image(systemName: "tram.fill").font(.system(size: 11, weight: .bold))
+                    if let partner {
+                        let tag = isNew ? String(localized: "NEW", comment: "Reveal tile: a model new to you") : String(localized: "SEEN AGAIN")
+                        Mono("+ \(String(partner)) · \(tag)" as String, size: 12, weight: 700, spacing: 0.1,
+                             color: isNew ? Palette.green : Palette.ink)
+                    } else {
+                        Mono("+ SECOND CAR", size: 12, weight: 700, spacing: 0.12, color: Palette.yellow)
+                    }
+                }
+                .foregroundStyle(partner == nil ? Palette.yellow : isNew ? Palette.green : Palette.ink)
+                .padding(.vertical, 10)
+                .padding(.leading, 14)
+                .padding(.trailing, partner == nil ? 14 : 6)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(partner.map { Text("Second car \(String($0)). Change it") } ?? Text("Add the second car"))
+            if partner != nil {
+                Button {
+                    Haptics.shared.tick()
+                    draft.partner = nil
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Palette.sub)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 12)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Remove the second car")
+            }
+        }
+        .overlay(Capsule().strokeBorder(partner == nil ? Palette.yellow.opacity(0.6) : Color.white.opacity(0.14),
+                                        style: StrokeStyle(lineWidth: 1, dash: partner == nil ? [4, 3] : [])))
+        .animation(.snappy, value: partner)
+    }
+
+    /// Suggestions follow the number and model; a partner that no longer fits them goes.
+    private func refreshPartner() {
+        guard let model, let number = draft.number else {
+            draft.partnerSuggestions = []
+            draft.partner = nil
+            return
+        }
+        draft.partnerSuggestions = CoupledSet.suggestions(for: number, model: model, photoNumbers: photoNumbers,
+                                                          nearby: draft.nearby)
+        draft.partner = secondCar(model: model, number: number)
     }
 
     private func secondaryLabel(_ text: String) -> some View {
@@ -453,10 +545,12 @@ struct RevealView: View {
     }
 
     private func edited() {
+        refreshPartner()
         // A line the feed filled in follows a corrected number, unless you typed your own.
         if draft.fromCamera, (draft.line ?? "") == (draft.autoLine ?? ""),
-           let number = draft.number, let kind = model?.kind {
-            draft.line = LiveHints.line(for: number, kind: kind, snapshot: LiveFleetService.shared.snapshot, at: draft.date)
+           let number = draft.number, let model {
+            draft.line = LiveHints.line(for: number, kind: model.kind, snapshot: LiveFleetService.shared.snapshot,
+                                        at: draft.date, model: model, nearby: draft.nearby)
             draft.autoLine = draft.line
         }
         draft.debug?.log("edited", number: draft.number, modelId: draft.modelId, line: draft.line)
@@ -481,6 +575,8 @@ struct RevealView: View {
         holdProgress = 1
 
         let ownedBefore = Set(sightings.stats.owned(modelId: model.id).map(\.number))
+        let partner = secondCar(model: model, number: number)
+        let cars = [number] + (partner.map { [$0] } ?? [])
         // Peel: lift and straighten.
         withAnimation(.easeOut(duration: 0.2)) { tilt = .zero }
         try? await Task.sleep(for: .milliseconds(240))
@@ -488,9 +584,9 @@ struct RevealView: View {
         withAnimation(.spring(response: 0.38, dampingFraction: 0.8)) { sticking = true }
         save(model: model, number: number)
 
-        let owned = ownedBefore.union([number])
-        let batchDone = model.batch(containing: number).map { $0.numbers.allSatisfy(owned.contains) } ?? false
-        let firstTime = !ownedBefore.contains(number)
+        let owned = ownedBefore.union(cars)
+        let batchDone = cars.contains { model.batch(containing: $0)?.numbers.allSatisfy(owned.contains) ?? false }
+        let firstTime = !ownedBefore.isSuperset(of: cars)
         try? await Task.sleep(for: .milliseconds(480))
         router.openModel(model.id)
         dismiss()
@@ -501,28 +597,50 @@ struct RevealView: View {
     }
 
     private func save(model: VehicleModel, number: Int) {
-        let s = Sighting(number: number, modelId: model.id, date: draft.date,
-                         line: draft.line?.trimmingCharacters(in: .whitespaces).nonEmpty,
-                         photoFile: PhotoStore.save(draft.photo, ext: PhotoStore.fileExtension(of: draft.photo)),
+        let line = draft.line?.trimmingCharacters(in: .whitespaces).nonEmpty
+        let ext = PhotoStore.fileExtension(of: draft.photo)
+        let s = Sighting(number: number, modelId: model.id, date: draft.date, line: line,
+                         photoFile: PhotoStore.save(draft.photo, ext: ext),
                          stickerFile: stickerPNG.flatMap { PhotoStore.save($0, ext: "png") })
         context.insert(s)
         draft.debug?.log("stuck", number: number, modelId: model.id, line: s.line)
+        // A coupled tram's other car: a catch of its own, with its own copies of the files so
+        // deleting either car leaves the other whole. Always the model you shot (its number may
+        // be a bus's too), and a millisecond earlier so lists keep the shot car on top.
+        var cars = [s]
+        if let p = secondCar(model: model, number: number) {
+            let second = Sighting(number: p, modelId: model.id, date: draft.date.addingTimeInterval(-0.001), line: line,
+                                  photoFile: PhotoStore.save(draft.photo, ext: ext),
+                                  stickerFile: stickerPNG.flatMap { PhotoStore.save($0, ext: "png") })
+            second.pairedWith = number
+            context.insert(second)
+            cars.append(second)
+            let source = draft.partnerSuggestions.first { $0.number == p }?.source.rawValue ?? "typed"
+            draft.debug?.log("partner", number: p, modelId: model.id, line: line, note: source)
+        }
         if draft.modelPickedByHand {
             context.assign(number: number, to: model.id, existing: manual)
         }
         try? context.save()
-        // Shrinking a full-size shot takes a moment: off the main thread, then the sighting
-        // points at the small copy (HEIC, so a new name) and the full-size one goes.
-        if let file = s.photoFile {
+        // Shrinking a full-size shot takes a moment: off the main thread, then each sighting
+        // points at its own small copy (HEIC, so a new name) and the full-size one goes.
+        let files = cars.map(\.photoFile)
+        if files.contains(where: { $0 != nil }) {
             let original = draft.photo
             Task { @MainActor in
-                guard let small = await Task.detached(priority: .utility, operation: { PhotoStore.compact(original) }).value,
-                      // Deleted (or edited) meanwhile: leave it be.
-                      !s.isDeleted, s.modelContext != nil, s.photoFile == file,
-                      let smallFile = PhotoStore.save(small, ext: "heic") else { return }
-                s.photoFile = smallFile
+                guard let small = await Task.detached(priority: .utility, operation: { PhotoStore.compact(original) }).value
+                else { return }
+                var replaced: [String] = []
+                for (car, file) in zip(cars, files) {
+                    // Deleted (or edited) meanwhile: leave it be.
+                    guard let file, !car.isDeleted, car.modelContext != nil, car.photoFile == file,
+                          let smallFile = PhotoStore.save(small, ext: "heic") else { continue }
+                    car.photoFile = smallFile
+                    replaced.append(file)
+                }
+                guard !replaced.isEmpty else { return }
                 try? context.save()
-                PhotoStore.delete(file)
+                replaced.forEach(PhotoStore.delete)
             }
         }
         // After the reveal, never during it: the Photos permission prompt may appear here.
@@ -534,8 +652,10 @@ struct RevealView: View {
         // attach the sticker whenever it's ready instead of losing it.
         if s.stickerFile == nil, let stickerTask = draft.sticker {
             Task { @MainActor in
-                guard let png = await stickerTask.value?.png, let file = PhotoStore.save(png, ext: "png") else { return }
-                s.stickerFile = file
+                guard let png = await stickerTask.value?.png else { return }
+                for car in cars where car.stickerFile == nil && !car.isDeleted && car.modelContext != nil {
+                    car.stickerFile = PhotoStore.save(png, ext: "png")
+                }
                 try? context.save()
             }
         }
@@ -545,21 +665,29 @@ struct RevealView: View {
                 let place = tag.map { "\($0.coordinate.latitude), \($0.coordinate.longitude) · \($0.street ?? "?"), \($0.district ?? "?")" }
                 draft.debug?.update { $0.geotag = place ?? "no location" }
                 guard let tag else { return }
-                s.latitude = tag.coordinate.latitude
-                s.longitude = tag.coordinate.longitude
-                s.street = tag.street
-                s.district = tag.district
+                for car in cars where !car.isDeleted && car.modelContext != nil {
+                    car.latitude = tag.coordinate.latitude
+                    car.longitude = tag.coordinate.longitude
+                    car.street = tag.street
+                    car.district = tag.district
+                }
                 try? context.save()
             }
         }
     }
 
-    private func kicker(isNewVehicle: Bool, isNewModel: Bool, modelOwned: Int, existing: OwnedVehicle?) -> String {
+    private func kicker(isNewVehicle: Bool, isNewModel: Bool, modelOwned: Int, added: Int, existing: OwnedVehicle?) -> String {
         guard let model, draft.number != nil else { return String(localized: "NUMBER NEEDED") }
         if !landed { return String(localized: "CUTTING IT OUT…") }
         if !isNewVehicle { return String(localized: "SEEN AGAIN · SIGHTING #\((existing?.timesSeen ?? 0) + 1)") }
+        // Both cars of a coupled tram are new.
+        if added == 2 {
+            let first = Ordinal.string(modelOwned + 1), second = Ordinal.string(modelOwned + 2)
+            return isNewModel ? String(localized: "NEW SPECIES · YOUR \(first) & \(second)")
+                : String(localized: "TWO NEW CARS · YOUR \(first) & \(second)")
+        }
         if isNewModel { return String(localized: "NEW SPECIES · YOUR \(Ordinal.string(1))") }
-        let nth = Ordinal.string(modelOwned + 1)
+        let nth = Ordinal.string(modelOwned + added)
         return model.kind == .tram ? String(localized: "NEW TRAM · YOUR \(nth)") : String(localized: "NEW BUS · YOUR \(nth)")
     }
 }

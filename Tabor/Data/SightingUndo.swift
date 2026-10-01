@@ -21,6 +21,7 @@ final class SightingUndo {
         let stickerFile: String?
         let weatherCode: Int?
         let temperature: Double?
+        let pairedWith: Int?
 
         init(_ s: Sighting) {
             id = s.id
@@ -36,6 +37,7 @@ final class SightingUndo {
             stickerFile = s.stickerFile
             weatherCode = s.weatherCode
             temperature = s.temperature
+            pairedWith = s.pairedWith
         }
 
         func sighting() -> Sighting {
@@ -47,6 +49,7 @@ final class SightingUndo {
             s.district = district
             s.weatherCode = weatherCode
             s.temperature = temperature
+            s.pairedWith = pairedWith
             return s
         }
     }

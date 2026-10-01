@@ -17,10 +17,13 @@ public struct SightingRecord: Hashable, Sendable {
     /// °C at the time of the catch.
     public let temperature: Double?
     public let hasSticker: Bool
+    /// The second car of a coupled tram: the number of the car it was added alongside.
+    public let pairedWith: Int?
 
     public init(number: Int, modelId: String, date: Date, line: String? = nil, district: String? = nil,
                 street: String? = nil, latitude: Double? = nil, longitude: Double? = nil,
-                weatherCode: Int? = nil, temperature: Double? = nil, hasSticker: Bool = false) {
+                weatherCode: Int? = nil, temperature: Double? = nil, hasSticker: Bool = false,
+                pairedWith: Int? = nil) {
         self.number = number
         self.modelId = modelId
         self.date = date
@@ -32,6 +35,7 @@ public struct SightingRecord: Hashable, Sendable {
         self.weatherCode = weatherCode
         self.temperature = temperature
         self.hasSticker = hasSticker
+        self.pairedWith = pairedWith
     }
 }
 

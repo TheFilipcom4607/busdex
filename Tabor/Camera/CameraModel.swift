@@ -457,7 +457,7 @@ extension CameraModel: AVCaptureVideoDataOutputSampleBufferDelegate {
         }
         let candidates = NumberExtractor.candidates(in: observations, mode: mode, catalog: Fleet.catalog)
         if !candidates.isEmpty { lastCandidate = now }
-        let best = LiveHints.adjust(candidates, nearby: nearby).candidates.max { $0.score < $1.score }?.number
+        let best = LiveHints.adjust(candidates, nearby: nearby, catalog: Fleet.catalog).candidates.max { $0.score < $1.score }?.number
         let stable = voter.push(best)
         Task { @MainActor in
             if let stable, stable != self.reading { self.reading = stable }
@@ -539,7 +539,7 @@ enum TextReader {
                 }
                 report.candidates = NumberExtractor.candidates(in: report.tiles, mode: mode, catalog: Fleet.catalog)
             }
-            (report.candidates, report.live) = LiveHints.adjust(report.candidates, nearby: nearby)
+            (report.candidates, report.live) = LiveHints.adjust(report.candidates, nearby: nearby, catalog: Fleet.catalog)
             report.number = report.candidates.max { $0.score < $1.score }?.number
             if report.number == nil { report.pass = "none" }
             report.duration = Date().timeIntervalSince(start)

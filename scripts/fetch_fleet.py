@@ -339,6 +339,23 @@ VINTAGE_NUMBERS = {
     ("BUS", "Solaris", "Urbino 18"): {6923},
 }
 
+# Trams that run as two coupled cars, each with its own fleet number. The live feed reports a
+# set once, under one car's number (usually the even one), so the other car is never in it.
+# Konstal 105Na: Warszawikia writes its sets as pairs (1000+1001, 1252+1251). 105N2k/2000: sets
+# like 2084+2085, and 31 of its cars are cab-less trailers that never run alone. Cegielski 123N:
+# "all 30 cars coupled in 15 sets" (Warszawikia). In the live feed (checked for issue #23), 46 of
+# 47 running 105Na numbers were even, 44 of 44 105N2k and 10 of 10 123N; single-car models split
+# about half and half.
+# Left out: N/4N cars with ND/4ND trailers, since which numbers are the trailers isn't confirmed.
+COUPLED = {
+    "tram-konstal-105n", "tram-alstom-konstal-105n", "tram-hcp-123n", "tram-konstal-105n-vintage",
+}
+
+# Sets that always run together: the KMKM's 105Na sets (kmkm.waw.pl/tramwaje-lista) and the
+# 13N "żaba" pair on tourist line 36 (kmkm.waw.pl/wlt-2026). A set in a model that isn't in
+# COUPLED marks only its own two cars as coupled.
+FIXED_SETS = [(1000, 1001), (1252, 1251), (821, 818)]
+
 # Preserved buses that aren't in the ZTM database at all: the KMKM club's collection
 # (kmkm.waw.pl/autobusy-lista, 2026-09-22) plus MZA heritage buses on tourist line 100
 # in 2026 (kmkm.waw.pl/wlt-2026). (make, model, number, owner, build year from the
@@ -527,6 +544,18 @@ def build(vehicles, city=None):
             **({"specs": model_specs} if model_specs else {}),
             **({"liveries": dict(sorted(liveries.items(), key=lambda kv: int(kv[0])))} if liveries else {}),
         })
+    numbers = {m["id"]: {n for b in m["batches"] for n in b["numbers"]} for m in models}
+    for m in models:
+        # Trams only: 1000 and 1001 are bus numbers too.
+        sets = [list(s) for s in FIXED_SETS if m["kind"] == "TRAM" and set(s) <= numbers[m["id"]]]
+        if m["id"] in COUPLED:
+            m["coupled"] = True
+        if sets:
+            m["sets"] = sets
+    missing = COUPLED - numbers.keys()
+    assert not missing, f"COUPLED ids not in the data any more: {missing}"
+    placed = sum(1 for m in models for _ in m.get("sets", []))
+    assert placed == len(FIXED_SETS), "a FIXED_SETS pair isn't within one model"
     models.sort(key=lambda m: (m["kind"], -m["fleet"], m["name"]))
     missing = VINTAGE - {m["id"] for m in models}
     assert not missing, f"VINTAGE ids not in the data any more: {missing}"

@@ -49,7 +49,7 @@ enum BackupService {
                                     latitude: s.latitude, longitude: s.longitude, street: s.street,
                                     district: s.district, line: s.line, photoFile: s.photoFile,
                                     stickerFile: s.stickerFile, weatherCode: s.weatherCode,
-                                    temperature: s.temperature)
+                                    temperature: s.temperature, pairedWith: s.pairedWith)
         }, manual: manual.map { .init(number: $0.number, modelId: $0.modelId) })
     }
 
@@ -73,6 +73,7 @@ extension ModelContext {
             s.district = r.district
             s.weatherCode = r.weatherCode
             s.temperature = r.temperature
+            s.pairedWith = r.pairedWith
             insert(s)
         }
         for a in merged.manual { insert(ManualAssignment(number: a.number, modelId: a.modelId)) }

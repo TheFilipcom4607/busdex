@@ -60,6 +60,22 @@ struct VehicleView: View {
                             .padding(.top, 5)
                             .accessibilityLabel(Text("Special livery: \(livery.name.lowercased())"))
                         }
+                        if let coupled = coupledWith {
+                            Button {
+                                router.openVehicle(modelId: modelId, number: coupled)
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "link")
+                                        .font(.system(size: 9, weight: .bold))
+                                    Mono("COUPLED WITH #\(String(coupled))", size: 10, weight: 700, spacing: 0.1, color: Palette.ink)
+                                }
+                                .foregroundStyle(Palette.ink)
+                                .padding(.top, 5)
+                                .contentShape(Rectangle())
+                            }
+                            // Plain, or a List row fires every button in it on any tap.
+                            .buttonStyle(.plain)
+                        }
                     }
                     .padding(.bottom, 6)
                 }
@@ -187,11 +203,24 @@ struct VehicleView: View {
         // Render the share card up front so SHARE opens instantly.
         .task(id: mine.first?.id) {
             guard let latest = mine.first else { return share = nil }
+            // The second car added with it in the same catch, if any.
+            let partner = latest.pairedWith ?? sightings.first {
+                $0.modelId == modelId && $0.pairedWith == number && abs($0.date.timeIntervalSince(latest.date)) < 1
+            }?.number
             share = CatchShare.make(number: number, model: model, sighting: latest,
                                     sticker: sightings.sticker(number: number, modelId: modelId),
                                     photo: sightings.photo(number: number, modelId: modelId),
-                                    owned: sightings.stats.ownedCount(modelId: modelId))
+                                    owned: sightings.stats.ownedCount(modelId: modelId), partner: partner)
         }
+    }
+
+    /// The car this one was last caught coupled to: the car it was added with, or the second
+    /// car added with it.
+    private var coupledWith: Int? {
+        sightings.lazy.compactMap { s in
+            if s.modelId == modelId, s.number == number { return s.pairedWith }
+            return s.modelId == modelId && s.pairedWith == number ? s.number : nil
+        }.first
     }
 
     /// No dialog: it goes at once, and the toast at the bottom can bring it back.
@@ -262,6 +291,7 @@ struct EditSightingSheet: View {
     let onSave: (Bool) -> Void
     @State private var draft: CatchDraft
     @Query private var manual: [ManualAssignment]
+    @Query private var sightings: [Sighting]
     @Environment(\.modelContext) private var context
 
     init(sighting: Sighting, onSave: @escaping (Bool) -> Void) {
@@ -282,12 +312,24 @@ struct EditSightingSheet: View {
         let line = draft.line?.trimmingCharacters(in: .whitespaces).nonEmpty
         let moved = number != sighting.number || modelId != sighting.modelId
         guard moved || line != sighting.line else { return }
+        if moved { relink(to: number, modelId: modelId) }
         sighting.number = number
         sighting.modelId = modelId
         sighting.line = line
         if draft.modelPickedByHand { context.assign(number: number, to: modelId, existing: manual) }
         try? context.save()
         onSave(moved)
+    }
+
+    /// A coupled link only holds between coupled cars of one model: a second car added with
+    /// this one follows its corrected number, and a link that no longer fits goes.
+    private func relink(to number: Int, modelId: String) {
+        let fits = modelId == sighting.modelId && Fleet.catalog.model(id: modelId)?.isCoupled(number) == true
+        if let p = sighting.pairedWith, !fits || p == number { sighting.pairedWith = nil }
+        for second in sightings where second.modelId == sighting.modelId && second.pairedWith == sighting.number
+            && abs(second.date.timeIntervalSince(sighting.date)) < 1 {
+            second.pairedWith = fits && second.number != number ? number : nil
+        }
     }
 }
 

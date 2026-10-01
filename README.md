@@ -96,6 +96,12 @@ cd proxy && npx wrangler secret put DANE_TOKEN && npx wrangler deploy
   off a vehicle within 150 m (OCR turning 4235 into 1235), that vehicle is
   offered too. When a number belongs to both a bus and a tram, whichever one is
   actually nearby settles it, and the catch gets its line number from the feed.
+- **Coupled trams count twice.** Konstal 105Na, 105N2k and Cegielski 123N run as
+  two cars, each with its own number, but the live feed reports a set under one
+  of them. So the other car isn't "fixed" into its neighbour: it's kept as read,
+  and it takes the set's line. The reveal offers **+ SECOND CAR**, suggesting the
+  other number (from the photo, the feed or the next number along), and both cars
+  go in the book.
 - **BUS / TRAM / AUTO is a preference, not a filter.** A bus number read in TRAM
   mode still matches the bus. Spotters forget to switch back.
 - **The shot is what you framed.** The viewfinder is a 3:2 photo frame, and the

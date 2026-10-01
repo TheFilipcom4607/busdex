@@ -56,6 +56,7 @@ final class DebugRecord: @unchecked Sendable {
         var number: Int?
         var modelId: String?
         var line: String?
+        var note: String?
     }
 
     /// What the live GPS feed knew at the shutter, and what it changed.
@@ -67,6 +68,8 @@ final class DebugRecord: @unchecked Sendable {
         var nearby: [String] = []
         var boosted: [Int] = []
         var rescued: [LiveHints.Rescue] = []
+        /// Coupled cars kept as read because their set's lead car was right there.
+        var partners: [LiveHints.Partner] = []
         /// "ambiguous: a, b → certain: b" when a nearby vehicle settled the model.
         var resolved: String?
         /// "live" when the line came from the feed, "none" when it couldn't.
@@ -145,8 +148,8 @@ final class DebugRecord: @unchecked Sendable {
         }
     }
 
-    func log(_ what: String, number: Int? = nil, modelId: String? = nil, line: String? = nil) {
-        let e = Event(at: Date(), what: what, number: number, modelId: modelId, line: line)
+    func log(_ what: String, number: Int? = nil, modelId: String? = nil, line: String? = nil, note: String? = nil) {
+        let e = Event(at: Date(), what: what, number: number, modelId: modelId, line: line, note: note)
         update { $0.events.append(e) }
     }
 

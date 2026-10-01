@@ -16,11 +16,14 @@ public struct BackupManifest: Codable, Sendable {
         public var stickerFile: String?
         public var weatherCode: Int?
         public var temperature: Double?
+        /// A coupled tram's second car: the number of the car it was caught with. Older
+        /// backups don't have it.
+        public var pairedWith: Int?
 
         public init(id: UUID, number: Int, modelId: String, date: Date, latitude: Double? = nil,
                     longitude: Double? = nil, street: String? = nil, district: String? = nil,
                     line: String? = nil, photoFile: String? = nil, stickerFile: String? = nil,
-                    weatherCode: Int? = nil, temperature: Double? = nil) {
+                    weatherCode: Int? = nil, temperature: Double? = nil, pairedWith: Int? = nil) {
             self.id = id
             self.number = number
             self.modelId = modelId
@@ -34,6 +37,7 @@ public struct BackupManifest: Codable, Sendable {
             self.stickerFile = stickerFile
             self.weatherCode = weatherCode
             self.temperature = temperature
+            self.pairedWith = pairedWith
         }
     }
 

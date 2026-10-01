@@ -26,6 +26,15 @@ struct CatchDraft: Identifiable {
     var preview: UIImage?
     /// Debug-mode record for this shot (nil when debug mode is off).
     var debug: DebugRecord?
+    /// A coupled tram's other car, added as a catch of its own when this one is stuck.
+    var partner: Int?
+    /// Numbers to offer for the other car, likeliest first.
+    var partnerSuggestions: [CoupledSet.Suggestion] = []
+    /// Live vehicles around you at the shutter (fresh camera shots only).
+    var nearby: [NearbyVehicle] = []
+    /// Every number read in the photo, best first. A live lock skips the still read, so this
+    /// may finish after the reveal opens.
+    var photoNumbers: Task<[Int], Never>?
 }
 
 struct CatchView: View {
@@ -570,7 +579,7 @@ struct CatchView: View {
         case .certain(let m) where mode.kind != nil && m.kind != mode.kind:
             m.kind == .tram ? String(localized: "A TRAM NUMBER · YOU'RE IN BUS MODE") : String(localized: "A BUS NUMBER · YOU'RE IN TRAM MODE")
         case .certain(let m):
-            [m.regular ? nil : m.tier.name, m.kind.name, liveLine(camera.reading, kind: m.kind).map { String(localized: "LINE \($0)") },
+            [m.regular ? nil : m.tier.name, m.kind.name, liveLine(camera.reading, model: m).map { String(localized: "LINE \($0)") },
              m.batch(containing: camera.reading ?? 0)?.year.map { String(localized: "BUILT \(String($0))") }, String(localized: "TAP TO CATCH")]
                 .compactMap { $0 }.joined(separator: " · ")
         }
@@ -584,9 +593,13 @@ struct CatchView: View {
         return LiveHints.resolve(m, number: n, nearby: nearby, catalog: catalog)
     }
 
-    /// The line a vehicle right in front of you is running on.
-    private func liveLine(_ n: Int?, kind: VehicleKind) -> String? {
-        live.nearby.first { $0.vehicle.number == n && $0.vehicle.kind == kind }?.vehicle.line.nonEmpty
+    /// The line a vehicle right in front of you is running on. A coupled car the feed doesn't
+    /// report runs on its set's line.
+    private func liveLine(_ n: Int?, model: VehicleModel) -> String? {
+        guard let n else { return nil }
+        let v = live.nearby.first { $0.vehicle.number == n && $0.vehicle.kind == model.kind }?.vehicle
+            ?? CoupledSet.partner(of: n, model: model, nearby: live.nearby)
+        return v?.line.nonEmpty
     }
 
     private func updateOCRFrame() {
@@ -706,15 +719,22 @@ struct CatchView: View {
                                         snapshotAge: self.live.snapshot.map { Int(Date().timeIntervalSince($0.fetched)) },
                                         nearby: nearby.map { "\($0.vehicle.kind.rawValue) \($0.vehicle.number) · line \($0.vehicle.line) · \(Int($0.distance)) m" })
         var number = live
+        var photoNumbers: [Int] = []
         if number == nil {
             let report = await ocr.value
             number = report.number
+            photoNumbers = report.candidates.sorted { $0.score > $1.score }.map(\.number)
             liveInfo.boosted = report.live.boosted
             liveInfo.rescued = report.live.rescued
+            liveInfo.partners = report.live.partners
             record?.update { $0.ocr = DebugRecord.ocr(report) }
         } else {
             // The live lock already leaned on the feed frame by frame.
-            if let n = number, nearby.contains(where: { $0.vehicle.number == n }) { liveInfo.boosted = [n] }
+            if let n = number, nearby.contains(where: { $0.vehicle.number == n }) {
+                liveInfo.boosted = [n]
+            } else if let n = number, let set = CoupledSet.partner(of: n, catalog: catalog, nearby: nearby) {
+                liveInfo.partners = [LiveHints.Partner(number: n, lead: set.lead.number)]
+            }
             if let record {
                 // Live lock skipped reading the number off the still; compare with what it says.
                 Task.detached(priority: .utility) {
@@ -725,15 +745,22 @@ struct CatchView: View {
         }
         var d = CatchDraft(photo: data, number: number, fromCamera: fromCamera, sticker: sticker, preview: preview,
                            debug: record)
+        d.nearby = nearby
+        d.photoNumbers = Task { await ocr.value.candidates.sorted { $0.score > $1.score }.map(\.number) }
         if let n = number {
             let plain = catalog.match(number: n, preferring: mode.kind, manual: manual.map)
             let match = lookup(n, nearby: nearby)
             if match != plain { liveInfo.resolved = "\(DebugRecord.describe(plain)) → \(DebugRecord.describe(match))" }
             d.modelId = match.suggested?.id
-            if fromCamera, let kind = match.suggested?.kind {
-                d.line = LiveHints.line(for: n, kind: kind, snapshot: self.live.snapshot, at: d.date)
+            if fromCamera, let model = match.suggested {
+                let snapshot = self.live.snapshot
+                d.line = LiveHints.line(for: n, kind: model.kind, snapshot: snapshot, at: d.date, model: model, nearby: nearby)
                 d.autoLine = d.line
-                liveInfo.lineSource = d.line == nil ? "none" : "live"
+                // "set": borrowed from the coupled car the feed reports instead.
+                liveInfo.lineSource = d.line == nil ? "none" : snapshot?.vehicle(number: n, kind: model.kind) == nil ? "set" : "live"
+            }
+            if let model = match.suggested {
+                d.partnerSuggestions = CoupledSet.suggestions(for: n, model: model, photoNumbers: photoNumbers, nearby: nearby)
             }
             let described = DebugRecord.describe(match), suggested = d.modelId
             record?.update {

@@ -123,7 +123,7 @@ struct MeView: View {
     }
 
     private var mapCaption: some View {
-        let geotagged = sightings.filter { $0.latitude != nil }
+        let geotagged = sightings.filter { $0.latitude != nil && $0.pairedWith == nil }
         let patch = Dictionary(grouping: geotagged.compactMap(\.district), by: { $0 })
             .max { $0.value.count < $1.value.count }?.key
         return HStack {
@@ -280,7 +280,8 @@ struct SpotMap: View {
         span: MKCoordinateSpan(latitudeDelta: 0.22, longitudeDelta: 0.22))
 
     var body: some View {
-        let pins = sightings.filter { $0.latitude != nil && $0.longitude != nil }
+        // A coupled tram's second car sits on the first one's spot: one pin for the pair.
+        let pins = sightings.filter { $0.latitude != nil && $0.longitude != nil && $0.pairedWith == nil }
         let selected = pins.first { $0.id == selectedId }
         ZStack(alignment: .bottom) {
             Map(initialPosition: pins.isEmpty ? .region(Self.warsaw) : .automatic,

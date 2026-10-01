@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Export Tabor/Resources/fleet.json to data/fleet-models.csv, one row per unbroken run of
 fleet numbers of one model, built in one year, at one depot, with one operator: number
-range, model, year, count, rarity tier, ZTM code, bus or tram, depot and operator.
+range, model, year, count, rarity tier, ZTM code, bus or tram, depot, operator and whether
+the cars run coupled in sets.
 
 fleet.json only keeps a batch's most common depot and a model's operators, so the depot
 and operator of each vehicle come from data/ztm-vehicles.json, data/ztm-pojazdy.json and the
@@ -61,6 +62,7 @@ def main():
     where = vehicles()
     rows = []
     for m in models:
+        in_sets = {n for pair in m.get("sets", []) for n in pair}
         groups = defaultdict(list)
         for b in m["batches"]:
             for n in b["numbers"]:
@@ -78,6 +80,8 @@ def main():
                     "type": m["kind"].lower(),
                     "depot": depot,
                     "operator": operator,
+                    # Runs as two coupled cars: the whole model, or a fixed set of two.
+                    "coupled": "yes" if m.get("coupled") or all(n in in_sets for n in range(lo, hi + 1)) else "",
                     "_sort": (m["kind"] != "TRAM", lo),
                 })
     rows.sort(key=lambda r: r.pop("_sort"))
