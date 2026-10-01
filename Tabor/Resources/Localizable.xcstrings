@@ -1553,6 +1553,16 @@
         }
       }
     },
+    "BUSES ON TRIAL · NOT PART OF THE FLEET %": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AUTOBUSY NA TESTACH · NIE LICZĄ SIĘ DO % TABORU"
+          }
+        }
+      }
+    },
     "BUSES ONLY": {
       "localizations": {
         "pl": {
@@ -4059,16 +4069,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "NA TESTACH"
-          }
-        }
-      }
-    },
-    "ON TRIAL FOR A FEW WEEKS · NOT PART OF THE FLEET %": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "NA TESTACH PRZEZ KILKA TYGODNI · NIE LICZY SIĘ DO % TABORU"
           }
         }
       }

@@ -79,7 +79,7 @@ struct BookIndexView: View {
                     // passing through or seasonal, not rare.
                     let onTest = rows.filter(\.onTest)
                     if !onTest.isEmpty {
-                        sectionHeader(.onTest, note: String(localized: "ON TRIAL FOR A FEW WEEKS · NOT PART OF THE FLEET %"))
+                        sectionHeader(.onTest, note: String(localized: "BUSES ON TRIAL · NOT PART OF THE FLEET %"))
                         ForEach(onTest) { m in row(m, stats: stats) }
                     }
                     let vintage = rows.filter(\.vintage)

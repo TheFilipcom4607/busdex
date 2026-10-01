@@ -12,6 +12,7 @@ Two sources, plus the hand-kept lists below:
 Usage:  python3 scripts/fetch_fleet.py            # fetch the city's list + build
         python3 scripts/fetch_fleet.py --offline  # rebuild from the saved files
         python3 scripts/fetch_fleet.py --scrape   # re-scrape ZTM's database too (slow)
+        python3 scripts/fetch_fleet.py --allow-drop  # let model ids disappear (on purpose)
 
 The city's list needs TABOR_DANE_TOKEN, from the environment or Config/Secrets.xcconfig.
 """
@@ -407,8 +408,10 @@ EXTRA_BUSES = [
 # catchable and in the book, but, like vintage stock, outside the fleet % and the set
 # badges, since they're gone again after a few weeks. (make, model, number, operator,
 # depot, where it runs, when: shown where a build year would be, since a demo bus's
-# year isn't what matters. Then the same two in Polish, for the app's Polish UI.) Irizar ie tram 12 #959: MZA's trial from R-4 Stalowa, mid
-# to end of September 2026 (TransInfo, Polskie Radio 24), seen live on line 106 on
+# year isn't what matters. Then the same two in Polish, for the app's Polish UI.)
+# Never remove a row once its trial ends: people who caught the bus keep it in their
+# book, and the book only shows models fleet.json still has.
+# Irizar ie tram 12 #959: MZA's trial from R-4 Stalowa, mid to end of September 2026 (TransInfo, Polskie Radio 24), seen live on line 106 on
 # 2026-09-25 (api.um.warszawa.pl).
 TEST_BUSES = [
     ("Irizar", "ie tram 12", 959, "MZA", 'R-4 "Stalowa" (R-13)',
@@ -534,6 +537,13 @@ def build(vehicles, city=None):
     fetched = max(raw["fetched"], city["fetched"]) if city else raw["fetched"]
     city_en = f" and the city's open data (fetched {city['fetched']})" if city else ""
     city_pl = f" i otwarte dane miasta (stan z {city['fetched']})" if city else ""
+    # Phones show only the models fleet.json has, so a vanished id hides people's catches.
+    if OUT.exists() and "--allow-drop" not in sys.argv:
+        gone = {m["id"] for m in json.loads(OUT.read_text())["models"]} - {m["id"] for m in models}
+        if gone:
+            print(f"refusing to write: model ids would disappear: {', '.join(sorted(gone))}\n"
+                  "(rerun with --allow-drop if that's on purpose)", file=sys.stderr)
+            sys.exit(1)
     OUT.write_text(json.dumps({
         # ZTM is the base; the hand-kept lists above fill its gaps (new deliveries, trial
         # and club buses, names, build years).
