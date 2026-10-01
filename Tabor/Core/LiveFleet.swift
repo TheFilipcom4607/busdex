@@ -193,9 +193,10 @@ public enum LiveHints {
     }
 }
 
-/// A live vehicle you haven't caught yet, for the HUNT map.
+/// A live vehicle for the HUNT map: one you haven't caught yet, or, in the ALL view, one
+/// already in your book.
 public struct WantedPin: Hashable, Sendable, Identifiable {
-    public enum Kind: Sendable { case newModel, newVehicle }
+    public enum Kind: Sendable { case newModel, newVehicle, caught }
 
     public let vehicle: LiveVehicle
     public let model: VehicleModel
@@ -211,16 +212,23 @@ public enum Wanted {
 
     /// Uncaught vehicles within `metres` of a point (the map's centre): models missing from
     /// your book first, rarest first, then nearest to `user` (or to the point, without a fix).
-    /// Numbers the ZTM database doesn't know are left out.
+    /// Numbers the ZTM database doesn't know are left out. `includeCaught` keeps vehicles
+    /// already in your book, as `.caught`, ranked like any other model you have.
     public static func pins(snapshot: LiveSnapshot, catalog: FleetCatalog, caught: CollectionStats,
                             lat: Double, lon: Double, within metres: Double = radius,
                             from user: (lat: Double, lon: Double)? = nil,
+                            includeCaught: Bool = false,
                             limit: Int = limit) -> [WantedPin] {
         let pins: [WantedPin] = snapshot.nearby(lat: lat, lon: lon, within: metres).compactMap { n in
-            guard let model = catalog.match(number: n.vehicle.number, kind: n.vehicle.kind).suggested,
-                  caught.vehicle(number: n.vehicle.number, modelId: model.id) == nil
+            guard let model = catalog.match(number: n.vehicle.number, kind: n.vehicle.kind).suggested
             else { return nil }
-            let kind: WantedPin.Kind = caught.ownedCount(modelId: model.id) == 0 ? .newModel : .newVehicle
+            let kind: WantedPin.Kind
+            if caught.vehicle(number: n.vehicle.number, modelId: model.id) != nil {
+                guard includeCaught else { return nil }
+                kind = .caught
+            } else {
+                kind = caught.ownedCount(modelId: model.id) == 0 ? .newModel : .newVehicle
+            }
             let distance = user.map { Geo.km(($0.lat, $0.lon), (n.vehicle.latitude, n.vehicle.longitude)) * 1000 } ?? n.distance
             return WantedPin(vehicle: n.vehicle, model: model, kind: kind, distance: distance)
         }

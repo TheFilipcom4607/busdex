@@ -3,19 +3,24 @@ import MapKit
 import SwiftData
 import SwiftUI
 
+/// The raw values are what's saved, so they stay as they were when the chips were renamed.
 enum HuntFilter: String, CaseIterable {
-    case all = "ALL UNCAUGHT"
+    case uncaught = "ALL UNCAUGHT"
     case newModels = "NEW MODELS"
+    /// Vehicles already in your book too, for when you just want to see what's running.
+    case everything = "EVERYTHING"
 
     var name: String {
         switch self {
-        case .all: String(localized: "ALL UNCAUGHT")
+        case .uncaught: String(localized: "UNCAUGHT")
         case .newModels: String(localized: "NEW MODELS")
+        case .everything: String(localized: "ALL")
         }
     }
 }
 
-/// HUNT: every bus and tram running near you that isn't in your book yet, live.
+/// HUNT: every bus and tram running near you that isn't in your book yet, live (or, in the
+/// ALL view, everything running).
 /// Two rules on the map: a vehicle on its own is a tag with its line, vehicles that would
 /// overlap become one bubble with their count; filled means a model new to you, outlined
 /// a model you already have. Colour is always rarity.
@@ -24,7 +29,7 @@ struct HuntView: View {
     @Query private var sightings: [Sighting]
     @Environment(Router.self) private var router
     @Environment(\.scenePhase) private var scenePhase
-    @AppStorage("huntFilter") private var filter: HuntFilter = .all
+    @AppStorage("huntFilter") private var filter: HuntFilter = .uncaught
     /// Rarities and models picked in the filter sheet; empty shows everything.
     @AppStorage("huntTargets") private var targets = HuntTargets()
     @State private var showFilters = false
@@ -67,7 +72,14 @@ struct HuntView: View {
     var body: some View {
         // Read once: the stored filter is decoded from a string on every read.
         let picked = targets
-        let shown = pins.filter { (filter == .all || $0.kind == .newModel) && picked.matches($0.model) }
+        let shown = pins.filter { pin in
+            let wanted = switch filter {
+            case .uncaught: pin.kind != .caught
+            case .newModels: pin.kind == .newModel
+            case .everything: true
+            }
+            return wanted && picked.matches(pin.model)
+        }
         let selected = shown.first { $0.id == selectedId }
 
         ZStack(alignment: .top) {
@@ -112,7 +124,7 @@ struct HuntView: View {
         .background(Palette.bg.ignoresSafeArea())
         .foregroundStyle(Palette.ink)
         .sheet(isPresented: $showFilters) {
-            HuntFilterSheet(targets: $targets, running: cityWide(), hasFix: hasFix)
+            HuntFilterSheet(targets: $targets, running: cityWide(), withCaught: filter == .everything, hasFix: hasFix)
         }
         // The tab stays alive behind the others once opened, so it comes back at once: the
         // fast polling and the refreshes only run while it's the one on screen.
@@ -144,6 +156,8 @@ struct HuntView: View {
             openGroup = nil
             recompute(animated: false)
         }
+        // Caught vehicles are only fetched for the ALL view.
+        .onChange(of: filter) { recompute(animated: false) }
     }
 
     /// A city-wide (filtered) hunt only gets pins around where you're looking, with a screen's
@@ -514,11 +528,19 @@ struct HuntView: View {
     private func bottomCard(shown: [WantedPin], selected: WantedPin?) -> some View {
         Group {
             if let selected {
-                PinCard(pin: selected, owned: sightings.stats.ownedCount(modelId: selected.model.id),
+                let stats = sightings.stats
+                PinCard(pin: selected, owned: stats.ownedCount(modelId: selected.model.id),
+                        mine: stats.vehicle(number: selected.vehicle.number, modelId: selected.model.id),
                         showDistance: hasFix, motion: motion(of: selected),
                         nextStops: creeping(selected)?.upcoming(stops: 3).stops.map(\.name) ?? [],
                         ending: creeping(selected)?.ending(within: 3),
-                        onOpen: { router.openModel(selected.model.id) },
+                        onOpen: {
+                            if selected.kind == .caught {
+                                router.openVehicle(modelId: selected.model.id, number: selected.vehicle.number)
+                            } else {
+                                router.openModel(selected.model.id)
+                            }
+                        },
                         onCatch: { withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { router.tab = .catchTab } },
                         onClose: { withAnimation(.snappy) { selectedId = nil } })
                 .id(selected.id)
@@ -628,9 +650,12 @@ struct HuntView: View {
         case (.newModels, nil): String(localized: "NEW MODELS NEARBY")
         case (.newModels, .bus): String(localized: "NEW BUS MODELS NEARBY")
         case (.newModels, .tram): String(localized: "NEW TRAM MODELS NEARBY")
-        case (.all, nil): String(localized: "UNCAUGHT NEARBY")
-        case (.all, .bus): String(localized: "UNCAUGHT BUSES NEARBY")
-        case (.all, .tram): String(localized: "UNCAUGHT TRAMS NEARBY")
+        case (.uncaught, nil): String(localized: "UNCAUGHT NEARBY")
+        case (.uncaught, .bus): String(localized: "UNCAUGHT BUSES NEARBY")
+        case (.uncaught, .tram): String(localized: "UNCAUGHT TRAMS NEARBY")
+        case (.everything, nil): String(localized: "ALL NEARBY")
+        case (.everything, .bus): String(localized: "BUSES NEARBY")
+        case (.everything, .tram): String(localized: "TRAMS NEARBY")
         }
     }
 
@@ -642,7 +667,7 @@ struct HuntView: View {
                 Mono(targets.hasPicks ? "\(near.count) OUT NOW" : hasFix ? "\(near.count) WITHIN 3 KM" : "AROUND THE MAP CENTRE",
                      size: 9.5, color: Palette.faint)
             }
-            if filter == .all {
+            if filter != .newModels {
                 HStack(spacing: 12) {
                     LegendSwatch(filled: true, text: String(localized: "NEW MODEL"))
                     LegendSwatch(filled: false, text: String(localized: "MODEL YOU HAVE"))
@@ -683,7 +708,9 @@ struct HuntView: View {
             guard shown.isEmpty else { return nil }
             return MessageCard(icon: "line.3.horizontal.decrease.circle", title: String(localized: "Nothing out that matches"),
                                text: filter == .newModels
-                                   ? String(localized: "None of it is a new model for you. Switch to ALL UNCAUGHT, or widen the filter.")
+                                   ? String(localized: "None of it is a new model for you. Switch to UNCAUGHT, or widen the filter.")
+                                   : filter == .everything
+                                   ? String(localized: "Nothing on your filter is running right now. It shows up here the moment one is.")
                                    : String(localized: "Nothing on your filter that you haven't caught is running right now. It shows up here the moment one is."),
                                action: (String(localized: "Clear the filter"), { withAnimation(.snappy) { targets = HuntTargets() } }))
         }
@@ -692,15 +719,19 @@ struct HuntView: View {
             case (.newModels, nil): String(localized: "No new models within 3 km")
             case (.newModels, .bus): String(localized: "No new bus models within 3 km")
             case (.newModels, .tram): String(localized: "No new tram models within 3 km")
-            case (.all, nil): String(localized: "No uncaught vehicles within 3 km")
-            case (.all, .bus): String(localized: "No uncaught buses within 3 km")
-            case (.all, .tram): String(localized: "No uncaught trams within 3 km")
+            case (.uncaught, nil): String(localized: "No uncaught vehicles within 3 km")
+            case (.uncaught, .bus): String(localized: "No uncaught buses within 3 km")
+            case (.uncaught, .tram): String(localized: "No uncaught trams within 3 km")
+            case (.everything, nil): String(localized: "Nothing within 3 km")
+            case (.everything, .bus): String(localized: "No buses within 3 km")
+            case (.everything, .tram): String(localized: "No trams within 3 km")
             }
             let text = switch (filter, targets.kind) {
-            case (.newModels, _): String(localized: "Everything running around here is a model you have. Switch to ALL UNCAUGHT for more of them.")
-            case (.all, nil): String(localized: "Every vehicle running around here is already in your book.")
-            case (.all, .bus): String(localized: "Every bus running around here is already in your book.")
-            case (.all, .tram): String(localized: "Every tram running around here is already in your book.")
+            case (.newModels, _): String(localized: "Everything running around here is a model you have. Switch to UNCAUGHT for more of them.")
+            case (.everything, _): String(localized: "Nothing running within 3 km right now.")
+            case (.uncaught, nil): String(localized: "Every vehicle running around here is already in your book.")
+            case (.uncaught, .bus): String(localized: "Every bus running around here is already in your book.")
+            case (.uncaught, .tram): String(localized: "Every tram running around here is already in your book.")
             }
             return MessageCard(icon: "checkmark.seal.fill", title: title, text: text)
         }
@@ -728,14 +759,15 @@ struct HuntView: View {
         }
     }
 
-    /// Every uncaught vehicle out right now, anywhere; distances from you when there's a fix.
+    /// Every uncaught vehicle out right now, anywhere (caught ones too in the ALL view);
+    /// distances from you when there's a fix.
     private func cityWide() -> [WantedPin] {
         guard let snapshot = live.snapshot else { return [] }
         let user = location.recent(maxAge: 300)?.coordinate
         let from = user ?? mapCenter ?? Self.warsaw.center
         return Wanted.pins(snapshot: snapshot, catalog: catalog, caught: sightings.stats,
                            lat: from.latitude, lon: from.longitude, within: Self.cityRadius,
-                           from: user.map { ($0.latitude, $0.longitude) })
+                           from: user.map { ($0.latitude, $0.longitude) }, includeCaught: filter == .everything)
     }
 
     private var onScreen: Bool { router.tab == .hunt }
@@ -756,12 +788,13 @@ struct HuntView: View {
             ? cityWide().filter { picked.matches($0.model) }
             : Wanted.pins(snapshot: snapshot, catalog: catalog, caught: sightings.stats,
                           lat: center.latitude, lon: center.longitude, within: max(Wanted.radius, visible),
-                          from: user.map { ($0.latitude, $0.longitude) })
+                          from: user.map { ($0.latitude, $0.longitude) }, includeCaught: filter == .everything)
         // Panned away from you: make sure what's around you still feeds the list.
         if !filtered, let user, Geo.km((user.latitude, user.longitude), (center.latitude, center.longitude)) * 1000 > visible {
             let ids = Set(next.map(\.id))
             next += Wanted.pins(snapshot: snapshot, catalog: catalog, caught: sightings.stats,
-                                lat: user.latitude, lon: user.longitude, from: (user.latitude, user.longitude))
+                                lat: user.latitude, lon: user.longitude, from: (user.latitude, user.longitude),
+                                includeCaught: filter == .everything)
                 .filter { !ids.contains($0.id) }
         }
         // Only what the map can show gets placed on its route: it's the costly part.
@@ -1012,6 +1045,8 @@ private struct Triangle: Shape {
 private struct PinCard: View {
     let pin: WantedPin
     let owned: Int
+    /// This very vehicle in your book, in the ALL view.
+    let mine: OwnedVehicle?
     let showDistance: Bool
     /// Which way it's going relative to you; nil until it's been seen moving.
     let motion: Motion?
@@ -1092,8 +1127,15 @@ private struct PinCard: View {
                 .animation(.easeInOut(duration: 0.3), value: nextStops)
                 .accessibilityElement(children: .combine)
             }
-            Text(pin.kind == .newModel ? "Not in your book yet — catching it opens a new page."
-                    : "You have \(owned) of \(pin.model.fleet). This one isn't among them.")
+            Group {
+                if let mine {
+                    Text("In your book since \(mine.firstSeen.formatted(.dateTime.day().month())) · seen \(mine.timesSeen)×")
+                } else if pin.kind == .newModel {
+                    Text("Not in your book yet — catching it opens a new page.")
+                } else {
+                    Text("You have \(owned) of \(pin.model.fleet). This one isn't among them.")
+                }
+            }
                 .font(TaborFont.grotesk(13))
                 .foregroundStyle(pin.kind == .newModel ? Palette.greenInk : Palette.sub)
             HStack(spacing: 8) {

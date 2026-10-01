@@ -5,8 +5,10 @@ import SwiftUI
 /// half-height sheet follows.
 struct HuntFilterSheet: View {
     @Binding var targets: HuntTargets
-    /// Every uncaught vehicle running right now, anywhere.
+    /// Every uncaught vehicle running right now, anywhere (in the ALL view, caught ones too).
     let running: [WantedPin]
+    /// `running` includes vehicles you've caught.
+    let withCaught: Bool
     /// Whether distances in `running` are from you; without a fix they're from the map's
     /// centre, which says nothing about how far you'd have to go, so they aren't shown.
     let hasFix: Bool
@@ -16,9 +18,10 @@ struct HuntFilterSheet: View {
     @State private var order: [String]
     private let catalog = Fleet.catalog
 
-    init(targets: Binding<HuntTargets>, running: [WantedPin], hasFix: Bool) {
+    init(targets: Binding<HuntTargets>, running: [WantedPin], withCaught: Bool, hasFix: Bool) {
         _targets = targets
         self.running = running
+        self.withCaught = withCaught
         self.hasFix = hasFix
         _order = State(initialValue: Self.initialOrder(Fleet.catalog.models, running: running, picked: targets.wrappedValue.models))
     }
@@ -39,7 +42,7 @@ struct HuntFilterSheet: View {
                     HStack(alignment: .firstTextBaseline) {
                         SectionLabel(text: String(localized: "TYPE"))
                         Spacer()
-                        Mono("UNCAUGHT, OUT NOW", size: 9.5, color: Palette.faint)
+                        Mono(withCaught ? String(localized: "OUT NOW") : String(localized: "UNCAUGHT, OUT NOW"), size: 9.5, color: Palette.faint)
                     }
                     .padding(.bottom, 9)
                     HStack(spacing: 7) {

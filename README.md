@@ -161,6 +161,10 @@ every 15 seconds while the map is on screen, and never in the background.
 - **A wanted list.** The filter takes whole tiers or particular models. While it's on,
   HUNT searches the whole city, not just the 3 km around you, and sorts by
   distance: if you're after one particular model, how far away it is matters most.
+- **Three views.** UNCAUGHT shows everything not in your book, NEW MODELS only
+  models you don't have yet, and ALL shows everything running, caught or not. A
+  vehicle you've caught gets the same marker as any other model you have, and its
+  card says when it went into your book.
 - **Rarest first.** Unfiltered, the list shows models you don't have yet first,
   then goes by rarity, then by distance. Vintage and test vehicles sit at the end
   of the book, but one that's actually out running is as rare a sight as a

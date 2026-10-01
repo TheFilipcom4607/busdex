@@ -682,6 +682,10 @@ private func nearby(_ vehicles: [LiveVehicle]) -> [NearbyVehicle] {
     #expect(pins.map(\.vehicle.number) == [legendary.numbers[0], hrc.numbers[1], hrc.numbers[0], otherUrbino18])
     #expect(pins.map(\.kind) == [.newModel, .newModel, .newModel, .newVehicle])
     #expect(Wanted.pins(snapshot: snap, catalog: catalog, caught: caught, lat: here.lat, lon: here.lon, limit: 2).count == 2)
+    // The ALL view: the caught Urbino comes back, ranked with the other one by distance.
+    let all = Wanted.pins(snapshot: snap, catalog: catalog, caught: caught, lat: here.lat, lon: here.lon, includeCaught: true)
+    #expect(all.map(\.vehicle.number) == [legendary.numbers[0], hrc.numbers[1], hrc.numbers[0], 8592, otherUrbino18])
+    #expect(all.map(\.kind) == [.newModel, .newModel, .newModel, .caught, .newVehicle])
 }
 
 @Test func crowdedPinsBecomeOneBubbleLedByTheRarest() {

@@ -1219,7 +1219,6 @@
       }
     },
     "ALL": {
-      "comment": "Book filter",
       "localizations": {
         "pl": {
           "stringUnit": {
@@ -1229,12 +1228,12 @@
         }
       }
     },
-    "ALL UNCAUGHT": {
+    "ALL NEARBY": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "NIEZŁAPANE"
+            "value": "WSZYSTKIE W POBLIŻU"
           }
         }
       }
@@ -1549,6 +1548,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "AUTOBUS NIE CZEKA"
+          }
+        }
+      }
+    },
+    "BUSES NEARBY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AUTOBUSY W POBLIŻU"
           }
         }
       }
@@ -2594,7 +2603,7 @@
         }
       }
     },
-    "Everything running around here is a model you have. Switch to ALL UNCAUGHT for more of them.": {
+    "Everything running around here is a model you have. Switch to UNCAUGHT for more of them.": {
       "localizations": {
         "pl": {
           "stringUnit": {
@@ -3195,6 +3204,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wczytaj zdjęcie"
+          }
+        }
+      }
+    },
+    "In your book since %@ · seen %lld×": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W albumie od %1$@ · widziany %2$lld×"
           }
         }
       }
@@ -3881,6 +3900,16 @@
         }
       }
     },
+    "No buses within 3 km": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak autobusów w promieniu 3 km"
+          }
+        }
+      }
+    },
     "No key": {
       "localizations": {
         "pl": {
@@ -3917,6 +3946,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Brak nowych modeli tramwajów w promieniu 3 km"
+          }
+        }
+      }
+    },
+    "No trams within 3 km": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak tramwajów w promieniu 3 km"
           }
         }
       }
@@ -3962,7 +4001,7 @@
         }
       }
     },
-    "None of it is a new model for you. Switch to ALL UNCAUGHT, or widen the filter.": {
+    "None of it is a new model for you. Switch to UNCAUGHT, or widen the filter.": {
       "localizations": {
         "pl": {
           "stringUnit": {
@@ -3992,6 +4031,16 @@
         }
       }
     },
+    "Nothing on your filter is running right now. It shows up here the moment one is.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nic z twojego filtra teraz nie jeździ. Gdy tylko coś wyjedzie, pojawi się tutaj."
+          }
+        }
+      }
+    },
     "Nothing on your filter that you haven't caught is running right now. It shows up here the moment one is.": {
       "localizations": {
         "pl": {
@@ -4008,6 +4057,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nic pasującego nie jeździ"
+          }
+        }
+      }
+    },
+    "Nothing running within 3 km right now.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W promieniu 3 km nic teraz nie jeździ."
+          }
+        }
+      }
+    },
+    "Nothing within 3 km": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nic w promieniu 3 km"
           }
         }
       }
@@ -4089,6 +4158,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "OTWÓRZ MAPĘ"
+          }
+        }
+      }
+    },
+    "OUT NOW": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TERAZ NA TRASIE"
           }
         }
       }
@@ -5221,6 +5300,16 @@
         }
       }
     },
+    "TRAMS NEARBY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TRAMWAJE W POBLIŻU"
+          }
+        }
+      }
+    },
     "TRAMS ONLY": {
       "localizations": {
         "pl": {
@@ -5583,6 +5672,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wpisz numer"
+          }
+        }
+      }
+    },
+    "UNCAUGHT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NIEZŁAPANE"
           }
         }
       }
