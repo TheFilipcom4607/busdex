@@ -19,8 +19,8 @@ struct CatchDraft: Identifiable {
     /// Camera shots get saved to Photos; imports already live there.
     var fromCamera: Bool
     var geotag: Task<Geotag?, Never>?
-    /// Die-cut PNG, generated in the background while the reveal plays.
-    var sticker: Task<Data?, Never>?
+    /// Die-cut sticker, generated in the background while the reveal plays.
+    var sticker: Task<StickerCut?, Never>?
     /// Screen-sized copy of the photo; decoding the full-res shot on every frame of the
     /// reveal's animations would stutter on device.
     var preview: UIImage?
@@ -642,6 +642,17 @@ struct CatchView: View {
         await begin(with: data, live: live, fromCamera: true, record: record)
     }
 
+    /// A task's value, unless it takes longer than `seconds`.
+    private nonisolated static func value<T: Sendable>(of task: Task<T, Never>, within seconds: Double) async -> T? {
+        await withTaskGroup(of: T?.self) { group in
+            group.addTask { await task.value }
+            group.addTask { try? await Task.sleep(for: .seconds(seconds)); return nil }
+            let first = await group.next() ?? nil
+            group.cancelAll()
+            return first
+        }
+    }
+
     private func begin(with data: Data, live: Int?, fromCamera: Bool, record: DebugRecord? = nil) async {
         let preview = await Task.detached(priority: .userInitiated) {
             PhotoStore.downsample(data, maxPixel: 900).map(UIImage.init(cgImage:))
@@ -649,30 +660,54 @@ struct CatchView: View {
         withAnimation(.easeOut(duration: 0.2)) { frozen = preview }
         let record = record ?? DebugRecord.begin(source: fromCamera ? "camera" : "import", mode: mode)
         record?.attach(photo: data)
-        // Start cutting the sticker immediately; it finishes while the reveal builds up.
-        let sticker = Task.detached(priority: .userInitiated) {
-            let start = Date()
-            let result = StickerMaker.make(from: data)
-            let png = (try? result.get()).flatMap(StickerMaker.pngData)
-            if let record {
-                let ms = Int(Date().timeIntervalSince(start) * 1000)
-                let failure: String? = switch result {
-                case .failure(let f): f.description
-                case .success: png == nil ? "PNG encoding failed" : nil
-                }
-                record.update { $0.sticker = .init(ok: png != nil, durationMs: ms, failure: failure) }
-                if let png { record.attach(sticker: png) }
-            }
-            return png
-        }
         // An imported photo could be from anywhere, any day: only fresh shots use the feed.
         let nearby = fromCamera && self.live.fresh() != nil ? self.live.nearby : []
+        let mode = mode
+        // Always read the photo: it says where the number is, so the sticker keeps the object
+        // the number is on. A live lock already has the number, so the quick full pass will do.
+        let ocr = Task.detached(priority: .userInitiated) {
+            await TextReader.read(data, mode: mode, nearby: nearby, tiles: live == nil)
+        }
+        // Lift the subjects at once (quicker than OCR), then cut once the number's box is known.
+        let sticker = Task.detached(priority: .userInitiated) { () -> StickerCut? in
+            var spent: TimeInterval = 0
+            var start = Date()
+            let lifted = StickerMaker.lift(data)
+            spent += Date().timeIntervalSince(start)
+            var box: CGRect?
+            var result: Result<StickerCut, StickerMaker.Failure>
+            switch lifted {
+            case .failure(let f):
+                result = .failure(f)
+            case .success(let lift):
+                if let live {
+                    // Don't hold the reveal for it: past a second, cut without the box.
+                    box = await Self.value(of: ocr, within: 1.0)?.box(of: live)
+                } else {
+                    box = await ocr.value.numberBox
+                }
+                start = Date()
+                result = StickerCut.make(lift, numberBox: box)
+                spent += Date().timeIntervalSince(start)
+            }
+            let cut = try? result.get()
+            if let record {
+                let ms = Int(spent * 1000)
+                let failure: String? = if case .failure(let f) = result { f.description } else { nil }
+                record.update {
+                    $0.sticker = .init(ok: cut != nil, durationMs: ms, failure: failure, pickedBy: cut?.reason.rawValue,
+                                       subjects: cut?.order.count, numberBox: box.map(DebugRecord.describe))
+                }
+                if let png = cut?.png { record.attach(sticker: png) }
+            }
+            return cut
+        }
         var liveInfo = DebugRecord.Live(status: "\(self.live.status)",
                                         snapshotAge: self.live.snapshot.map { Int(Date().timeIntervalSince($0.fetched)) },
                                         nearby: nearby.map { "\($0.vehicle.kind.rawValue) \($0.vehicle.number) · line \($0.vehicle.line) · \(Int($0.distance)) m" })
         var number = live
         if number == nil {
-            let report = await TextReader.read(data, mode: mode, nearby: nearby)
+            let report = await ocr.value
             number = report.number
             liveInfo.boosted = report.live.boosted
             liveInfo.rescued = report.live.rescued
@@ -681,10 +716,9 @@ struct CatchView: View {
             // The live lock already leaned on the feed frame by frame.
             if let n = number, nearby.contains(where: { $0.vehicle.number == n }) { liveInfo.boosted = [n] }
             if let record {
-                // Live lock skipped the still read; run it anyway in the background to compare.
-                let mode = mode
+                // Live lock skipped reading the number off the still; compare with what it says.
                 Task.detached(priority: .utility) {
-                    let report = await TextReader.read(data, mode: mode, nearby: nearby)
+                    let report = await ocr.value
                     record.update { $0.stillCheck = DebugRecord.ocr(report) }
                 }
             }

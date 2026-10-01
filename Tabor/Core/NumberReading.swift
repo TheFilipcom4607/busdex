@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// One piece of recognised text from the camera, with the height of its box
@@ -6,11 +7,15 @@ public struct TextObservation: Sendable {
     public let text: String
     public let confidence: Float
     public let height: Double
+    /// Where it is, normalised to the whole photo with a top-left origin: the sticker
+    /// cutter keeps the object the number is on. Live frames don't fill it in.
+    public let box: CGRect?
 
-    public init(text: String, confidence: Float, height: Double) {
+    public init(text: String, confidence: Float, height: Double, box: CGRect? = nil) {
         self.text = text
         self.confidence = confidence
         self.height = height
+        self.box = box
     }
 }
 
@@ -69,6 +74,24 @@ public enum NumberExtractor {
             }
         }
         return scored
+    }
+
+    /// Boxes of the text that reads as `number`, by the same rules `candidates` uses.
+    public static func boxes(of number: Int, in observations: [TextObservation]) -> [CGRect] {
+        observations.compactMap { obs in
+            guard let box = obs.box else { return nil }
+            let values = digitTokens(obs.text).map(\.value) + lookalikeTokens(obs.text).map(\.value)
+            return values.contains(number) ? box : nil
+        }
+    }
+
+    /// Vision's box (bottom-left origin, relative to the region read) on the whole photo,
+    /// top-left origin.
+    public static func ocrBox(_ b: CGRect, roi: CGRect?) -> CGRect {
+        let r = roi ?? CGRect(x: 0, y: 0, width: 1, height: 1)
+        let x = r.minX + b.minX * r.width, y = r.minY + b.minY * r.height
+        let w = b.width * r.width, h = b.height * r.height
+        return CGRect(x: x, y: 1 - y - h, width: w, height: h)
     }
 
     /// Standalone 2–5 digit runs with their length: "8465", "Nr 1974", but not

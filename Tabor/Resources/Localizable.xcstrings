@@ -5897,6 +5897,16 @@
         }
       }
     },
+    "WRONG CUTOUT?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZŁE WYCIĘCIE?"
+          }
+        }
+      }
+    },
     "WRONG NUMBER?": {
       "localizations": {
         "pl": {

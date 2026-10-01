@@ -502,6 +502,15 @@ enum TextReader {
         /// What the live feed changed about the candidates.
         var live = LiveHints.Adjustment()
         var duration: TimeInterval = 0
+
+        /// Where `number` is written: the tallest text that reads as it. A number the live
+        /// feed rescued was printed as the one it was rescued from.
+        func box(of number: Int) -> CGRect? {
+            let written = live.rescued.first { $0.to == number }?.from ?? number
+            return NumberExtractor.boxes(of: written, in: full + tiles).max { $0.height < $1.height }
+        }
+
+        var numberBox: CGRect? { number.flatMap(box(of:)) }
     }
 
     /// Accurate OCR over a captured or imported photo. Returns the best fleet number.
@@ -512,7 +521,8 @@ enum TextReader {
     /// Full frame first; if nothing is found, re-read overlapping 3×3 tiles so small
     /// numbers on a whole-vehicle shot get enough pixels (e.g. yellow-on-black "4425").
     /// `nearby` (live vehicles around you) boosts and rescues candidates, see `LiveHints`.
-    static func read(_ data: Data, mode: CatchMode, nearby: [NearbyVehicle]) async -> Report {
+    /// Without `tiles` it's the full pass only: quick, for when only the number's box is wanted.
+    static func read(_ data: Data, mode: CatchMode, nearby: [NearbyVehicle], tiles: Bool = true) async -> Report {
         await Task.detached(priority: .userInitiated) {
             let start = Date()
             guard let image = UIImage(data: data), let cg = image.cgImage else { return Report(pass: "decode-failed") }
@@ -520,7 +530,7 @@ enum TextReader {
             var report = Report(pass: "full")
             report.full = read(cg, orientation: orientation, roi: nil)
             report.candidates = NumberExtractor.candidates(in: report.full, mode: mode, catalog: Fleet.catalog)
-            if report.candidates.isEmpty {
+            if report.candidates.isEmpty, tiles {
                 report.pass = "tiles"
                 for y in [0.0, 0.3, 0.6] {
                     for x in [0.0, 0.3, 0.6] {
@@ -548,8 +558,9 @@ enum TextReader {
         try? VNImageRequestHandler(cgImage: cg, orientation: orientation).perform([request])
         let scale = Double(roi?.height ?? 1)
         return (request.results ?? []).flatMap { obs in
-            obs.topCandidates(2).map {
-                TextObservation(text: $0.string, confidence: $0.confidence, height: Double(obs.boundingBox.height) * scale)
+            let box = NumberExtractor.ocrBox(obs.boundingBox, roi: roi)
+            return obs.topCandidates(2).map {
+                TextObservation(text: $0.string, confidence: $0.confidence, height: Double(obs.boundingBox.height) * scale, box: box)
             }
         }
     }

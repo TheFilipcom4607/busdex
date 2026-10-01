@@ -19,6 +19,8 @@ final class DebugRecord: @unchecked Sendable {
         let text: String
         let confidence: Float
         let height: Double
+        /// "x y w h", normalised, top-left origin; still photos only.
+        var box: String?
     }
 
     struct Candidate: Codable {
@@ -39,6 +41,13 @@ final class DebugRecord: @unchecked Sendable {
         var ok: Bool
         var durationMs: Int
         var failure: String?
+        /// Which rule chose the object (`PickReason`), and out of how many worth offering.
+        var pickedBy: String?
+        var subjects: Int?
+        /// WRONG CUTOUT? taps on the reveal.
+        var recuts: Int?
+        /// The number's box the cut went by, as in `Obs.box`.
+        var numberBox: String?
     }
 
     struct Event: Codable {
@@ -171,7 +180,12 @@ final class DebugRecord: @unchecked Sendable {
     // MARK: - Helpers
 
     static func obs(_ list: [TextObservation]) -> [Obs] {
-        list.map { Obs(text: $0.text, confidence: $0.confidence, height: ($0.height * 10_000).rounded() / 10_000) }
+        list.map { Obs(text: $0.text, confidence: $0.confidence, height: ($0.height * 10_000).rounded() / 10_000,
+                       box: $0.box.map(describe)) }
+    }
+
+    static func describe(_ r: CGRect) -> String {
+        [r.minX, r.minY, r.width, r.height].map { String(format: "%.3f", Double($0)) }.joined(separator: " ")
     }
 
     static func ocr(_ r: TextReader.Report) -> OCR {

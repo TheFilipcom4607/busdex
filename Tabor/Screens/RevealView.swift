@@ -20,6 +20,10 @@ struct RevealView: View {
     @State private var sparkle = false
     @State private var stickerImage: UIImage?
     @State private var stickerPNG: Data?
+    /// The sticker's cut, kept so WRONG CUTOUT? can try the next object in the photo.
+    @State private var cut: StickerCut?
+    @State private var recutting = false
+    @State private var recuts = 0
     @State private var editing = false
     @State private var holdProgress = 0.0
     @State private var holding = false
@@ -161,15 +165,24 @@ struct RevealView: View {
                         }
                         .buttonStyle(StickerPressStyle())
                     }
-                    Button {
-                        editing = true
-                    } label: {
-                        Mono(ready ? "WRONG NUMBER?" : "EDIT DETAILS", size: 12.5, color: Palette.sub)
-                            .frame(maxWidth: .infinity)
-                            .padding(14)
-                            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.14)))
+                    HStack(spacing: 10) {
+                        Button {
+                            editing = true
+                        } label: {
+                            secondaryLabel(ready ? String(localized: "WRONG NUMBER?") : String(localized: "EDIT DETAILS"))
+                        }
+                        .buttonStyle(.plain)
+                        // Only when the photo had something else worth cutting.
+                        if ready, landed, stickerImage != nil, cut?.canRecut == true {
+                            Button(action: recut) {
+                                secondaryLabel(String(localized: "WRONG CUTOUT?"))
+                                    .opacity(recutting ? 0.5 : 1)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(recutting)
+                            .transition(.opacity)
+                        }
                     }
-                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 26)
                 .padding(.bottom, 20)
@@ -185,6 +198,35 @@ struct RevealView: View {
         .task {
             Haptics.shared.warmUp()
             await playReveal(run: 0)
+        }
+    }
+
+    private func secondaryLabel(_ text: String) -> some View {
+        Mono(text, size: 12.5, color: Palette.sub)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .frame(maxWidth: .infinity)
+            .padding(14)
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.14)))
+    }
+
+    /// The lifter found more than one object and kept the wrong one: cut the next instead.
+    private func recut() {
+        guard let current = cut, !recutting else { return }
+        recutting = true
+        Haptics.shared.tick()
+        Task {
+            let next = await Task.detached(priority: .userInitiated) { current.next() }.value
+            recutting = false
+            guard let next else { return Haptics.shared.nope() }
+            recuts += 1
+            let n = recuts
+            draft.debug?.update { $0.sticker?.recuts = n }
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.62)) {
+                cut = next
+                stickerPNG = next.png
+                stickerImage = UIImage(data: next.png)
+            }
         }
     }
 
@@ -223,6 +265,8 @@ struct RevealView: View {
                         }
                     stickerCaption(number: number, model: model, tier: tier, batch: batch)
                 }
+                // A re-cut slaps down like the first one did.
+                .id(cut?.index ?? 0)
                 .transition(.asymmetric(insertion: .scale(scale: 1.35).combined(with: .opacity), removal: .opacity))
             }
         }
@@ -370,7 +414,7 @@ struct RevealView: View {
     private func playReveal(run: Int) async {
         // Wait for the cut-out (usually ~0.2s on device), capped so a slow model never stalls.
         if stickerImage == nil, let task = draft.sticker {
-            let png = await withTaskGroup(of: Data??.self) { group in
+            let made = await withTaskGroup(of: StickerCut??.self) { group in
                 group.addTask { await task.value }
                 group.addTask { try? await Task.sleep(for: .seconds(2.5)); return .some(nil) }
                 let first = await group.next() ?? nil
@@ -378,8 +422,9 @@ struct RevealView: View {
                 return first ?? nil
             }
             guard run == revealRun else { return }
-            stickerPNG = png
-            stickerImage = png.flatMap(UIImage.init(data:))
+            cut = made
+            stickerPNG = made?.png
+            stickerImage = made.flatMap { UIImage(data: $0.png) }
         }
 
         guard let model, draft.number != nil else {
@@ -487,7 +532,7 @@ struct RevealView: View {
         // attach the sticker whenever it's ready instead of losing it.
         if s.stickerFile == nil, let stickerTask = draft.sticker {
             Task { @MainActor in
-                guard let png = await stickerTask.value, let file = PhotoStore.save(png, ext: "png") else { return }
+                guard let png = await stickerTask.value?.png, let file = PhotoStore.save(png, ext: "png") else { return }
                 s.stickerFile = file
                 try? context.save()
             }

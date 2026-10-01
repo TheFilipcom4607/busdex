@@ -1047,3 +1047,77 @@ private func drive(from lon0: Double, step: Double, fixes: Int, lat: Double = ro
     // Counting badges don't list anything.
     #expect(eval([any()])["collector"]!.proof.isEmpty)
 }
+
+// MARK: - Sticker subject picking
+
+private func subject(_ label: Int, pixels: Int, x: Double, y: Double, w: Double, h: Double,
+                     cover: Double = 0, person: Double = 0) -> Subject {
+    Subject(label: label, pixels: pixels, box: CGRect(x: x, y: y, width: w, height: h),
+            centroid: CGPoint(x: x + w / 2, y: y + h / 2), numberCover: cover, personShare: person)
+}
+
+@Test func stickerKeepsTheObjectTheNumberIsOn() {
+    // Head-on bus, with someone nearer the camera who comes out bigger.
+    let bus = subject(1, pixels: 3000, x: 0.3, y: 0.3, w: 0.4, h: 0.4, cover: 0.9)
+    let person = subject(2, pixels: 5000, x: 0.0, y: 0.0, w: 0.3, h: 1.0, person: 0.95)
+    let number = CGRect(x: 0.45, y: 0.35, width: 0.1, height: 0.04)
+    let pick = SubjectPicker.rank([bus, person], numberBox: number)
+    #expect(pick?.order == [1, 2])
+    #expect(pick?.reason == .number)
+    // Two buses: the number is on the smaller one.
+    let near = subject(3, pixels: 6000, x: 0.0, y: 0.2, w: 0.6, h: 0.6)
+    let far = subject(4, pixels: 1500, x: 0.6, y: 0.3, w: 0.3, h: 0.3, cover: 0.7)
+    #expect(SubjectPicker.rank([near, far], numberBox: number)?.order.first == 4)
+}
+
+@Test func stickerFallsBackToTheOutlineHoldingTheNumber() {
+    // The mask missed the digits, but the number sits inside the bus's outline.
+    let bus = subject(1, pixels: 2000, x: 0.5, y: 0.2, w: 0.4, h: 0.5, cover: 0.05)
+    let car = subject(2, pixels: 4000, x: 0.0, y: 0.5, w: 0.5, h: 0.4)
+    let pick = SubjectPicker.rank([car, bus], numberBox: CGRect(x: 0.6, y: 0.3, width: 0.1, height: 0.05))
+    #expect(pick?.order.first == 1)
+    #expect(pick?.reason == .number)
+}
+
+@Test func stickerWithoutANumberSkipsPeopleAndPrefersTheMiddle() {
+    let bus = subject(1, pixels: 3000, x: 0.3, y: 0.3, w: 0.4, h: 0.4)
+    let person = subject(2, pixels: 5000, x: 0.0, y: 0.0, w: 0.3, h: 1.0, person: 0.9)
+    let pick = SubjectPicker.rank([person, bus], numberBox: nil)
+    #expect(pick?.order == [1, 2])
+    #expect(pick?.reason == .notPerson)
+    // A bigger car at the edge loses to the bus in the middle.
+    let car = subject(3, pixels: 3600, x: 0.8, y: 0.8, w: 0.2, h: 0.2)
+    let central = SubjectPicker.rank([car, bus], numberBox: nil)
+    #expect(central?.order == [1, 3])
+    #expect(central?.reason == .central)
+    // Passengers behind the windows don't make the bus a person.
+    let busWithPassengers = subject(4, pixels: 3000, x: 0.3, y: 0.3, w: 0.4, h: 0.4, person: 0.15)
+    #expect(SubjectPicker.rank([person, busWithPassengers], numberBox: nil)?.order.first == 4)
+}
+
+@Test func stickerOfOnlyPeopleTakesTheBiggest() {
+    let small = subject(1, pixels: 1000, x: 0.4, y: 0.4, w: 0.1, h: 0.3, person: 0.9)
+    let big = subject(2, pixels: 4000, x: 0.0, y: 0.0, w: 0.3, h: 1.0, person: 0.9)
+    let pick = SubjectPicker.rank([small, big], numberBox: nil)
+    #expect(pick?.order == [2, 1])
+    #expect(pick?.reason == .largest)
+    #expect(SubjectPicker.rank([], numberBox: nil) == nil)
+    // Crumbs aren't offered as other cut-outs.
+    let crumb = subject(3, pixels: 50, x: 0.9, y: 0.9, w: 0.01, h: 0.01)
+    #expect(SubjectPicker.rank([big, crumb], numberBox: nil, framePixels: 10_000)?.order == [2])
+}
+
+@Test func numberBoxesCarryThroughOCR() {
+    let obs = [
+        TextObservation(text: "B592", confidence: 0.9, height: 0.05, box: CGRect(x: 0.4, y: 0.3, width: 0.1, height: 0.05)),
+        TextObservation(text: "WX 8592", confidence: 0.9, height: 0.02, box: CGRect(x: 0.4, y: 0.8, width: 0.1, height: 0.02)),
+        TextObservation(text: "8592", confidence: 0.9, height: 0.03),
+    ]
+    // The lookalike counts; the plate and the box-less live frame don't.
+    #expect(NumberExtractor.boxes(of: 8592, in: obs) == [CGRect(x: 0.4, y: 0.3, width: 0.1, height: 0.05)])
+    // A box from the top-right tile, back on the whole photo with the origin flipped.
+    let tile = CGRect(x: 0.6, y: 0.6, width: 0.4, height: 0.4)
+    let mapped = NumberExtractor.ocrBox(CGRect(x: 0.5, y: 0.5, width: 0.25, height: 0.25), roi: tile)
+    #expect(abs(mapped.minX - 0.8) < 1e-9 && abs(mapped.minY - 0.1) < 1e-9)
+    #expect(abs(mapped.width - 0.1) < 1e-9 && abs(mapped.height - 0.1) < 1e-9)
+}
