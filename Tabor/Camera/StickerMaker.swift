@@ -239,7 +239,8 @@ enum StickerMaker {
 
     /// The mask minus the people's own pixels inside `boxes` (normalised, top-left origin),
     /// grown a little so no fringe of them is left on the edge, and minus whatever else of
-    /// those boxes lies outside the object's `outline`: crumbs of shoe or shadow.
+    /// those boxes lies outside the object's `outline`: crumbs of shoe or shadow. Hard-edged,
+    /// and without islands the cut leaves behind.
     private static func erasing(_ boxes: [CGRect], outside outline: CGRect, people: CVPixelBuffer,
                                 from mask: CVPixelBuffer, extent full: CGRect) -> CVPixelBuffer? {
         // Core Image counts from the bottom.
@@ -250,9 +251,13 @@ enum StickerMaker {
         let scaled = p.transformed(by: CGAffineTransform(scaleX: full.width / p.extent.width, y: full.height / p.extent.height))
         let black = CIImage(color: .black).cropped(to: full)
         let area = boxes.reduce(black) { CIImage(color: .white).cropped(to: pixels($1)).composited(over: $0) }
+        // Where segmentation is only half sure, it's still the person: a soft edge left a ghost.
+        let sure = CIFilter.colorThreshold()
+        sure.inputImage = scaled.applyingFilter("CIMultiplyCompositing", parameters: [kCIInputBackgroundImageKey: area])
+        sure.threshold = 0.15
         let grow = CIFilter.morphologyMaximum()
-        grow.inputImage = scaled.applyingFilter("CIMultiplyCompositing", parameters: [kCIInputBackgroundImageKey: area])
-        grow.radius = Float(max(2, full.width * 0.004))
+        grow.inputImage = sure.outputImage
+        grow.radius = Float(max(3, full.width * 0.008))
         guard let person = grow.outputImage?.cropped(to: full) else { return nil }
         let beyond = CIImage(color: .black).cropped(to: pixels(outline)).composited(over: area)
         let keep = person.applyingFilter("CIMaximumCompositing", parameters: [kCIInputBackgroundImageKey: beyond])
@@ -265,7 +270,61 @@ enum StickerMaker {
         CVPixelBufferCreate(nil, Int(full.width), Int(full.height), kCVPixelFormatType_OneComponent8, nil, &buffer)
         guard let buffer else { return nil }
         context.render(out, to: buffer, bounds: full, colorSpace: nil)
+        dropIslands(buffer)
         return buffer
+    }
+
+    /// Clears every patch of the mask under a twentieth the size of the biggest one: what's
+    /// left of a person after the cut, cut off from the vehicle. A vehicle split in two by
+    /// someone standing in front keeps both halves.
+    private static func dropIslands(_ buf: CVPixelBuffer) {
+        CVPixelBufferLockBaseAddress(buf, [])
+        defer { CVPixelBufferUnlockBaseAddress(buf, []) }
+        guard let base = CVPixelBufferGetBaseAddress(buf) else { return }
+        let w = CVPixelBufferGetWidth(buf), h = CVPixelBufferGetHeight(buf)
+        let stride = CVPixelBufferGetBytesPerRow(buf)
+        let px = base.assumingMemoryBound(to: UInt8.self)
+        var label = [Int32](repeating: 0, count: w * h)
+        var sizes: [Int] = [0]
+        var stack: [Int] = []
+        for start in 0..<(w * h) where label[start] == 0 && px[(start / w) * stride + start % w] > 127 {
+            let id = Int32(sizes.count)
+            var count = 0
+            label[start] = id
+            stack.append(start)
+            while let i = stack.popLast() {
+                count += 1
+                let x = i % w, y = i / w
+                for (nx, ny) in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]
+                where nx >= 0 && nx < w && ny >= 0 && ny < h {
+                    let j = ny * w + nx
+                    if label[j] == 0, px[ny * stride + nx] > 127 { label[j] = id; stack.append(j) }
+                }
+            }
+            sizes.append(count)
+        }
+        guard let biggest = sizes.max(), biggest > 0 else { return }
+        for y in 0..<h {
+            for x in 0..<w {
+                let l = Int(label[y * w + x])
+                // Soft edge pixels (≤127) belong to no patch; keep them only beside a kept one.
+                if l == 0 ? px[y * stride + x] > 0 && !keptNear(x, y) : sizes[l] * 20 < biggest {
+                    px[y * stride + x] = 0
+                }
+            }
+        }
+
+        func keptNear(_ x: Int, _ y: Int) -> Bool {
+            for dy in -2...2 {
+                for dx in -2...2 {
+                    let nx = x + dx, ny = y + dy
+                    guard nx >= 0, nx < w, ny >= 0, ny < h else { continue }
+                    let l = Int(label[ny * w + nx])
+                    if l != 0, sizes[l] * 20 >= biggest { return true }
+                }
+            }
+            return false
+        }
     }
 
     static func pngData(_ image: CGImage) -> Data? {
