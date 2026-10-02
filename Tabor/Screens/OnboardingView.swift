@@ -11,7 +11,7 @@ struct OnboardingView: View {
     @State private var askedLocation = false
     private let location = LocationService.shared
 
-    enum Page: Int, CaseIterable { case welcome, book, camera, hunt }
+    enum Page: Int, CaseIterable { case welcome, book, rarity, camera, hunt }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -31,6 +31,7 @@ struct OnboardingView: View {
             TabView(selection: $page) {
                 WelcomePage().tag(Page.welcome)
                 BookPage().tag(Page.book)
+                RarityPage().tag(Page.rarity)
                 CameraPage().tag(Page.camera)
                 HuntPage().tag(Page.hunt)
             }
@@ -80,7 +81,7 @@ struct OnboardingView: View {
     /// The permission this page is about hasn't been asked for yet.
     private var needsPermission: Bool {
         switch page {
-        case .welcome, .book: false
+        case .welcome, .book, .rarity: false
         case .camera: AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined
         case .hunt: location.authorization == .notDetermined
         }
@@ -89,7 +90,7 @@ struct OnboardingView: View {
     private var primaryLabel: String {
         switch page {
         case .welcome: String(localized: "LET'S GO")
-        case .book: String(localized: "NEXT")
+        case .book, .rarity: String(localized: "NEXT")
         case .camera: needsPermission ? String(localized: "ALLOW CAMERA") : String(localized: "NEXT")
         case .hunt: needsPermission ? String(localized: "ALLOW LOCATION") : String(localized: "START CATCHING")
         }
@@ -97,7 +98,7 @@ struct OnboardingView: View {
 
     private func primary() {
         switch page {
-        case .welcome, .book:
+        case .welcome, .book, .rarity:
             advance()
         case .camera:
             guard needsPermission else { return advance() }
@@ -206,7 +207,7 @@ private struct BookPage: View {
     var body: some View {
         PageLayout(kicker: String(localized: "BOOK"),
                    title: String(localized: "Fill the book, model by model."),
-                   text: String(localized: "Every model has a page and every vehicle a slot. Rarity goes by how many exist, so a legendary is one of a dozen or fewer. Badges come along the way.")) {
+                   text: String(localized: "Every model has a page and every vehicle a slot, and badges come along the way. The colours are rarity: more on that next.")) {
             VStack(spacing: 8) {
                 ForEach(Array(rows.enumerated()), id: \.offset) { i, row in
                     MiniRow(model: row.model, share: filled ? row.share : 0)
@@ -251,6 +252,68 @@ private struct BookPage: View {
             .padding(.horizontal, 14)
             .background(Palette.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.white.opacity(0.06)))
+        }
+    }
+}
+
+/// Why a model is the rarity it is, since it isn't obvious: it's how many of it there are,
+/// not how old or odd it looks. One dot per vehicle at each tier's ceiling, so the gap
+/// between a dozen and hundreds is something you see rather than read.
+private struct RarityPage: View {
+    @State private var shown = false
+    private static let perRow = 32
+    /// COMMON has no ceiling; three full rows trailing off say "and lots more".
+    private static let commonDots = perRow * 3
+    private static let ladder: [Tier] = [.legendary, .gold, .rare, .common]
+
+    var body: some View {
+        PageLayout(kicker: String(localized: "RARITY"),
+                   title: String(localized: "The fewer there are, the rarer."),
+                   text: String(localized: "Rarity is how many of a model run in Warsaw, not how old or unusual it is. A legendary has 12 or fewer, so each one is a find. Museum and trial vehicles are \(Tier.vintage.name) and \(Tier.onTest.name), out only now and then.")) {
+            VStack(alignment: .leading, spacing: 16) {
+                ForEach(Array(Self.ladder.enumerated()), id: \.offset) { i, tier in
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack {
+                            Mono(tier.name, size: 11, weight: 700, spacing: 0.12, color: tier.color)
+                            Spacer()
+                            Mono(range(i), size: 11, weight: 600, spacing: 0.08, color: Palette.sub)
+                        }
+                        dots(tier.maxFleet ?? Self.commonDots, color: tier.bar, fades: tier.maxFleet == nil)
+                            .opacity(shown ? 1 : 0)
+                            .offset(y: shown ? 0 : 6)
+                            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(Double(i) * 0.15), value: shown)
+                    }
+                }
+            }
+            .frame(width: 310)
+        }
+        .task {
+            try? await Task.sleep(for: .milliseconds(250))
+            shown = true
+        }
+    }
+
+    /// Each tier starts one above the ceiling of the tier before it.
+    private func range(_ i: Int) -> String {
+        let floor = (i > 0 ? Self.ladder[i - 1].maxFleet! : 0) + 1
+        guard let max = Self.ladder[i].maxFleet else { return String(localized: "\(floor) OR MORE") }
+        return i == 0 ? String(localized: "\(max) OR FEWER") : "\(floor)–\(max)"
+    }
+
+    private func dots(_ count: Int, color: Color, fades: Bool) -> some View {
+        let pitch = 310 / CGFloat(Self.perRow)
+        return LazyVGrid(columns: Array(repeating: GridItem(.fixed(pitch), spacing: 0), count: Self.perRow),
+                         alignment: .leading, spacing: 3) {
+            ForEach(0..<count, id: \.self) { _ in
+                Circle().fill(color).frame(width: pitch - 3, height: pitch - 3)
+            }
+        }
+        .mask {
+            if fades {
+                LinearGradient(colors: [.black, .black, .clear], startPoint: .top, endPoint: .bottom)
+            } else {
+                Color.black
+            }
         }
     }
 }

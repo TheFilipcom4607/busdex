@@ -367,10 +367,18 @@ public enum Tier: String, Sendable, CaseIterable {
 
     /// Thresholds from the design prototype's `tierOf`.
     public static func of(fleet: Int) -> Tier {
-        if fleet <= 12 { return .legendary }
-        if fleet <= 48 { return .gold }
-        if fleet <= 80 { return .rare }
-        return .common
+        [.legendary, .gold, .rare].first { fleet <= $0.maxFleet! } ?? .common
+    }
+
+    /// The most vehicles a model can have and still be this tier. Nil for COMMON, which has
+    /// no ceiling, and for the tiers that don't go by size.
+    public var maxFleet: Int? {
+        switch self {
+        case .legendary: 12
+        case .gold: 48
+        case .rare: 80
+        case .common, .vintage, .onTest: nil
+        }
     }
 
     /// The caps label. `rawValue` is stored (the HUNT filter), so it stays English.

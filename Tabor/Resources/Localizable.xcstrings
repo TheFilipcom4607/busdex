@@ -2583,16 +2583,6 @@
         }
       }
     },
-    "Every model has a page and every vehicle a slot. Rarity goes by how many exist, so a legendary is one of a dozen or fewer. Badges come along the way.": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Każdy model ma w albumie swoją stronę, a każdy pojazd swoje miejsce. O rzadkości decyduje liczba egzemplarzy: model legendarny ma ich najwyżej dwanaście. Po drodze zdobywasz odznaki."
-          }
-        }
-      }
-    },
     "Every operator": {
       "localizations": {
         "pl": {
@@ -6888,6 +6878,56 @@
           "stringUnit": {
             "state": "translated",
             "value": "← WSTECZ"
+          }
+        }
+      }
+    },
+    "Every model has a page and every vehicle a slot, and badges come along the way. The colours are rarity: more on that next.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Każdy model ma w albumie swoją stronę, a każdy pojazd swoje miejsce. Po drodze zdobywasz odznaki. Kolory to rzadkość: o niej za chwilę."
+          }
+        }
+      }
+    },
+    "The fewer there are, the rarer.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Im mniej ich jest, tym rzadsze."
+          }
+        }
+      }
+    },
+    "Rarity is how many of a model run in Warsaw, not how old or unusual it is. A legendary has 12 or fewer, so each one is a find. Museum and trial vehicles are %@ and %@, out only now and then.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rzadkość to liczba pojazdów danego modelu w Warszawie, a nie ich wiek czy nietypowy wygląd. Model legendarny ma ich najwyżej 12, więc każdy to gratka. Pojazdy muzealne i testowe mają własne kategorie, %1$@ i %2$@, i wyjeżdżają tylko od czasu do czasu."
+          }
+        }
+      }
+    },
+    "%lld OR MORE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld I WIĘCEJ"
+          }
+        }
+      }
+    },
+    "%lld OR FEWER": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NAJWYŻEJ %lld"
           }
         }
       }
