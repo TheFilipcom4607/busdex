@@ -523,6 +523,15 @@ def build(vehicles, city=None):
         in_city = [city_rows[(kind, v["number"])] for v in vs if (kind, v["number"]) in city_rows]
         majority = Counter(c["idMarki"] for c in in_city).most_common(1)
         model_specs = specs(types[(kind, majority[0][0])], kind) if majority and (kind, majority[0][0]) in types else None
+        # Vehicles of another type with other specs: the 2010 Lion's City Gs are diesel, the
+        # 2019-20 ones CNG. Not by batch, since one year's delivery can mix types (Ursus CS2, 2017).
+        odd = defaultdict(list)
+        for c in in_city if model_specs else []:
+            s = specs(types[(kind, c["idMarki"])], kind) if (kind, c["idMarki"]) in types else None
+            if s and s != model_specs:
+                odd[json.dumps(s, sort_keys=True)].append(int(c["number"]))
+        variants = sorted(({"specs": json.loads(s), "numbers": sorted(ns)} for s, ns in odd.items()),
+                          key=lambda v: v["numbers"][0])
         liveries = {c["number"]: "suburbanBlue" for c in in_city if c.get("colour") == SUBURBAN_BLUE}
         liveries |= {v["number"]: LIVERIES[(kind, int(v["number"]))] for v in vs if (kind, int(v["number"])) in LIVERIES}
         models.append({
@@ -542,6 +551,7 @@ def build(vehicles, city=None):
             **(dict(zip(("runs", "trial", "runsPl", "trialPl"), TRIALS[(make, model)]))
                if (make, model) in TRIALS else {}),
             **({"specs": model_specs} if model_specs else {}),
+            **({"variants": variants} if variants else {}),
             **({"liveries": dict(sorted(liveries.items(), key=lambda kv: int(kv[0])))} if liveries else {}),
         })
     numbers = {m["id"]: {n for b in m["batches"] for n in b["numbers"]} for m in models}

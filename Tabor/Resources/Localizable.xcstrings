@@ -753,6 +753,16 @@
         }
       }
     },
+    "%@ seated": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "siedzących: %@"
+          }
+        }
+      }
+    },
     "%lld seated": {
       "localizations": {
         "pl": {
@@ -1439,6 +1449,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Klimatyzowany"
+          }
+        }
+      }
+    },
+    "Some air-conditioned": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Część z klimatyzacją"
           }
         }
       }

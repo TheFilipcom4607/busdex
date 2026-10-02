@@ -118,13 +118,14 @@ struct ModelPageView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     // At the top of the scroll rather than above it, so the stickers keep the room.
                     // Starts below the soft top edge, which should only fade what's scrolled up.
-                    if let specs = model.specs {
-                        specsRow(specs, kind: model.kind)
+                    if let spread = model.spread {
+                        specsRow(spread, kind: model.kind)
                             .padding(.top, Self.softEdge)
                             .padding(.bottom, 16)
                     }
                     ForEach(Array(model.batches.enumerated()), id: \.offset) { i, batch in
-                        batchHeader(batch, have: batch.numbers.filter { ownedByNumber[$0] != nil }.count, trial: model.trialDisplay)
+                        batchHeader(batch, have: batch.numbers.filter { ownedByNumber[$0] != nil }.count, trial: model.trialDisplay,
+                                    drive: model.drive(of: batch))
                             .padding(.top, i == 0 ? 6 : 18)
                             .padding(.bottom, 10)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -213,25 +214,38 @@ struct ModelPageView: View {
 
     private static let softEdge: CGFloat = 16
 
-    /// Length, drive and room, from the city's open data; each tile only if it's known.
-    private func specsRow(_ s: ModelSpecs, kind: VehicleKind) -> some View {
-        let drive = s.drive?.name ?? (kind == .tram ? ModelSpecs.Drive.electric.name : nil)
-        let airCon = s.airCon.map { $0 ? String(localized: "Air-conditioned") : String(localized: "No air-con") }
+    /// Length, drive and room, from the city's open data; each tile only if it's known. A model
+    /// the city lists under several types shows each drive and the range of the rest.
+    private func specsRow(_ s: SpecsSpread, kind: VehicleKind) -> some View {
+        let drives = s.drives.isEmpty && kind == .tram ? [ModelSpecs.Drive.electric] : s.drives
+        let airCon: String? = switch s.airCon {
+        case .all: String(localized: "Air-conditioned")
+        case .none: String(localized: "No air-con")
+        case .some: String(localized: "Some air-conditioned")
+        case nil: nil
+        }
+        let metres = FloatingPointFormatStyle<Double>(locale: .app).precision(.fractionLength(0...1))
         return HStack(spacing: 9) {
-            if let metres = s.metres {
-                StatTile(label: String(localized: "LENGTH"),
-                         value: "\(metres.formatted(FloatingPointFormatStyle<Double>(locale: .app).precision(.fractionLength(0...1)))) M",
+            if let m = s.metres {
+                StatTile(label: String(localized: "LENGTH"), value: "\(span(m) { $0.formatted(metres) }) M",
                          valueSize: 17, caption: s.floor?.name)
             }
-            if let drive {
-                StatTile(label: String(localized: "DRIVE"), value: drive, valueSize: 17, caption: airCon)
+            if !drives.isEmpty {
+                // "DIESEL / CNG" has to fit a third of the screen.
+                StatTile(label: String(localized: "DRIVE"), value: drives.map(\.name).joined(separator: " / "),
+                         valueSize: 17, minimumScale: 0.5, caption: airCon)
             }
             if let places = s.places {
-                StatTile(label: String(localized: "PASSENGERS"), value: "\(places)", valueSize: 17,
-                         caption: s.seats.map { String(localized: "\($0) seated") })
+                StatTile(label: String(localized: "PASSENGERS"), value: span(places) { "\($0)" }, valueSize: 17,
+                         caption: s.seats.map { String(localized: "\(span($0) { "\($0)" }) seated") })
             }
         }
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// "18", or "10.5—12" where the vehicles differ.
+    private func span<T>(_ r: ClosedRange<T>, _ show: (T) -> String) -> String {
+        r.lowerBound == r.upperBound ? show(r.lowerBound) : "\(show(r.lowerBound))—\(show(r.upperBound))"
     }
 
     private func subtitle(_ m: VehicleModel) -> String {
@@ -250,11 +264,12 @@ struct ModelPageView: View {
     }
 
     /// "2022 BATCH · R-3 MOKOTÓW · 4209—4282" with how much of it you have; green once complete.
-    private func batchHeader(_ b: Batch, have: Int, trial: String?) -> some View {
+    /// The drive goes after the year when the model has more than one.
+    private func batchHeader(_ b: Batch, have: Int, trial: String?, drive: ModelSpecs.Drive?) -> some View {
         let year = b.year.map { String(localized: "\(String($0)) BATCH") } ?? trial ?? String(localized: "YEAR UNKNOWN")
         let done = have == b.numbers.count
         return HStack(spacing: 8) {
-            Mono([year, b.depotDisplay, b.rangeDisplay].filter { !$0.isEmpty }.joined(separator: " · "),
+            Mono([year, drive?.name ?? "", b.depotDisplay, b.rangeDisplay].filter { !$0.isEmpty }.joined(separator: " · "),
                  size: 10, spacing: 0.14, color: Palette.dim)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)

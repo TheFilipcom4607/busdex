@@ -138,6 +138,7 @@ struct StatTile: View {
     let value: String
     var valueColor: Color = Palette.ink
     var valueSize: CGFloat = 22
+    var minimumScale: CGFloat = 0.6
     var caption: String? = nil
 
     var body: some View {
@@ -147,7 +148,7 @@ struct StatTile: View {
                 .font(TaborFont.mono(valueSize, 700))
                 .foregroundStyle(valueColor)
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                .minimumScaleFactor(minimumScale)
                 .padding(.vertical, valueSize * 0.15)
             if let caption {
                 Text(caption)

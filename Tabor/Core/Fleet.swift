@@ -63,6 +63,9 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     public let trialPl: String?
     /// From the city's open data; older fleet files and vehicles it doesn't list have none.
     public let specs: ModelSpecs?
+    /// Vehicles the city lists under another type with other specs (the 2019–20 Lion's City Gs
+    /// are CNG, the 2010 ones diesel); everything else has `specs`.
+    public let variants: [SpecVariant]
     /// Vehicles not in ZTM's usual paint, by fleet number (JSON keys are strings), from a
     /// hand-checked list in fetch_fleet.py; see `Livery`.
     public let liveries: [String: String]?
@@ -75,8 +78,8 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     public init(id: String, name: String, make: String, code: String? = nil, kind: VehicleKind,
                 operators: [String], fleet: Int, firstYear: Int?, lastYear: Int?, batches: [Batch],
                 vintage: Bool = false, onTest: Bool = false, runs: String? = nil, trial: String? = nil,
-                runsPl: String? = nil, trialPl: String? = nil, specs: ModelSpecs? = nil, liveries: [String: String]? = nil,
-                coupled: Bool = false, sets: [[Int]] = []) {
+                runsPl: String? = nil, trialPl: String? = nil, specs: ModelSpecs? = nil, variants: [SpecVariant] = [],
+                liveries: [String: String]? = nil, coupled: Bool = false, sets: [[Int]] = []) {
         self.id = id
         self.name = name
         self.make = make
@@ -94,6 +97,7 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         self.runsPl = runsPl
         self.trialPl = trialPl
         self.specs = specs
+        self.variants = variants
         self.liveries = liveries
         self.coupled = coupled
         self.sets = sets
@@ -101,7 +105,7 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
 
     private enum CodingKeys: String, CodingKey {
         case id, name, make, code, kind, operators, fleet, firstYear, lastYear, batches, vintage, onTest, runs, trial,
-             runsPl, trialPl, specs, liveries, coupled, sets
+             runsPl, trialPl, specs, variants, liveries, coupled, sets
     }
 
     public init(from decoder: Decoder) throws {
@@ -124,6 +128,7 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         trialPl = try c.decodeIfPresent(String.self, forKey: .trialPl)
         // Optional extras: a malformed one is dropped rather than failing the whole file.
         specs = try? c.decodeIfPresent(ModelSpecs.self, forKey: .specs)
+        variants = (try? c.decodeIfPresent([SpecVariant].self, forKey: .variants)) ?? []
         liveries = try? c.decodeIfPresent([String: String].self, forKey: .liveries)
         coupled = try c.decodeIfPresent(Bool.self, forKey: .coupled) ?? false
         sets = (try? c.decodeIfPresent([[Int]].self, forKey: .sets)) ?? []
@@ -177,9 +182,72 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     public func fixedPartner(of number: Int) -> Int? {
         sets.first { $0.contains(number) }?.first { $0 != number }
     }
+
+    /// This vehicle's own specs.
+    public func specs(of number: Int) -> ModelSpecs? {
+        variants.first { $0.numbers.contains(number) }?.specs ?? specs
+    }
+
+    /// The specs across the whole model, for its page.
+    public var spread: SpecsSpread? {
+        guard let specs else { return nil }
+        let odd = variants.reduce(0) { $0 + $1.numbers.count }
+        return SpecsSpread([(specs, max(fleet - odd, 0))] + variants.map { ($0.specs, $0.numbers.count) })
+    }
+
+    /// The one drive all of a batch shares, when the model has more than one (else nil).
+    public func drive(of batch: Batch) -> ModelSpecs.Drive? {
+        guard !variants.isEmpty, (spread?.drives.count ?? 0) > 1 else { return nil }
+        let drives = Set(batch.numbers.map { specs(of: $0)?.drive })
+        return drives.count == 1 ? drives.first ?? nil : nil
+    }
 }
 
-/// What the city's open data says about a model (from the type most of its vehicles are).
+public struct SpecVariant: Codable, Hashable, Sendable {
+    public let specs: ModelSpecs
+    public let numbers: [Int]
+
+    public init(specs: ModelSpecs, numbers: [Int]) {
+        self.specs = specs
+        self.numbers = numbers
+    }
+}
+
+/// A model's specs over all its vehicles: one value where they agree, the range where they don't.
+public struct SpecsSpread: Equatable, Sendable {
+    public let metres: ClosedRange<Double>?
+    /// Most vehicles first.
+    public let drives: [ModelSpecs.Drive]
+    public let seats: ClosedRange<Int>?
+    public let places: ClosedRange<Int>?
+    public let airCon: AirCon?
+    /// The main type's: a low-floor model with one odd tram is still low floor.
+    public let floor: ModelSpecs.Floor?
+
+    public enum AirCon: Sendable { case all, none, some }
+
+    /// The model's main specs first, then the variants, each with how many vehicles have it.
+    init(_ groups: [(specs: ModelSpecs, count: Int)]) {
+        func span<T: Comparable>(_ values: [T?]) -> ClosedRange<T>? {
+            let known = values.compactMap { $0 }
+            guard let lo = known.min(), let hi = known.max() else { return nil }
+            return lo...hi
+        }
+        let all = groups.map(\.specs)
+        metres = span(all.map(\.metres))
+        seats = span(all.map(\.seats))
+        places = span(all.map(\.places))
+        var byDrive: [ModelSpecs.Drive: Int] = [:]
+        for g in groups { if let d = g.specs.drive { byDrive[d, default: 0] += g.count } }
+        drives = byDrive.sorted { ($0.value, $1.key.rawValue) > ($1.value, $0.key.rawValue) }.map(\.key)
+        let cooled = Set(all.compactMap(\.airCon))
+        airCon = cooled.count > 1 ? .some : cooled.first.map { $0 ? .all : .none }
+        floor = groups.first?.specs.floor
+    }
+}
+
+/// What the city's open data says about a model (from the type most of its vehicles are), or a
+/// `SpecVariant` of it.
 public struct ModelSpecs: Codable, Hashable, Sendable {
     /// Millimetres.
     public let length: Int?

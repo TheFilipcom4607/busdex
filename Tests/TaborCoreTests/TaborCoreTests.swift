@@ -1004,6 +1004,44 @@ private func drive(from lon0: Double, step: Double, fixes: Int, lat: Double = ro
     #expect(catalog.model(id: "tram-hrc-140n")?.specs?.drive == nil)
 }
 
+@Test func vehiclesOfAnotherTypeKeepTheirOwnSpecs() {
+    // #26: 70 diesels from 2010 outvote 60 CNG buses from 2019–20 for the model's specs.
+    let g = catalog.model(id: "bus-man-a23")!
+    #expect(g.specs(of: 3400)?.drive == .diesel)
+    #expect(g.specs(of: 7253)?.drive == .cng)
+    #expect(g.specs(of: 7253)?.seats == 38)
+    let spread = g.spread!
+    #expect(spread.drives == [.diesel, .cng])
+    #expect(spread.places == 139...156)
+    #expect(spread.metres == 18...18)
+    #expect(spread.airCon == .all)
+    #expect(g.drive(of: g.batch(containing: 7253)!) == .cng)
+    #expect(g.drive(of: g.batch(containing: 3400)!) == .diesel)
+    // One drive throughout: batches don't repeat it.
+    let e18 = catalog.model(id: "bus-solaris-urbino-18e")!
+    #expect(e18.spread?.drives == [.electric])
+    #expect(e18.drive(of: e18.batches[0]) == nil)
+    // A year that mixes types names no drive: the 2017 Ursus CS2s are 10 electric, 2 diesel.
+    let cs2 = catalog.model(id: "bus-ursus-cs2")!
+    #expect(cs2.spread?.drives == [.electric, .diesel])
+    #expect(cs2.batches.contains { cs2.drive(of: $0) == nil })
+}
+
+@Test func spreadMixesAirConAndKeepsOldFilesWorking() throws {
+    let a = ModelSpecs(length: 12000, drive: .diesel, seats: 28, places: 96, airCon: true)
+    let b = ModelSpecs(length: 10500, drive: .diesel, seats: 26, places: 90, airCon: false)
+    let m = VehicleModel(id: "x", name: "X", make: "X", kind: .bus, operators: [], fleet: 3, firstYear: nil,
+                         lastYear: nil, batches: [Batch(year: 2020, depotCode: "", depotName: "", numbers: [1, 2, 3])],
+                         specs: a, variants: [SpecVariant(specs: b, numbers: [3])])
+    #expect(m.spread?.airCon == .some)
+    #expect(m.spread?.metres == 10.5...12)
+    #expect(m.specs(of: 1) == a && m.specs(of: 3) == b)
+    // Without variants (every fleet.json before them) it's just the model's specs.
+    let plain = VehicleModel(id: "x", name: "X", make: "X", kind: .bus, operators: [], fleet: 3, firstYear: nil,
+                             lastYear: nil, batches: m.batches, specs: a)
+    #expect(plain.spread?.places == 96...96 && plain.specs(of: 3) == a)
+}
+
 @Test func unknownSpecValuesAreSkipped() throws {
     let json = #"{"length": 11947, "drive": "steam", "floor": "XX", "seats": 30}"#
     let s = try JSONDecoder().decode(ModelSpecs.self, from: Data(json.utf8))
