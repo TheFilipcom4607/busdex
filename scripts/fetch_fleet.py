@@ -429,11 +429,12 @@ EXTRA_BUSES = [
 # Never remove a row once its trial ends: people who caught the bus keep it in their
 # book, and the book only shows models fleet.json still has.
 # Irizar ie tram 12 #959: MZA's trial from R-4 Stalowa, mid to end of September 2026 (TransInfo, Polskie Radio 24), seen live on line 106 on
-# 2026-09-25 (api.um.warszawa.pl).
+# 2026-09-25 (api.um.warszawa.pl). MZA's press office (email, 2026-10-02): extended to 23 October, mainly
+# on 106 until 7 October (122 on 3 Oct, 166 on 4 Oct).
 TEST_BUSES = [
     ("Irizar", "ie tram 12", 959, "MZA", 'R-4 "Stalowa" (R-13)',
-     "LINE 106 · ALSO 122, 123, 157, 166 · TRIAL UNTIL 30 SEP 2026", "ON TRIAL SEP 2026",
-     "LINIA 106 · TAKŻE 122, 123, 157, 166 · TESTY DO 30 WRZ 2026", "TESTY WRZ 2026"),
+     "LINE 106 · ALSO 122, 123, 157, 166 · TRIAL UNTIL 23 OCT 2026", "ON TRIAL SEP–OCT 2026",
+     "LINIA 106 · TAKŻE 122, 123, 157, 166 · TESTY DO 23 PAŹ 2026", "TESTY WRZ–PAŹ 2026"),
 ]
 TRIALS = {(make, model): t for make, model, _, _, _, *t in TEST_BUSES}
 
