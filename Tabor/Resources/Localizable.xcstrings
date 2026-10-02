@@ -6931,6 +6931,16 @@
           }
         }
       }
+    },
+    "Zoom": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

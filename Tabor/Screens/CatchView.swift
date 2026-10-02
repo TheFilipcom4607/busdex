@@ -531,6 +531,8 @@ struct CatchView: View {
         .padding(3)
         .glass(Capsule())
         .animation(.snappy(duration: 0.2), value: active)
+        .opacity(camera.controlsFullscreen ? 0 : 1)
+        .animation(.easeOut(duration: 0.2), value: camera.controlsFullscreen)
     }
 
     /// "0.5", "1", "2.4", "5".

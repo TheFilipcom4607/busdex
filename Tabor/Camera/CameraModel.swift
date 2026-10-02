@@ -25,6 +25,10 @@ final class CameraModel: NSObject, @unchecked Sendable {
     private(set) var zoomRange: ClosedRange<CGFloat> = 1...1
     /// Device zoom factor that the UI calls 1× (the main lens on a virtual device).
     @ObservationIgnored private var zoomScale: CGFloat = 1
+    /// Camera Control's zoom slider is showing its full overlay; the on-screen zoom
+    /// buttons step aside, as in the Camera app.
+    private(set) var controlsFullscreen = false
+    @ObservationIgnored private var zoomSlider: AVCaptureSlider?
 
     /// Read from the vision queue; guarded by `lock`.
     var mode: CatchMode {
@@ -164,7 +168,9 @@ final class CameraModel: NSObject, @unchecked Sendable {
         session.beginConfiguration()
         session.inputs.forEach(session.removeInput)
         session.outputs.forEach(session.removeOutput)
+        session.controls.forEach(session.removeControl)
         session.commitConfiguration()
+        zoomSlider = nil
         rotationObservation = nil
         rotation = nil
         pressureObservation = nil
@@ -297,6 +303,7 @@ final class CameraModel: NSObject, @unchecked Sendable {
             self.zoomRange = minUI...max(minUI, maxUI)
             self.zoom = 1
         }
+        addZoomControl(range: minUI...max(minUI, maxUI), stops: sortedStops)
 
         let coordinator = AVCaptureDevice.RotationCoordinator(device: cam, previewLayer: nil)
         rotationObservation = coordinator.observe(\.videoRotationAngleForHorizonLevelCapture, options: [.initial, .new]) {
@@ -356,16 +363,37 @@ final class CameraModel: NSObject, @unchecked Sendable {
 
     /// Sets the zoom in Camera-app terms (0.5, 1, 2, 5…). Buttons ramp smoothly; pinch
     /// sets it directly so it tracks the fingers.
-    func setZoom(_ value: CGFloat, smooth: Bool) {
+    func setZoom(_ value: CGFloat, smooth: Bool, fromControl: Bool = false) {
         guard let d = device else { return }
         let ui = min(max(value, zoomRange.lowerBound), zoomRange.upperBound)
         zoom = ui
+        if !fromControl { zoomSlider?.value = Float(ui) }
         let factor = min(max(ui * zoomScale, d.minAvailableVideoZoomFactor), d.maxAvailableVideoZoomFactor)
         sessionQueue.async {
             guard (try? d.lockForConfiguration()) != nil else { return }
             if smooth { d.ramp(toVideoZoomFactor: factor, withRate: 12) } else { d.videoZoomFactor = factor }
             d.unlockForConfiguration()
         }
+    }
+
+    /// Called on sessionQueue. Camera Control (iPhone 16 and later): a light press and a
+    /// swipe zooms, as in the Camera app. Our own slider rather than the system one, so it
+    /// stops where the zoom buttons and pinch do instead of running into blurry digital zoom.
+    private func addZoomControl(range: ClosedRange<CGFloat>, stops: [CGFloat]) {
+        guard session.supportsControls else { return }
+        let slider = AVCaptureSlider(String(localized: "Zoom"), symbolName: "plus.magnifyingglass",
+                                     in: Float(range.lowerBound)...Float(range.upperBound))
+        slider.prominentValues = stops.map(Float.init)
+        slider.localizedValueFormat = "%.1f×"
+        slider.value = 1
+        slider.setActionQueue(.main) { [weak self] value in
+            self?.setZoom(CGFloat(value), smooth: false, fromControl: true)
+        }
+        session.beginConfiguration()
+        if session.canAddControl(slider) { session.addControl(slider) }
+        session.commitConfiguration()
+        session.setControlsDelegate(self, queue: sessionQueue)
+        zoomSlider = slider
     }
 
     func focus(at devicePoint: CGPoint) {
@@ -621,5 +649,21 @@ struct CameraPreview: UIViewRepresentable {
 
     func updateUIView(_ v: PreviewView, context: Context) {
         v.onTap = onTap
+    }
+}
+
+extension CameraModel: AVCaptureSessionControlsDelegate {
+    func sessionControlsDidBecomeActive(_ session: AVCaptureSession) {}
+
+    func sessionControlsWillEnterFullscreenAppearance(_ session: AVCaptureSession) {
+        Task { @MainActor in self.controlsFullscreen = true }
+    }
+
+    func sessionControlsWillExitFullscreenAppearance(_ session: AVCaptureSession) {
+        Task { @MainActor in self.controlsFullscreen = false }
+    }
+
+    func sessionControlsDidBecomeInactive(_ session: AVCaptureSession) {
+        Task { @MainActor in self.controlsFullscreen = false }
     }
 }
