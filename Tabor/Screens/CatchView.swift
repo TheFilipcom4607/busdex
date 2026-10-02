@@ -1,3 +1,4 @@
+import AVKit
 import CoreLocation
 import PhotosUI
 import SwiftData
@@ -167,6 +168,18 @@ struct CatchView: View {
             visible = false
             camera.stop()
             live.stop("camera")
+        }
+        // The volume buttons (and Camera Control) fire the shutter, as in the Camera app:
+        // quicker than finding the button on screen with a bus pulling away. The system
+        // only hands them over while the camera runs, so volume works as usual elsewhere.
+        .onCameraCaptureEvent(isEnabled: draft == nil && camera.status == .running) { event in
+            switch event.phase {
+            case .began: shutterDown = true
+            case .ended:
+                shutterDown = false
+                Task { await shoot() }
+            default: shutterDown = false
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, visible { live.start("camera") }
