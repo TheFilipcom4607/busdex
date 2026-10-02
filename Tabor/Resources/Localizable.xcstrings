@@ -6941,6 +6941,66 @@
           }
         }
       }
+    },
+    "SHUTTER": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MIGAWKA"
+          }
+        }
+      }
+    },
+    "Press a button, catch the bus.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wciśnij przycisk, złap autobus."
+          }
+        }
+      }
+    },
+    "Click Camera Control or either volume button to take the shot: quicker than finding the shutter as a bus pulls away. Slide along Camera Control to zoom.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kliknij Sterowanie aparatem albo dowolny przycisk głośności, żeby zrobić zdjęcie: to szybsze niż szukanie migawki, gdy autobus odjeżdża. Przesuń palcem po Sterowaniu aparatem, żeby przybliżyć."
+          }
+        }
+      }
+    },
+    "Press either volume button to take the shot: quicker than finding the shutter as a bus pulls away.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wciśnij dowolny przycisk głośności, żeby zrobić zdjęcie: to szybsze niż szukanie migawki, gdy autobus odjeżdża."
+          }
+        }
+      }
+    },
+    "VOLUME": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GŁOŚNOŚĆ"
+          }
+        }
+      }
+    },
+    "CAMERA CONTROL": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "STEROWANIE APARATEM"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
