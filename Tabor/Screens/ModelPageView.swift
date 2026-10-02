@@ -228,16 +228,16 @@ struct ModelPageView: View {
         return HStack(spacing: 9) {
             if let m = s.metres {
                 StatTile(label: String(localized: "LENGTH"), value: "\(span(m) { $0.formatted(metres) }) M",
-                         valueSize: 17, caption: s.floor?.name)
+                         valueSize: 17, caption: s.floor?.name, stretch: true)
             }
             if !drives.isEmpty {
-                // "DIESEL / CNG" has to fit a third of the screen.
-                StatTile(label: String(localized: "DRIVE"), value: drives.map(\.name).joined(separator: " / "),
-                         valueSize: 17, minimumScale: 0.5, caption: airCon)
+                // One drive a line: "ELECTRIC / DIESEL" on one would shrink to fit a third of the screen.
+                StatTile(label: String(localized: "DRIVE"), value: drives.map(\.name).joined(separator: " /\n"),
+                         valueSize: 17, valueLines: drives.count, caption: airCon, stretch: true)
             }
             if let places = s.places {
                 StatTile(label: String(localized: "PASSENGERS"), value: span(places) { "\($0)" }, valueSize: 17,
-                         caption: s.seats.map { String(localized: "\(span($0) { "\($0)" }) seated") })
+                         caption: s.seats.map { String(localized: "\(span($0) { "\($0)" }) seated") }, stretch: true)
             }
         }
         .fixedSize(horizontal: false, vertical: true)

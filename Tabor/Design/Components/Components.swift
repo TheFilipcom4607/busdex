@@ -138,8 +138,10 @@ struct StatTile: View {
     let value: String
     var valueColor: Color = Palette.ink
     var valueSize: CGFloat = 22
-    var minimumScale: CGFloat = 0.6
+    var valueLines = 1
     var caption: String? = nil
+    /// Grow to the row's tallest tile, content at the top.
+    var stretch = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -147,8 +149,8 @@ struct StatTile: View {
             Text(value)
                 .font(TaborFont.mono(valueSize, 700))
                 .foregroundStyle(valueColor)
-                .lineLimit(1)
-                .minimumScaleFactor(minimumScale)
+                .lineLimit(valueLines)
+                .minimumScaleFactor(0.6)
                 .padding(.vertical, valueSize * 0.15)
             if let caption {
                 Text(caption)
@@ -157,7 +159,7 @@ struct StatTile: View {
                     .lineLimit(2)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: stretch ? .infinity : nil, alignment: .topLeading)
         .padding(.vertical, 12)
         .padding(.horizontal, 13)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
