@@ -1453,6 +1453,46 @@
         }
       }
     },
+    "Loading…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wczytywanie…"
+          }
+        }
+      }
+    },
+    "No tips found on this Apple account.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Na tym koncie Apple nie ma napiwków."
+          }
+        }
+      }
+    },
+    "Restore purchases": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przywróć zakupy"
+          }
+        }
+      }
+    },
+    "Restoring…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przywracanie…"
+          }
+        }
+      }
+    },
     "Some air-conditioned": {
       "localizations": {
         "pl": {
@@ -5081,6 +5121,26 @@
         }
       }
     },
+    "Support TABOR": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wesprzyj TABOR"
+          }
+        }
+      }
+    },
+    "SUPPORTER": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WSPIERAM"
+          }
+        }
+      }
+    },
     "SWIPE TO EDIT": {
       "localizations": {
         "pl": {
@@ -5388,6 +5448,16 @@
         }
       }
     },
+    "TABOR is free, with no ads. Tips pay for the server behind HUNT's live map and the Apple developer fee. Any tip puts a heart next to ME; nothing else is locked.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TABOR jest darmowy i bez reklam. Napiwki opłacają serwer, z którego HUNT bierze pojazdy na żywo, i opłatę dla Apple. Każdy napiwek dodaje serduszko przy ME, a poza tym nic nie jest zablokowane."
+          }
+        }
+      }
+    },
     "TABOR's server": {
       "localizations": {
         "pl": {
@@ -5408,12 +5478,42 @@
         }
       }
     },
+    "Thank you": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dzięki"
+          }
+        }
+      }
+    },
+    "Thanks for the tip! 💛": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dzięki za napiwek! 💛"
+          }
+        }
+      }
+    },
     "THAT CAR DOESN'T RUN COUPLED": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "TEN WAGON NIE JEŹDZI W SKŁADZIE"
+          }
+        }
+      }
+    },
+    "That didn't go through. You weren't charged.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się. Nic nie zostało pobrane."
           }
         }
       }
@@ -5454,6 +5554,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ILE RAZY"
+          }
+        }
+      }
+    },
+    "Tips aren't available right now.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Napiwki są teraz niedostępne."
           }
         }
       }
@@ -6037,6 +6147,16 @@
         }
       }
     },
+    "Waiting for approval. The heart appears once it goes through.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czeka na zgodę. Serduszko pojawi się, gdy zakup przejdzie."
+          }
+        }
+      }
+    },
     "WAITING FOR THE CAMERA": {
       "localizations": {
         "pl": {
@@ -6241,6 +6361,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "ROCZNIK NIEZNANY"
+          }
+        }
+      }
+    },
+    "You're a supporter now. Thank you! 💛": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Od teraz wspierasz TABOR. Dzięki! 💛"
+          }
+        }
+      }
+    },
+    "You're a supporter. Thank you! 💛": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wspierasz TABOR. Dzięki! 💛"
           }
         }
       }

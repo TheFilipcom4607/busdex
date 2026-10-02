@@ -1,0 +1,81 @@
+{
+  "identifier" : "7A1B0C2D",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "6818565695",
+      "localizations" : [
+        {
+          "description" : "Pomaga opłacić serwer TABORA. Dodaje odznakę.",
+          "displayName" : "Wspieram TABOR",
+          "locale" : "pl"
+        },
+        {
+          "description" : "Helps pay for TABOR's server. Adds a badge.",
+          "displayName" : "TABOR Supporter",
+          "locale" : "en_GB"
+        }
+      ],
+      "productID" : "com.filipmanikowski.tabor.supporter",
+      "referenceName" : "4.99zl tip jar",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "6818567264",
+      "localizations" : [
+        {
+          "description" : "Dla twórcy TABORA. Można dać więcej niż raz.",
+          "displayName" : "Napiwek",
+          "locale" : "pl"
+        },
+        {
+          "description" : "For TABOR's maker. Give as often as you like.",
+          "displayName" : "Tip",
+          "locale" : "en_GB"
+        }
+      ],
+      "productID" : "com.filipmanikowski.tabor.tip",
+      "referenceName" : "9.99zl tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "24.99",
+      "familyShareable" : false,
+      "internalID" : "6818567131",
+      "localizations" : [
+        {
+          "description" : "Dla twórcy TABORA. Wielkie dzięki!",
+          "displayName" : "Duży napiwek",
+          "locale" : "pl"
+        },
+        {
+          "description" : "For TABOR's maker. Huge thanks!",
+          "displayName" : "Big tip",
+          "locale" : "en_GB"
+        }
+      ],
+      "productID" : "com.filipmanikowski.tabor.tip.big",
+      "referenceName" : "24.99zl tip",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6816408610",
+    "_developerTeamID" : "4FGGTM5838",
+    "_locale" : "en_GB",
+    "_storefront" : "POL"
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

@@ -160,6 +160,7 @@ struct RootView: View {
             }
         }
         .task { await FleetUpdater.checkIfDue() }
+        .task { TipJar.shared.start() }
         // Badges: celebrate anything newly earned, and fill in weather for the weather ones.
         .task(id: sightings.map(\.record)) {
             badges.update(Achievements.evaluate(sightings.map(\.record), catalog: Fleet.catalog))

@@ -19,7 +19,20 @@ struct MeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 TopBar {
-                    Mono("ME", size: 12, spacing: 0.16)
+                    HStack(spacing: 8) {
+                        Mono("ME", size: 12, spacing: 0.16)
+                        if TipJar.shared.isSupporter {
+                            HStack(spacing: 4) {
+                                Image(systemName: "heart.fill").font(.system(size: 8, weight: .bold))
+                                Mono("SUPPORTER", size: 9.5, weight: 700, spacing: 0.12, color: Palette.yellow)
+                            }
+                            .foregroundStyle(Palette.yellow)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(Palette.yellow.opacity(0.12), in: Capsule())
+                            .accessibilityElement(children: .combine)
+                        }
+                    }
                 } trailing: {
                     Button {
                         showSettings = true
@@ -502,6 +515,7 @@ struct SettingsSheet: View {
                         Text("New deliveries show up without an app update: TABOR checks GitHub for a fresher ZTM snapshot once a day.")
                     }
                 }
+                TipJarSection()
                 Section {
                     Button("Home Screen widgets") { showWidgetHowTo = true }
                     Button("Catch from the Lock Screen") { showControlHowTo = true }
