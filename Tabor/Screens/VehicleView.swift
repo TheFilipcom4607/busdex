@@ -82,9 +82,11 @@ struct VehicleView: View {
                 .padding(.top, 16)
                 .padding(.horizontal, 22)
 
-                CatchPhoto(file: mine.first(where: { $0.photoFile != nil })?.photoFile, maxPixel: 1200,
-                           placeholder: String(localized: "NO PHOTO YET"))
-                    .frame(height: 150)
+                let photo = mine.first(where: { $0.photoFile != nil })?.photoFile
+                CatchPhoto(file: photo, maxPixel: 1200, placeholder: String(localized: "NO PHOTO YET"))
+                    // The photo's own shape, so a tall shot isn't cut to a strip (#27). Up to
+                    // about half the screen for an upright one; panoramas no thinner than 150 pt.
+                    .aspectRatio(min(max(photo.flatMap(PhotoStore.aspect) ?? 2.4, 0.85), 2.4), contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Palette.hairline))
                     .padding(.top, 16)

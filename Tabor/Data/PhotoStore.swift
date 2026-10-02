@@ -136,6 +136,18 @@ enum PhotoStore {
         return CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary)
     }
 
+    /// Width over height as the photo is seen (EXIF rotation applied), from its header alone.
+    static func aspect(_ file: String) -> Double? {
+        guard let src = CGImageSourceCreateWithURL(url(file) as CFURL, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
+              let w = props[kCGImagePropertyPixelWidth] as? Double, let h = props[kCGImagePropertyPixelHeight] as? Double,
+              w > 0, h > 0
+        else { return nil }
+        // Orientations 5–8 are turned a quarter.
+        let turned = (props[kCGImagePropertyOrientation] as? Int).map { $0 >= 5 } ?? false
+        return turned ? h / w : w / h
+    }
+
     static func thumbnail(_ file: String, maxPixel: Int) -> UIImage? {
         let key = "\(file)@\(maxPixel)" as NSString
         if let hit = cache.object(forKey: key) { return hit }
