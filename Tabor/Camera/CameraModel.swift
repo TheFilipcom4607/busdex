@@ -29,6 +29,8 @@ final class CameraModel: NSObject, @unchecked Sendable {
     /// buttons step aside, as in the Camera app.
     private(set) var controlsFullscreen = false
     @ObservationIgnored private var zoomSlider: AVCaptureSlider?
+    /// The values Camera Control's zoom slider clicks through.
+    @ObservationIgnored private var zoomDetents: [Float] = []
 
     /// Read from the vision queue; guarded by `lock`.
     var mode: CatchMode {
@@ -171,6 +173,7 @@ final class CameraModel: NSObject, @unchecked Sendable {
         session.controls.forEach(session.removeControl)
         session.commitConfiguration()
         zoomSlider = nil
+        zoomDetents = []
         rotationObservation = nil
         rotation = nil
         pressureObservation = nil
@@ -367,7 +370,10 @@ final class CameraModel: NSObject, @unchecked Sendable {
         guard let d = device else { return }
         let ui = min(max(value, zoomRange.lowerBound), zoomRange.upperBound)
         zoom = ui
-        if !fromControl { zoomSlider?.value = Float(ui) }
+        // The slider only takes its own steps: show the nearest.
+        if !fromControl, let near = zoomDetents.min(by: { abs($0 - Float(ui)) < abs($1 - Float(ui)) }) {
+            zoomSlider?.value = near
+        }
         let factor = min(max(ui * zoomScale, d.minAvailableVideoZoomFactor), d.maxAvailableVideoZoomFactor)
         sessionQueue.async {
             guard (try? d.lockForConfiguration()) != nil else { return }
@@ -379,16 +385,24 @@ final class CameraModel: NSObject, @unchecked Sendable {
     /// Called on sessionQueue. Camera Control (iPhone 16 and later): a light press and a
     /// swipe zooms, as in the Camera app. Our own slider rather than the system one, so it
     /// stops where the zoom buttons and pinch do instead of running into blurry digital zoom.
+    /// It moves in 0.1× steps, because a continuous slider only clicks at the lenses.
     private func addZoomControl(range: ClosedRange<CGFloat>, stops: [CGFloat]) {
         guard session.supportsControls else { return }
-        let slider = AVCaptureSlider(String(localized: "Zoom"), symbolName: "plus.magnifyingglass",
-                                     in: Float(range.lowerBound)...Float(range.upperBound))
-        slider.prominentValues = stops.map(Float.init)
+        var values = Set(stops.map { Float($0) })
+        var v = Float(range.lowerBound)
+        while v <= Float(range.upperBound) + 0.001 {
+            values.insert((v * 10).rounded() / 10)
+            v += 0.1
+        }
+        let detents = values.sorted()
+        let slider = AVCaptureSlider(String(localized: "Zoom"), symbolName: "plus.magnifyingglass", values: detents)
+        slider.prominentValues = stops.map { Float($0) }
         slider.localizedValueFormat = "%.1f×"
         slider.value = 1
         slider.setActionQueue(.main) { [weak self] value in
-            self?.setZoom(CGFloat(value), smooth: false, fromControl: true)
+            self?.setZoom(CGFloat(value), smooth: true, fromControl: true)
         }
+        zoomDetents = detents
         session.beginConfiguration()
         if session.canAddControl(slider) { session.addControl(slider) }
         session.commitConfiguration()
