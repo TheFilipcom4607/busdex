@@ -84,7 +84,8 @@ struct HuntView: View {
             case .newModels: pin.kind == .newModel
             case .everything: true
             }
-            return (wanted && picked.matches(pin)) || pin.id == focusId
+            // A line from the search shows all of it, like the search counted (#37).
+            return ((wanted || picked.line != nil) && picked.matches(pin)) || pin.id == focusId
         }
         let selected = shown.first { $0.id == selectedId }
 
@@ -769,6 +770,23 @@ struct HuntView: View {
         Haptics.shared.detent()
         endSearch()
         withAnimation(.snappy) { targets = HuntTargets(line: l.line) }
+        // The map only draws pins around where you're looking: go to where the line is.
+        fit(cityWide())
+    }
+
+    /// Frames these vehicles in the open part of the map above the card.
+    private func fit(_ pins: [WantedPin]) {
+        guard !pins.isEmpty else { return }
+        let lats = pins.map(\.vehicle.latitude), lons = pins.map(\.vehicle.longitude)
+        // The open part runs from under the header (a fifth of the way down) to the card's top
+        // edge (about 60%): the pins get that band, a little inside it, and its middle is
+        // nearly a tenth of the map above the map's own centre.
+        let latSpan = max((lats.max()! - lats.min()!) * 2.8, 0.02)
+        let span = MKCoordinateSpan(latitudeDelta: latSpan, longitudeDelta: max((lons.max()! - lons.min()!) * 1.25, 0.01))
+        let center = CLLocationCoordinate2D(latitude: (lats.max()! + lats.min()!) / 2 - latSpan * 0.09,
+                                            longitude: (lons.max()! + lons.min()!) / 2)
+        following = false
+        withAnimation(.easeInOut(duration: 0.7)) { position = .region(MKCoordinateRegion(center: center, span: span)) }
     }
 
     /// Running: fly to it and open its card. Not out: its page in the book.
@@ -948,9 +966,9 @@ struct HuntView: View {
         if targets.isCityWide {
             guard shown.isEmpty else { return nil }
             return MessageCard(icon: "line.3.horizontal.decrease.circle", title: String(localized: "Nothing out that matches"),
-                               text: filter == .newModels
+                               text: targets.line == nil && filter == .newModels
                                    ? String(localized: "None of it is a new model for you. Switch to UNCAUGHT, or widen the filter.")
-                                   : filter == .everything
+                                   : targets.line != nil || filter == .everything
                                    ? String(localized: "Nothing on your filter is running right now. It shows up here the moment one is.")
                                    : String(localized: "Nothing on your filter that you haven't caught is running right now. It shows up here the moment one is."),
                                action: (String(localized: "Clear the filter"), { withAnimation(.snappy) { targets = HuntTargets() } }))
@@ -1006,6 +1024,10 @@ struct HuntView: View {
         guard let snapshot = live.snapshot else { return [] }
         let user = location.recent(maxAge: 300)?.coordinate
         let from = user ?? mapCenter ?? Self.warsaw.center
+        if let line = targets.line {
+            return Wanted.onLine(line, snapshot: snapshot, catalog: catalog, caught: sightings.stats,
+                                 lat: from.latitude, lon: from.longitude, from: user.map { ($0.latitude, $0.longitude) })
+        }
         return Wanted.pins(snapshot: snapshot, catalog: catalog, caught: sightings.stats,
                            lat: from.latitude, lon: from.longitude, within: Self.cityRadius,
                            from: user.map { ($0.latitude, $0.longitude) }, includeCaught: filter == .everything)

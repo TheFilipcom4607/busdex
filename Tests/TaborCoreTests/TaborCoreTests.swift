@@ -1605,3 +1605,22 @@ private func read(_ n: Int, _ score: Double, x: Double, y: Double = 0.5) -> Also
     #expect(NumberExtractor.best(in: full + tiles, mode: .auto, catalog: catalog) == 7205)
     #expect(!NumberExtractor.wantsCloserLook([(7205, 3)]))
 }
+
+@Test func aPickedLineShowsAllOfItWhereverItIs() {
+    // #37: the search said "4 out now", the map then showed nothing.
+    let hrc = catalog.model(id: "tram-hrc-140n")!
+    let caught = CollectionStats(sightings: [SightingRecord(number: hrc.numbers[0], modelId: hrc.id, date: .now)])
+    let snap = LiveSnapshot(vehicles: [
+        live(hrc.numbers[0], .tram, line: "4", metres: 300),         // already caught
+        live(hrc.numbers[1], .tram, line: "4", metres: 90_000),      // past the 60 km a filter looks
+        live(hrc.numbers[2], .tram, line: "4", metres: 1000),
+        live(hrc.numbers[3], .tram, line: "14", metres: 100),        // another line
+        live(hrc.numbers[4], .tram, line: "l-4", metres: 200),       // the L-4, not the 4
+    ], fetched: fixtureNow)
+    let pins = Wanted.onLine("4", snapshot: snap, catalog: catalog, caught: caught, lat: here.lat, lon: here.lon)
+    #expect(pins.map(\.vehicle.number) == [hrc.numbers[0], hrc.numbers[2], hrc.numbers[1]])
+    #expect(pins.first?.kind == .caught)
+    // Written either way, the L-4 is the same line.
+    #expect(Wanted.onLine("L4", snapshot: snap, catalog: catalog, caught: caught, lat: here.lat, lon: here.lon)
+        .map(\.vehicle.number) == [hrc.numbers[4]])
+}

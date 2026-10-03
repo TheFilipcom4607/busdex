@@ -348,6 +348,19 @@ public enum Wanted {
         }.prefix(limit))
     }
 
+    /// Everything on one line, picked from HUNT's search: wherever it is and whether or not you
+    /// have it, nearest first, so the map shows the line the search counted (#37). With the
+    /// usual limits (60 km, uncaught only) a line you'd caught all of, or a search from outside
+    /// Warsaw, said "4 out now" and then showed nothing.
+    public static func onLine(_ line: String, snapshot: LiveSnapshot, catalog: FleetCatalog, caught: CollectionStats,
+                              lat: Double, lon: Double, from user: (lat: Double, lon: Double)? = nil) -> [WantedPin] {
+        let key = HuntSearch.lineKey(line)
+        let on = LiveSnapshot(vehicles: snapshot.vehicles.filter { HuntSearch.lineKey($0.line) == key },
+                              fetched: snapshot.fetched)
+        return pins(snapshot: on, catalog: catalog, caught: caught, lat: lat, lon: lon, within: .infinity,
+                    from: user, includeCaught: true).sorted { $0.distance < $1.distance }
+    }
+
     /// Vintage and test stock sort last in the book, but one that's actually out running
     /// is as rare a sight as anything: rank it with the legendaries.
     static func huntRank(_ tier: Tier) -> Int {
