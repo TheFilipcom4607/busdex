@@ -21,6 +21,20 @@ public struct Achievement: Identifiable, Hashable, Sendable {
     /// The vehicles behind it: what earned it, or, not earned yet, the closest so far. Empty for
     /// badges that just count (Collector) or aren't about particular vehicles.
     public let proof: [Proof]
+    /// What's still to find, for badges that need one of each from a known list (every district,
+    /// every operator, every model at a depot). Empty once earned.
+    public let missing: [Missing]
+
+    /// Something a badge still needs: a district, an operator, or a model (which opens its page).
+    public struct Missing: Hashable, Sendable {
+        public let label: String
+        public let modelId: String?
+
+        public init(_ label: String, modelId: String? = nil) {
+            self.label = label
+            self.modelId = modelId
+        }
+    }
 
     /// One vehicle behind a badge, with why it counts ("21 YEARS OLD", "LINE 16").
     public struct Proof: Hashable, Sendable {
@@ -36,7 +50,8 @@ public struct Achievement: Identifiable, Hashable, Sendable {
     }
 
     public init(id: String, title: String, detail: String, symbol: String, progress: Int, goal: Int,
-                level: Int? = nil, levels: Int = 1, secret: Bool = false, steps: [String] = [], proof: [Proof] = []) {
+                level: Int? = nil, levels: Int = 1, secret: Bool = false, steps: [String] = [], proof: [Proof] = [],
+                missing: [Missing] = []) {
         self.id = id
         self.title = title
         self.detail = detail
@@ -49,6 +64,7 @@ public struct Achievement: Identifiable, Hashable, Sendable {
         self.steps = steps
         // A secret keeps its vehicles to itself until it's earned.
         self.proof = secret && !(goal > 0 && (level ?? (progress >= goal ? 1 : 0)) > 0) ? [] : proof
+        self.missing = missing
     }
 
     public var earned: Bool { level > 0 }
@@ -360,7 +376,8 @@ public enum Achievements {
         let proof = first.sorted { $0.key < $1.key }
             .map { o, s in Achievement.Proof(modelId: s.modelId, number: s.number, note: o.uppercased()) }
         return Achievement(id: "all-operators", title: String(localized: "Every operator"), detail: String(localized: "A vehicle from all \(all.count) operators"),
-                           symbol: "person.3.fill", progress: first.count, goal: all.count, proof: proof)
+                           symbol: "person.3.fill", progress: first.count, goal: all.count, proof: proof,
+                           missing: all.subtracting(first.keys).sorted(by: plOrder).map { Achievement.Missing($0) })
     }
 
     // MARK: Places
@@ -376,7 +393,8 @@ public enum Achievements {
         let proof = byDistrict.compactMap { d, ss in d.map { Achievement.Proof(modelId: ss[0].modelId, number: ss[0].number, note: $0.uppercased()) } }
             .sorted { ($0.note ?? "") < ($1.note ?? "") }
         return Achievement(id: "every-district", title: String(localized: "Every district"), detail: String(localized: "A catch in all \(districts.count) districts of Warsaw"),
-                           symbol: "map.fill", progress: proof.count, goal: districts.count, proof: proof)
+                           symbol: "map.fill", progress: proof.count, goal: districts.count, proof: proof,
+                           missing: districts.filter { byDistrict[$0] == nil }.map { Achievement.Missing($0) })
     }
 
     /// Two catches on the same day at least 15 km apart.
@@ -519,20 +537,32 @@ public enum Achievements {
             let atDepot = { (b: Batch) in b.depotCode == d.code && b.depotName == d.name }
             let models = c.catalog.models.filter { m in m.regular && m.kind == d.kind && m.batches.contains(where: atDepot) }
             guard !models.isEmpty else { return nil }
-            let have = models.filter { m in
+            let caught = { (m: VehicleModel) in
                 let mine = c.owned[m.id] ?? []
                 return m.batches.contains { atDepot($0) && $0.numbers.contains(where: mine.contains) }
-            }.count
+            }
+            let have = models.filter(caught).count
             return Achievement(id: "depot-\(d.kind.rawValue)-\(d.code)-\(d.name)",
                                title: d.code.isEmpty ? d.name : "\(d.code) \(d.name)",
                                detail: d.kind == .tram ? String(localized: "Every tram model at the depot")
                                    : String(localized: "Every bus model at the depot"),
                                symbol: d.kind == .tram ? "tram.fill.tunnel" : "bus.doubledecker.fill",
-                               progress: have, goal: models.count)
+                               progress: have, goal: models.count,
+                               missing: models.filter { !caught($0) }.sorted { ($0.name, $0.firstYear ?? 0) < ($1.name, $1.firstYear ?? 0) }.map { m in
+                                   // Two Conecto Gs share R-2 Kleszczowa: their years tell them apart.
+                                   let twin = models.filter { $0.name == m.name }.count > 1
+                                   return Achievement.Missing(twin ? [m.name, m.yearsDisplay].compactMap { $0 }.joined(separator: " ") : m.name,
+                                                              modelId: m.id)
+                               })
         }
     }
 
     // MARK: Helpers
+
+    /// Polish alphabetical order, so "Średnicki" comes after "ReloBus", not after "Z".
+    static func plOrder(_ a: String, _ b: String) -> Bool {
+        a.compare(b, locale: Locale(identifier: "pl_PL")) == .orderedAscending
+    }
 
     /// "1,000" (the separator comes from the string catalog, not the device's region, so
     /// it matches the language the badge is written in).

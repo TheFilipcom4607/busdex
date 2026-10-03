@@ -338,6 +338,10 @@ private func badge(_ id: String, _ sightings: [SightingRecord]) -> Achievement {
     let grochow = SightingRecord(number: 1, modelId: "x", date: .now, district: "Grochów", latitude: 52.2440, longitude: 21.0900)
     let named = SightingRecord(number: 2, modelId: "x", date: .now, district: "Stary Mokotów")
     #expect(badge("every-district", [grochow, named]).proof.compactMap(\.note) == ["MOKOTÓW", "PRAGA-POŁUDNIE"])
+    // What's left, in the districts' own order (#35).
+    let left = badge("every-district", [grochow, named]).missing.map(\.label)
+    #expect(left.count == 16 && left.first == "Bemowo" && !left.contains("Praga-Południe"))
+    #expect(left.allSatisfy { Achievements.districts.contains($0) })
 }
 
 @Test func tramDayCountsDistinctTramsOnOneDay() {
@@ -581,6 +585,24 @@ private func any(_ modelId: String? = nil, number: Int? = nil, date: Date = day(
 }
 
 /// Issue #35: a model several operators run counts for the operator of the vehicle caught.
+@Test func depotBadgesListTheModelsLeft() {
+    let depot = Achievements.evaluate([], catalog: catalog).first { $0.isDepot && $0.goal >= 3 }!
+    #expect(depot.missing.count == depot.goal)
+    #expect(depot.missing.allSatisfy { m in catalog.model(id: m.modelId!)?.name == m.label })
+    // Catching one takes it off the list.
+    let id = depot.missing[0].modelId!
+    let atDepot = catalog.model(id: id)!.batches.first { b in
+        "depot-\(catalog.model(id: id)!.kind.rawValue)-\(b.depotCode)-\(b.depotName)" == depot.id
+    }!
+    let after = Achievements.evaluate([SightingRecord(number: atDepot.numbers[0], modelId: id, date: .now)], catalog: catalog)
+        .first { $0.id == depot.id }!
+    #expect(after.missing.count == depot.goal - 1 && !after.missing.contains { $0.modelId == id })
+    // Models that share a name get their years.
+    let kleszczowa = Achievements.evaluate([], catalog: catalog).first { $0.id == "depot-BUS-R-2-Kleszczowa" }!
+    let conectos = kleszczowa.missing.map(\.label).filter { $0.hasPrefix("Mercedes-Benz Conecto G") }
+    #expect(conectos == ["Mercedes-Benz Conecto G 2012", "Mercedes-Benz Conecto G 2016—2017"])
+}
+
 @Test func operatorsByTheVehiclesOwnBatch() {
     let cng = catalog.models.first { $0.id == "bus-solaris-urbino-18cng" }!
     let conecto = catalog.models.first { $0.id == "bus-mercedes-benz-628b02" }!
@@ -590,6 +612,11 @@ private func any(_ modelId: String? = nil, number: Int? = nil, date: Date = day(
     #expect(ops.proof.compactMap(\.note) == ["MZA", "RELOBUS"])
     // Operators that are never a model's main one (Grygiel, Średnicki) are in the goal.
     #expect(ops.goal == 10)
+    // The other eight are left to find, in Polish order: Średnicki after ReloBus, not after Z.
+    let left = ops.missing.map(\.label)
+    #expect(left.count == 8 && !left.contains("MZA") && !left.contains("ReloBus"))
+    #expect(left.firstIndex(of: "Średnicki")! < left.firstIndex(of: "Tramwaje Warszawskie")!)
+    #expect(ops.missing.allSatisfy { $0.modelId == nil })
 
     // #6306 is KMKM's, not part of MZA's 1993 Ikarus 260s at Stalowa (#36).
     let ikarus = catalog.models.first { $0.id == "bus-ikarus-260" }!

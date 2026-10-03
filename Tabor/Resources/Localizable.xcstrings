@@ -1493,6 +1493,16 @@
         }
       }
     },
+    "STILL TO FIND": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BRAKUJE"
+          }
+        }
+      }
+    },
     "Some air-conditioned": {
       "localizations": {
         "pl": {
