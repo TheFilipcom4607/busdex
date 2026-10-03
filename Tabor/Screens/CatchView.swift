@@ -206,11 +206,14 @@ struct CatchView: View {
         }
         .onChange(of: pickerItem) { _, item in
             guard let item else { return }
+            // The picker is still sliding away; a reveal presented under it comes out laid out
+            // with no safe area (header under the status bar), for as long as it's up.
+            let pickerGone = ContinuousClock.now + .milliseconds(600)
             Task {
                 capturing = true
                 defer { capturing = false }
                 if let data = try? await item.loadTransferable(type: Data.self) {
-                    await begin(with: data, live: nil, fromCamera: false)
+                    await begin(with: data, live: nil, fromCamera: false, presentAfter: pickerGone)
                 } else {
                     Haptics.shared.nope()
                     DebugRecord.begin(source: "import", mode: mode)?.update { $0.error = "couldn't load the picked photo" }
@@ -687,7 +690,8 @@ struct CatchView: View {
         }
     }
 
-    private func begin(with data: Data, live: Int?, fromCamera: Bool, record: DebugRecord? = nil) async {
+    private func begin(with data: Data, live: Int?, fromCamera: Bool, record: DebugRecord? = nil,
+                       presentAfter: ContinuousClock.Instant? = nil) async {
         let preview = await Task.detached(priority: .userInitiated) {
             PhotoStore.downsample(data, maxPixel: 900).map(UIImage.init(cgImage:))
         }.value
@@ -802,6 +806,7 @@ struct CatchView: View {
             }
         }
         camera.stop()
+        if let presentAfter { try? await Task.sleep(until: presentAfter) }
         draft = d
     }
 }
