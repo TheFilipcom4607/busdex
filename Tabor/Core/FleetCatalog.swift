@@ -30,7 +30,7 @@ public struct FleetCatalog: Sendable {
     public let depots: [Depot]
     public let source: String
     public let sourcePl: String?
-    /// ISO date of the ZTM snapshot, e.g. "2026-09-22".
+    /// When the fleet data last changed: "2026-10-03 13:12 UTC" (older files: "2026-09-22").
     public let fetched: String?
     private let byId: [String: VehicleModel]
     private let byNumber: [Int: [VehicleModel]]
@@ -67,7 +67,8 @@ public struct FleetCatalog: Sendable {
         return c
     }
 
-    /// Whether this snapshot is strictly newer than `other` (ISO dates compare as strings).
+    /// Whether this snapshot is strictly newer than `other`. Both stamp formats compare as
+    /// strings, and a timed stamp beats the bare date of the same day.
     public func isNewer(than other: FleetCatalog?) -> Bool {
         guard let mine = fetched else { return false }
         guard let theirs = other?.fetched else { return true }

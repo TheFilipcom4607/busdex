@@ -13,6 +13,7 @@ Usage:  python3 scripts/fetch_fleet.py            # fetch the city's list + buil
         python3 scripts/fetch_fleet.py --offline  # rebuild from the saved files
         python3 scripts/fetch_fleet.py --scrape   # re-scrape ZTM's database too (slow)
         python3 scripts/fetch_fleet.py --allow-drop  # let model ids disappear (on purpose)
+        python3 scripts/fetch_fleet.py --touch    # restamp `fetched` even if nothing changed
 
 The city's list needs TABOR_DANE_TOKEN, from the environment or Config/Secrets.xcconfig.
 """
@@ -25,7 +26,7 @@ import time
 import urllib.parse
 import urllib.request
 from collections import Counter, defaultdict
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -636,13 +637,21 @@ def build(vehicles, city=None):
 
     depots = sorted({parse_depot(v["depot"]) + (v["kind"],) for v in vehicles if v["depot"]})
     raw = json.loads(RAW.read_text())
-    # Phones download fleet.json when this date beats theirs.
-    fetched = max(raw["fetched"], city["fetched"]) if city else raw["fetched"]
+    depots = [{"code": c, "name": n, "kind": k} for c, n, k in depots]
+    previous = json.loads(OUT.read_text()) if OUT.exists() else None
+    # Phones download fleet.json when this beats theirs (a plain string comparison), so it's
+    # when the content last changed, to the minute: a second push on the same day still
+    # reaches them. A rebuild that changes nothing keeps the old one, so it leaves no diff;
+    # --touch stamps it anyway (for a file whose old stamp phones already have).
+    if previous and previous["models"] == models and previous["depots"] == depots and "--touch" not in sys.argv:
+        fetched = previous["fetched"]
+    else:
+        fetched = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     city_en = f" and the city's open data (fetched {city['fetched']})" if city else ""
     city_pl = f" i otwarte dane miasta (stan z {city['fetched']})" if city else ""
     # Phones show only the models fleet.json has, so a vanished id hides people's catches.
-    if OUT.exists() and "--allow-drop" not in sys.argv:
-        gone = {m["id"] for m in json.loads(OUT.read_text())["models"]} - {m["id"] for m in models}
+    if previous and "--allow-drop" not in sys.argv:
+        gone = {m["id"] for m in previous["models"]} - {m["id"] for m in models}
         if gone:
             print(f"refusing to write: model ids would disappear: {', '.join(sorted(gone))}\n"
                   "(rerun with --allow-drop if that's on purpose)", file=sys.stderr)
@@ -656,7 +665,7 @@ def build(vehicles, city=None):
                     "klub KMKM, TransInfo, phototrans.eu i GPS na żywo",
         "fetched": fetched,
         "models": models,
-        "depots": [{"code": c, "name": n, "kind": k} for c, n, k in depots],
+        "depots": depots,
     }, ensure_ascii=False, separators=(",", ":")))
     total = sum(m["fleet"] for m in models)
     print(f"wrote {OUT.relative_to(ROOT)}: {len(models)} models, {total} vehicles, {len(depots)} depots")

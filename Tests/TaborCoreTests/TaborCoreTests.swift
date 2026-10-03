@@ -394,6 +394,11 @@ private func fleet(_ fetched: String?) -> FleetCatalog {
     #expect(FleetCatalog.preferred(bundled: nil, downloaded: fleet("2026-09-01"))?.fetched == "2026-09-01")
     #expect(FleetCatalog.preferred(bundled: nil, downloaded: nil) == nil)
     #expect(!fleet(nil).isNewer(than: bundled))
+    // Stamps carry the time since 2026-10-03, so a second push on one day still wins, and
+    // they beat the date-only stamps phones already have.
+    #expect(fleet("2026-10-03 13:12 UTC").isNewer(than: fleet("2026-10-03")))
+    #expect(fleet("2026-10-03 15:40 UTC").isNewer(than: fleet("2026-10-03 13:12 UTC")))
+    #expect(!fleet("2026-10-03 13:12 UTC").isNewer(than: fleet("2026-10-04")))
 }
 
 @Test func validationRejectsBrokenFleetFiles() throws {
