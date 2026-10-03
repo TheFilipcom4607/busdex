@@ -833,6 +833,49 @@ private func nearby(_ vehicles: [LiveVehicle]) -> [NearbyVehicle] {
     #expect(HuntTargets(rawValue: "kind:BOAT") == HuntTargets())
 }
 
+@Test func huntTargetsSpecsAndLineNarrow() {
+    let lionG = catalog.model(id: "bus-man-a23")!
+    let swing = catalog.model(id: "tram-pesa-120n")!
+    // The 2019–20 Lion's City Gs are CNG, the 2010 ones diesel: drive goes by the vehicle.
+    let cng = HuntTargets(drives: [.cng])
+    #expect(cng.matches(lionG, number: 7200, line: "190") && !cng.matches(lionG, number: 3400, line: "190"))
+    // Trams have no drive in the city's data, so a drive picked means buses.
+    #expect(!HuntTargets(drives: [.electric]).matches(swing, number: swing.numbers[0], line: "17"))
+    // Bands of one kind add up; kinds of spec narrow each other.
+    let long = HuntTargets(lengths: [.to20, .over30])
+    #expect(long.matches(lionG, number: 7200, line: "1") && long.matches(swing, number: swing.numbers[0], line: "1"))
+    #expect(!HuntTargets(lengths: [.over30], floors: [.high]).matches(swing, number: swing.numbers[0], line: "1"))
+    #expect(HuntTargets.LengthBand.of(12_000) == .to13 && HuntTargets.LengthBand.of(30_120) == .over30)
+    // A line narrows too, however it's written.
+    let line = HuntTargets(line: "L-4")
+    #expect(line.matches(lionG, number: 7200, line: "L4") && !line.matches(lionG, number: 7200, line: "L40"))
+    // All of these hunt across the city; a type alone doesn't.
+    #expect(cng.isCityWide && line.isCityWide && !cng.hasPicks && !HuntTargets(kind: .bus).isCityWide)
+    // Round-trips, and older builds' tokens still read.
+    let all = HuntTargets(tiers: [.gold], kind: .bus, line: "N83", lengths: [.to20], drives: [.cng, .lng], floors: [.low])
+    #expect(all.count == 7)
+    #expect(all.rawValue == "kind:BUS,tier:GOLD,line:N83,length:13-20,drive:cng,drive:lng,floor:LF")
+    #expect(HuntTargets(rawValue: all.rawValue) == all)
+    #expect(HuntTargets(rawValue: "drive:steam,length:99,line:,floor:XF") == HuntTargets())
+}
+
+@Test func huntSearchFindsLinesAndNumbers() {
+    let snap = LiveSnapshot(vehicles: [live(4235, .tram, line: "33"), live(4236, .tram, line: "33"),
+                                       live(8592, .bus, line: "523"), live(1000, .bus, line: "L-4"),
+                                       live(5100, .bus, line: "523")], fetched: fixtureNow)
+    // Lines starting with what you typed, the exact one first.
+    let r = HuntSearch.results(for: "52", snapshot: snap, catalog: catalog)
+    #expect(r.lines.map(\.line) == ["523"] && r.lines.first?.count == 2)
+    #expect(HuntSearch.results(for: "l4", snapshot: snap, catalog: catalog).lines.map(\.line) == ["L-4"])
+    // A fleet number: every model that has it, the running one first.
+    let n = HuntSearch.results(for: "1000", snapshot: snap, catalog: catalog)
+    #expect(n.vehicles.count == 2 && n.vehicles.first?.live?.kind == .bus)
+    #expect(n.vehicles.contains { $0.model.kind == .tram && $0.live == nil })
+    // Nothing running: still found, just not live.
+    #expect(HuntSearch.results(for: "4229", snapshot: nil, catalog: catalog).vehicles.first?.live == nil)
+    #expect(HuntSearch.results(for: " ", snapshot: snap, catalog: catalog).isEmpty)
+}
+
 // MARK: - Routes
 
 /// A straight street east along one latitude, a point every 0.0005° (about 34 m).

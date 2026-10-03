@@ -311,7 +311,7 @@ public struct ModelSpecs: Codable, Hashable, Sendable {
     /// 11947 mm is "11.9", 18000 mm "18": metres, to a tenth.
     public var metres: Double? { length.map { (Double($0) / 100).rounded() / 10 } }
 
-    public enum Drive: String, Codable, Sendable {
+    public enum Drive: String, Codable, Sendable, CaseIterable {
         case diesel, electric, hydrogen, cng, lng, hybrid
 
         public var name: String {
@@ -326,7 +326,7 @@ public struct ModelSpecs: Codable, Hashable, Sendable {
         }
     }
 
-    public enum Floor: String, Codable, Sendable {
+    public enum Floor: String, Codable, Sendable, CaseIterable {
         case low = "LF", lowEntry = "LE", high = "HF"
 
         public var name: String {

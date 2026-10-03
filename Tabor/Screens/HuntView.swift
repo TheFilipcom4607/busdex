@@ -33,6 +33,12 @@ struct HuntView: View {
     /// Rarities and models picked in the filter sheet; empty shows everything.
     @AppStorage("huntTargets") private var targets = HuntTargets()
     @State private var showFilters = false
+    /// The search field in the header is open (#31): a fleet number or a line.
+    @State private var searching = false
+    @State private var query = ""
+    @FocusState private var queryFocused: Bool
+    /// A vehicle picked from the search: on the map and selected whatever the filters say.
+    @State private var focusId: String?
     /// Satellite photos (with street names) instead of the plain dark map.
     @AppStorage("huntSatellite") private var satellite = false
 
@@ -78,7 +84,7 @@ struct HuntView: View {
             case .newModels: pin.kind == .newModel
             case .everything: true
             }
-            return wanted && picked.matches(pin.model)
+            return (wanted && picked.matches(pin)) || pin.id == focusId
         }
         let selected = shown.first { $0.id == selectedId }
 
@@ -156,6 +162,8 @@ struct HuntView: View {
             openGroup = nil
             recompute(animated: false)
         }
+        // A searched vehicle stays on the map only while it's the one selected.
+        .onChange(of: selectedId) { if selectedId != focusId { focusId = nil } }
         // Caught vehicles are only fetched for the ALL view.
         .onChange(of: filter) { recompute(animated: false) }
     }
@@ -163,7 +171,7 @@ struct HuntView: View {
     /// A city-wide (filtered) hunt only gets pins around where you're looking, with a screen's
     /// margin all round, so a broad filter doesn't hand the map a thousand annotations.
     private func onMap(_ shown: [WantedPin]) -> [WantedPin] {
-        guard targets.hasPicks, let r = mapRegion else { return shown }
+        guard targets.isCityWide, let r = mapRegion else { return shown }
         return shown.filter { p in
             p.id == selectedId || (abs(p.vehicle.latitude - r.center.latitude) < r.span.latitudeDelta
                                    && abs(p.vehicle.longitude - r.center.longitude) < r.span.longitudeDelta)
@@ -320,10 +328,40 @@ struct HuntView: View {
 
     // MARK: - Chrome
 
+    @ViewBuilder
     private var header: some View {
+        if searching {
+            searchField
+        } else {
+            titleRow
+        }
+    }
+
+    private var titleRow: some View {
         HStack(spacing: 8) {
             Mono("HUNT", size: 12, spacing: 0.16, color: .white.opacity(0.85))
             Spacer()
+            Button {
+                Haptics.shared.tick()
+                withAnimation(.snappy) {
+                    searching = true
+                    selectedId = nil
+                    openGroup = nil
+                }
+                queryFocused = true
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 10.5, weight: .bold))
+                    Mono("SEARCH", size: 10.5, weight: 600, spacing: 0.1, color: .white.opacity(0.85))
+                }
+                .foregroundStyle(.white.opacity(0.85))
+                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .glass(Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Search for a fleet number or a line")
             HStack(spacing: 6) {
                 let isLive = live.status == .live
                 Circle().fill(statusColor).frame(width: 6, height: 6)
@@ -338,6 +376,45 @@ struct HuntView: View {
         }
         .padding(.top, 6)
         .padding(.horizontal, 20)
+    }
+
+    /// Replaces the title row while searching: the field, and Cancel to close it.
+    private var searchField: some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 7) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.6))
+                TextField("", text: $query, prompt: Text("Fleet number or line").foregroundStyle(.white.opacity(0.45)))
+                    .font(TaborFont.mono(14, 600))
+                    .foregroundStyle(Palette.ink)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .submitLabel(.search)
+                    .focused($queryFocused)
+                    .onSubmit(pickTopResult)
+                if !query.isEmpty {
+                    Button {
+                        query = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear the search")
+                }
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .glass(Capsule())
+            Button("Cancel") { endSearch() }
+                .font(TaborFont.grotesk(15, 600))
+                .foregroundStyle(Palette.radar)
+        }
+        .padding(.top, 2)
+        .padding(.horizontal, 20)
+        .transition(.opacity)
     }
 
     private var filterBar: some View {
@@ -408,6 +485,18 @@ struct HuntView: View {
                 }
                 ForEach(picked.models.compactMap(catalog.model(id:)).sorted { $0.name < $1.name }) { m in
                     targetChip(m.name.uppercased(), color: m.tier.mapColor) { targets.models.subtract([m.id]) }
+                }
+                if let line = picked.line {
+                    targetChip(String(localized: "LINE \(line)"), color: Palette.ink) { targets.line = nil }
+                }
+                ForEach(picked.lengths.sorted(), id: \.self) { l in
+                    targetChip(l.name, color: Palette.ink) { targets.lengths.remove(l) }
+                }
+                ForEach(ModelSpecs.Drive.allCases.filter { picked.drives.contains($0) }, id: \.self) { d in
+                    targetChip(d.name, color: Palette.ink) { targets.drives.remove(d) }
+                }
+                ForEach(ModelSpecs.Floor.allCases.filter { picked.floors.contains($0) }, id: \.self) { f in
+                    targetChip(f.name.uppercased(), color: Palette.ink) { targets.floors.remove(f) }
                 }
             }
             .padding(.horizontal, 20)
@@ -527,7 +616,10 @@ struct HuntView: View {
     @ViewBuilder
     private func bottomCard(shown: [WantedPin], selected: WantedPin?) -> some View {
         Group {
-            if let selected {
+            if searching {
+                searchCard(HuntSearch.results(for: query, snapshot: live.snapshot, catalog: catalog))
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else if let selected {
                 let stats = sightings.stats
                 PinCard(pin: selected, owned: stats.ownedCount(modelId: selected.model.id),
                         mine: stats.vehicle(number: selected.vehicle.number, modelId: selected.model.id),
@@ -557,6 +649,155 @@ struct HuntView: View {
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: selectedId)
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: openGroup)
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: searching)
+    }
+
+    // MARK: - Search
+
+    /// What the search found: lines running now, then the vehicles with that number.
+    private func searchCard(_ results: HuntSearch.Results) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if query.trimmingCharacters(in: .whitespaces).isEmpty {
+                SectionLabel(text: String(localized: "SEARCH"))
+                Text("Type a fleet number to find that vehicle, or a line to see everything running on it.")
+                    .font(TaborFont.grotesk(14))
+                    .foregroundStyle(Palette.sub)
+                    .lineSpacing(2)
+                    .padding(.top, 6)
+            } else if results.isEmpty {
+                SectionLabel(text: String(localized: "NOTHING FOUND"))
+                Text("No line “\(query)” is running right now, and no vehicle has that number.")
+                    .font(TaborFont.grotesk(14))
+                    .foregroundStyle(Palette.sub)
+                    .lineSpacing(2)
+                    .padding(.top, 6)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(results.lines, id: \.self) { l in lineRow(l) }
+                        ForEach(results.vehicles, id: \.self) { v in searchedVehicleRow(v) }
+                    }
+                }
+                .scrollBounceBehavior(.basedOnSize)
+                .scrollIndicators(.hidden)
+                .frame(maxHeight: 4.5 * Self.rowHeight)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .huntCard()
+    }
+
+    private func lineRow(_ l: HuntSearch.Line) -> some View {
+        Button { pickLine(l) } label: {
+            HStack(spacing: 10) {
+                Image(systemName: l.kind == .bus ? "bus.fill" : "tram.fill")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Palette.radar)
+                    .frame(width: 22)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(String(localized: "Line \(l.line)"))
+                        .font(TaborFont.grotesk(14.5, 600))
+                    Mono(String(localized: "\(l.count) OUT NOW"), size: 10.5, color: Palette.sub)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Palette.faint)
+            }
+            .frame(height: Self.rowHeight)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func searchedVehicleRow(_ v: HuntSearch.Vehicle) -> some View {
+        let mine = sightings.contains { $0.number == v.number && $0.modelId == v.model.id }
+        let accent = v.model.tier.mapColor
+        return Button { pickVehicle(v) } label: {
+            HStack(spacing: 10) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(mine ? .clear : accent)
+                    .strokeBorder(accent, lineWidth: 1.5)
+                    .frame(width: 5, height: 30)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: 7) {
+                        Mono("#\(v.number)" as String, size: 12, weight: 700, spacing: 0.04, color: Palette.ink)
+                            .fixedSize()
+                        Text(v.model.name)
+                            .font(TaborFont.grotesk(14.5, 600))
+                            .lineLimit(1)
+                    }
+                    Mono(searchedSubtitle(v, mine: mine), size: 10.5, color: v.live == nil ? Palette.faint : Palette.sub)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: v.live == nil ? "book.closed" : "location.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(v.live == nil ? Palette.faint : Palette.radar)
+            }
+            .frame(height: Self.rowHeight)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// "LINE 523 · 2.1 KM · IN YOUR BOOK", or "NOT OUT NOW · OPEN IN BOOK".
+    private func searchedSubtitle(_ v: HuntSearch.Vehicle, mine: Bool) -> String {
+        guard let live = v.live else { return String(localized: "NOT OUT NOW · OPEN IN BOOK") }
+        let user = location.recent(maxAge: 300)?.coordinate
+        let distance = user.map { Geo.km(($0.latitude, $0.longitude), (live.latitude, live.longitude)) * 1000 }
+        return [live.line.isEmpty ? nil : String(localized: "LINE \(live.line)"), distance.map(HuntDistance.text),
+                mine ? String(localized: "IN YOUR BOOK") : nil]
+            .compactMap { $0 }.joined(separator: " · ")
+    }
+
+    /// Return on the keyboard: the answer, when there's only one; a list stays up to pick from.
+    private func pickTopResult() {
+        let r = HuntSearch.results(for: query, snapshot: live.snapshot, catalog: catalog)
+        switch (r.lines.count, r.vehicles.count) {
+        case (1, 0): pickLine(r.lines[0])
+        case (0, 1): pickVehicle(r.vehicles[0])
+        default: break
+        }
+    }
+
+    /// Everything on that line, across the city, through the filter (so it shows as a chip).
+    /// It replaces other picks: a line with LEGENDARY still on would usually show nothing.
+    private func pickLine(_ l: HuntSearch.Line) {
+        Haptics.shared.detent()
+        endSearch()
+        withAnimation(.snappy) { targets = HuntTargets(line: l.line) }
+    }
+
+    /// Running: fly to it and open its card. Not out: its page in the book.
+    private func pickVehicle(_ v: HuntSearch.Vehicle) {
+        Haptics.shared.detent()
+        endSearch()
+        guard let live = v.live else {
+            return router.openVehicle(modelId: v.model.id, number: v.number)
+        }
+        let id = "\(live.kind.rawValue)#\(live.number)"
+        focusId = id
+        recompute(animated: false)
+        if let pin = pins.first(where: { $0.id == id }) { select(pin) }
+    }
+
+    private func endSearch() {
+        queryFocused = false
+        withAnimation(.snappy) { searching = false }
+        query = ""
+    }
+
+    /// A vehicle from the search as a pin, wherever it is and whether or not you've caught it.
+    private func searchedPin(_ id: String, in snapshot: LiveSnapshot) -> WantedPin? {
+        guard let v = snapshot.vehicles.first(where: { "\($0.kind.rawValue)#\($0.number)" == id }) else { return nil }
+        let user = location.recent(maxAge: 300)?.coordinate
+        return Wanted.pins(snapshot: LiveSnapshot(vehicles: [v], fetched: snapshot.fetched), catalog: catalog,
+                           caught: sightings.stats, lat: v.latitude, lon: v.longitude, within: 10,
+                           from: user.map { ($0.latitude, $0.longitude) }, includeCaught: true)
+            .first
     }
 
     /// The vehicles in a tapped bubble; picking one opens its card (and ✕ on that card
@@ -640,7 +881,7 @@ struct HuntView: View {
     /// nearest first (to you, or to the map's centre without a fix) — you're after something
     /// specific, so how far it is matters most.
     private func listed(_ shown: [WantedPin]) -> [WantedPin] {
-        guard targets.hasPicks else { return nearYou(shown) }
+        guard targets.isCityWide else { return nearYou(shown) }
         return shown.sorted { $0.distance < $1.distance }
     }
 
@@ -662,9 +903,9 @@ struct HuntView: View {
     private func wantedList(_ near: [WantedPin]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                SectionLabel(text: targets.hasPicks ? String(localized: "MATCHING YOUR FILTER") : nearbyTitle)
+                SectionLabel(text: targets.isCityWide ? String(localized: "MATCHING YOUR FILTER") : nearbyTitle)
                 Spacer()
-                Mono(targets.hasPicks ? "\(near.count) OUT NOW" : hasFix ? "\(near.count) WITHIN 3 KM" : "AROUND THE MAP CENTRE",
+                Mono(targets.isCityWide ? "\(near.count) OUT NOW" : hasFix ? "\(near.count) WITHIN 3 KM" : "AROUND THE MAP CENTRE",
                      size: 9.5, color: Palette.faint)
             }
             if filter != .newModels {
@@ -704,7 +945,7 @@ struct HuntView: View {
                                    if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                                }))
         }
-        if targets.hasPicks {
+        if targets.isCityWide {
             guard shown.isEmpty else { return nil }
             return MessageCard(icon: "line.3.horizontal.decrease.circle", title: String(localized: "Nothing out that matches"),
                                text: filter == .newModels
@@ -783,9 +1024,9 @@ struct HuntView: View {
         } ?? 0
         // Filtered down to what you're after: look across the whole city, not just the view.
         let picked = targets
-        let filtered = picked.hasPicks
+        let filtered = picked.isCityWide
         var next = filtered
-            ? cityWide().filter { picked.matches($0.model) }
+            ? cityWide().filter { picked.matches($0) }
             : Wanted.pins(snapshot: snapshot, catalog: catalog, caught: sightings.stats,
                           lat: center.latitude, lon: center.longitude, within: max(Wanted.radius, visible),
                           from: user.map { ($0.latitude, $0.longitude) }, includeCaught: filter == .everything)
@@ -796,6 +1037,10 @@ struct HuntView: View {
                                 lat: user.latitude, lon: user.longitude, from: (user.latitude, user.longitude),
                                 includeCaught: filter == .everything)
                 .filter { !ids.contains($0.id) }
+        }
+        // The vehicle picked from the search, wherever it is and whether or not you have it.
+        if let focusId, !next.contains(where: { $0.id == focusId }), let pin = searchedPin(focusId, in: snapshot) {
+            next.append(pin)
         }
         // Only what the map can show gets placed on its route: it's the costly part.
         var placed: [String: RouteMatch] = [:]

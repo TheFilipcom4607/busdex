@@ -7071,6 +7071,166 @@
           }
         }
       }
+    },
+    "Fleet number or line": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Numer taborowy albo linia"
+          }
+        }
+      }
+    },
+    "SEARCH": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SZUKAJ"
+          }
+        }
+      }
+    },
+    "Search for a fleet number or a line": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szukaj numeru taborowego albo linii"
+          }
+        }
+      }
+    },
+    "Clear the search": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyczyść wyszukiwanie"
+          }
+        }
+      }
+    },
+    "Type a fleet number to find that vehicle, or a line to see everything running on it.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wpisz numer taborowy, żeby znaleźć ten pojazd, albo linię, żeby zobaczyć wszystko, co na niej jeździ."
+          }
+        }
+      }
+    },
+    "NOTHING FOUND": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NIC NIE ZNALEZIONO"
+          }
+        }
+      }
+    },
+    "No line “%@” is running right now, and no vehicle has that number.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linia „%@” teraz nie jeździ i żaden pojazd nie ma takiego numeru."
+          }
+        }
+      }
+    },
+    "Line %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linia %@"
+          }
+        }
+      }
+    },
+    "NOT OUT NOW · OPEN IN BOOK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TERAZ NIE JEŹDZI · OTWÓRZ W ALBUMIE"
+          }
+        }
+      }
+    },
+    "IN YOUR BOOK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W TWOIM ALBUMIE"
+          }
+        }
+      }
+    },
+    "UNDER 10 M": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PONIŻEJ 10 M"
+          }
+        }
+      }
+    },
+    "10–13 M": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10–13 M"
+          }
+        }
+      }
+    },
+    "13–20 M": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "13–20 M"
+          }
+        }
+      }
+    },
+    "20–30 M": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "20–30 M"
+          }
+        }
+      }
+    },
+    "30 M+": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "30 M+"
+          }
+        }
+      }
+    },
+    "FLOOR": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PODŁOGA"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

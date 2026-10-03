@@ -363,44 +363,120 @@ public struct HuntTargets: Equatable, Sendable, RawRepresentable {
     public var models: Set<String>
     /// Only buses or only trams; nil for both. Narrows the picks rather than adding to them.
     public var kind: VehicleKind?
+    /// One line as the feed writes it ("523", "N83"), from HUNT's search. Narrows, like the kind.
+    public var line: String?
+    /// Specs from the city's data (#31). Within one, any counts (12 M or 18 M); each one picked
+    /// narrows the rest, like the kind does.
+    public var lengths: Set<LengthBand>
+    public var drives: Set<ModelSpecs.Drive>
+    public var floors: Set<ModelSpecs.Floor>
 
-    public init(tiers: Set<Tier> = [], models: Set<String> = [], kind: VehicleKind? = nil) {
+    public init(tiers: Set<Tier> = [], models: Set<String> = [], kind: VehicleKind? = nil, line: String? = nil,
+                lengths: Set<LengthBand> = [], drives: Set<ModelSpecs.Drive> = [], floors: Set<ModelSpecs.Floor> = []) {
         self.tiers = tiers
         self.models = models
         self.kind = kind
+        self.line = line
+        self.lengths = lengths
+        self.drives = drives
+        self.floors = floors
     }
 
-    public var isEmpty: Bool { !hasPicks && kind == nil }
-    /// Rarities or models picked: you're after something specific, so HUNT looks across
-    /// the whole city. Buses or trams alone keep the usual view around you.
+    public var isEmpty: Bool { !isCityWide && kind == nil }
+    /// Rarities or models picked: these add to each other.
     public var hasPicks: Bool { !tiers.isEmpty || !models.isEmpty }
-    public var count: Int { tiers.count + models.count + (kind == nil ? 0 : 1) }
+    public var hasSpecs: Bool { !lengths.isEmpty || !drives.isEmpty || !floors.isEmpty }
+    /// You're after something specific, so HUNT looks across the whole city. Buses or trams
+    /// alone keep the usual view around you.
+    public var isCityWide: Bool { hasPicks || hasSpecs || line != nil }
+    public var count: Int {
+        tiers.count + models.count + (kind == nil ? 0 : 1) + (line == nil ? 0 : 1)
+            + lengths.count + drives.count + floors.count
+    }
 
+    /// Whether a model can match at all, whatever vehicle and line: for counting picks.
     public func matches(_ model: VehicleModel) -> Bool {
         (kind == nil || model.kind == kind)
             && (!hasPicks || tiers.contains(model.tier) || models.contains(model.id))
     }
 
-    /// "kind:TRAM,tier:GOLD,model:bus-mercus-syn2z", so it can live in UserDefaults.
+    /// A vehicle out now: its model, its own specs (a model's odd vehicles can differ, like the
+    /// 2019 CNG Lion's City Gs) and its line.
+    public func matches(_ model: VehicleModel, number: Int, line: String) -> Bool {
+        guard matches(model) else { return false }
+        if let want = self.line, HuntSearch.lineKey(line) != HuntSearch.lineKey(want) { return false }
+        guard hasSpecs else { return true }
+        let specs = model.specs(of: number)
+        if !lengths.isEmpty, !(specs?.length.flatMap(LengthBand.of).map(lengths.contains) ?? false) { return false }
+        // Trams have no drive in the city's data: a drive picked means buses.
+        if !drives.isEmpty, !(specs?.drive.map(drives.contains) ?? false) { return false }
+        if !floors.isEmpty, !(specs?.floor.map(floors.contains) ?? false) { return false }
+        return true
+    }
+
+    public func matches(_ pin: WantedPin) -> Bool {
+        matches(pin.model, number: pin.vehicle.number, line: pin.vehicle.line)
+    }
+
+    /// Lengths in bands that sort buses and trams alike: minibuses and the oldest trams, the
+    /// standard 12 m bus, articulated buses and short trams, long trams, the longest trams.
+    public enum LengthBand: String, CaseIterable, Sendable, Comparable {
+        case under10 = "0-10", to13 = "10-13", to20 = "13-20", to30 = "20-30", over30 = "30-"
+
+        /// Millimetres.
+        public static func of(_ length: Int) -> LengthBand {
+            switch length {
+            case ..<10_000: .under10
+            case ..<13_000: .to13
+            case ..<20_000: .to20
+            case ..<30_000: .to30
+            default: .over30
+            }
+        }
+
+        public var name: String {
+            switch self {
+            case .under10: String(localized: "UNDER 10 M")
+            case .to13: String(localized: "10–13 M")
+            case .to20: String(localized: "13–20 M")
+            case .to30: String(localized: "20–30 M")
+            case .over30: String(localized: "30 M+")
+            }
+        }
+
+        public static func < (a: Self, b: Self) -> Bool {
+            allCases.firstIndex(of: a)! < allCases.firstIndex(of: b)!
+        }
+    }
+
+    /// "kind:TRAM,tier:GOLD,model:bus-mercus-syn2z,line:523,drive:cng", so it can live in
+    /// UserDefaults. Older versions skip the tokens they don't know.
     public var rawValue: String {
         ((kind.map { ["kind:\($0.rawValue)"] } ?? []) + tiers.map { "tier:\($0.rawValue)" }.sorted()
-            + models.map { "model:\($0)" }.sorted())
+            + models.map { "model:\($0)" }.sorted() + (line.map { ["line:\($0)"] } ?? [])
+            + lengths.sorted().map { "length:\($0.rawValue)" } + drives.map { "drive:\($0.rawValue)" }.sorted()
+            + floors.map { "floor:\($0.rawValue)" }.sorted())
             .joined(separator: ",")
     }
 
     /// Unknown tokens (a tier renamed in a later version) are skipped, never fatal.
     public init(rawValue: String) {
-        var tiers = Set<Tier>(), models = Set<String>(), kind: VehicleKind?
+        var t = HuntTargets()
         for token in rawValue.split(separator: ",") {
-            if token.hasPrefix("tier:") {
-                if let tier = Tier(rawValue: String(token.dropFirst(5))) { tiers.insert(tier) }
-            } else if token.hasPrefix("model:"), token.count > 6 {
-                models.insert(String(token.dropFirst(6)))
-            } else if token.hasPrefix("kind:") {
-                kind = VehicleKind(rawValue: String(token.dropFirst(5)))
+            guard let colon = token.firstIndex(of: ":") else { continue }
+            let key = token[..<colon], value = String(token[token.index(after: colon)...])
+            switch key {
+            case "tier": if let tier = Tier(rawValue: value) { t.tiers.insert(tier) }
+            case "model": if !value.isEmpty { t.models.insert(value) }
+            case "kind": t.kind = VehicleKind(rawValue: value)
+            case "line": if !value.isEmpty { t.line = value }
+            case "length": if let l = LengthBand(rawValue: value) { t.lengths.insert(l) }
+            case "drive": if let d = ModelSpecs.Drive(rawValue: value) { t.drives.insert(d) }
+            case "floor": if let f = ModelSpecs.Floor(rawValue: value) { t.floors.insert(f) }
+            default: break
             }
         }
-        self.init(tiers: tiers, models: models, kind: kind)
+        self = t
     }
 }
 
