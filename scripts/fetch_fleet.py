@@ -327,7 +327,7 @@ DISPLAY_NAMES = {
 # VINTAGE and leaves them out of the "% of fleet" total. Checked 2026-09-22 against
 # kmkm.waw.pl/wlt-2026 and live tracking (api.zbiorkom.live).
 VINTAGE = {
-    "tram-falkenried-a", "tram-linke-hoffmann-lw", "tram-lilpop-c",
+    "tram-falkenried-a", "tram-linke-hoffmann-lw", "tram-lilpop-c", "tram-warsztaty-glowne-w",
     "tram-gdanska-fabryka-wagonow-wiwk-k", "tram-cred-d-wag-4egtw", "tram-konstal-n",
     "tram-konstal-4n", "tram-konstal-13n", "tram-konstal-102n",
     "bus-ikarus-260", "bus-ikarus-280", "bus-solaris-urbino-15",
@@ -406,10 +406,10 @@ MERGE = {
 
 
 # ZTM files some different types under one make/model string; these split them by number:
-# (kind, make, model) -> [(numbers, model, id)]. Each part names its id, since one of them
-# keeps the id the whole family had (the biggest, so most catches stay put) and the others
-# can't take the slug that's left. The app moves catches to the part that has their number
-# (`formerly` in fleet.json).
+# (kind, make, model) -> [(numbers, model, id)], plus a make when the part has another maker.
+# Each part names its id, since one of them keeps the id the whole family had (the biggest,
+# so most catches stay put) and the others can't take the slug that's left. The app moves
+# catches to the part that has their number (`formerly` in fleet.json).
 SPLIT = {
     # The 15 original 120Ns, the 180 Swings and the 6 two-way Swing Duos (Warszawikia; the
     # city's list has them as types of their own: 31.82 m, 30.12 m, and 30.12 m with 28 seats).
@@ -417,6 +417,12 @@ SPLIT = {
         (range(3101, 3116), "120N", "tram-pesa-120n-tramicus"),
         (range(3116, 3296), "120Na", "tram-pesa-120n"),
         (range(3501, 3507), "120NaDuo", "tram-pesa-120naduo"),
+    ],
+    # #2204 is a W tower car built by the Warsztaty Główne in 1928, not a Lilpop C (issue #33;
+    # kmkm.waw.pl/w-2204-2, transphoto.org). A museum car since 1996, at R-3 Mokotów since 2018.
+    ("TRAM", "Lilpop", "C"): [
+        ({257}, "C", "tram-lilpop-c"),
+        ({2204}, "W", "tram-warsztaty-glowne-w", "Warsztaty Główne"),
     ],
 }
 
@@ -471,9 +477,10 @@ def with_vintage_extras(vehicles):
             continue
         make, model = MERGE.get((v["kind"], v["make"], v["model"]), (v["make"], v["model"]))
         v = {**v, "make": make, "model": model}
-        for numbers, part, part_id in SPLIT.get((v["kind"], make, model), []):
+        for numbers, part, part_id, *part_make in SPLIT.get((v["kind"], make, model), []):
             if v["number"].isdigit() and int(v["number"]) in numbers:
-                v = {**v, "model": part, "id": part_id, "formerly": slug(f"{v['kind']}-{make}-{model}")}
+                v = {**v, "make": part_make[0] if part_make else make, "model": part, "id": part_id,
+                     "formerly": slug(f"{v['kind']}-{make}-{model}")}
         split = VINTAGE_NUMBERS.get((v["kind"], v["make"], v["model"]), set())
         out.append({**v, "vintage": v["number"].isdigit() and int(v["number"]) in split})
     # Once ZTM catches up and lists one of these itself, its own row wins.
