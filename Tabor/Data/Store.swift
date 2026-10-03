@@ -24,6 +24,9 @@ final class Sighting {
     /// A coupled tram's second car, added with the car you shot: that car's number. Only a
     /// link for display and badges; each car keeps its own files and can go on its own.
     var pairedWith: Int?
+    /// Picked on the vehicle page as the picture the book shows for this vehicle, instead of
+    /// the newest. Only one per vehicle is set; if two ever are, the newest wins.
+    var cover: Bool?
 
     init(id: UUID = UUID(), number: Int, modelId: String, date: Date = .now, line: String? = nil,
          photoFile: String? = nil, stickerFile: String? = nil) {
@@ -35,6 +38,8 @@ final class Sighting {
         self.photoFile = photoFile
         self.stickerFile = stickerFile
     }
+
+    var hasPicture: Bool { stickerFile != nil || photoFile != nil }
 
     var record: SightingRecord {
         SightingRecord(number: number, modelId: modelId, date: date, line: line, district: district, street: street,
@@ -139,14 +144,24 @@ extension Array where Element == Sighting {
         filter { $0.number == number && $0.modelId == modelId }.sorted { $0.date > $1.date }
     }
 
-    /// Best photo for a vehicle: the most recent sighting that has one.
-    func photo(number: Int, modelId: String) -> String? {
-        of(number: number, modelId: modelId).lazy.compactMap(\.photoFile).first
+    /// The sighting picked for the book, if it still has a picture.
+    func cover(number: Int, modelId: String) -> Sighting? {
+        of(number: number, modelId: modelId).first { $0.cover == true && $0.hasPicture }
     }
 
-    /// The vehicle's die-cut sticker, newest first.
+    /// The vehicle's photo: the picked sighting's, else the most recent one.
+    func photo(number: Int, modelId: String) -> String? {
+        let list = of(number: number, modelId: modelId)
+        if let c = list.first(where: { $0.cover == true && $0.hasPicture }), let p = c.photoFile { return p }
+        return list.lazy.compactMap(\.photoFile).first
+    }
+
+    /// The vehicle's die-cut sticker: the picked sighting's (none if it has only a photo, so
+    /// that photo shows), else the newest.
     func sticker(number: Int, modelId: String) -> String? {
-        of(number: number, modelId: modelId).lazy.compactMap(\.stickerFile).first
+        let list = of(number: number, modelId: modelId)
+        if let c = list.first(where: { $0.cover == true && $0.hasPicture }) { return c.stickerFile }
+        return list.lazy.compactMap(\.stickerFile).first
     }
 }
 

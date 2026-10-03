@@ -82,7 +82,7 @@ struct VehicleView: View {
                 .padding(.top, 16)
                 .padding(.horizontal, 22)
 
-                let photo = mine.first(where: { $0.photoFile != nil })?.photoFile
+                let photo = mine.photo(number: number, modelId: modelId)
                 CatchPhoto(file: photo, maxPixel: 1200, placeholder: String(localized: "NO PHOTO YET"))
                     // The photo's own shape, so a tall shot isn't cut to a strip (#27). Up to
                     // about half the screen for an upright one; panoramas no thinner than 150 pt.
@@ -153,20 +153,35 @@ struct VehicleView: View {
             }
             .plainRow()
 
+            // With more than one picture to choose from, each row shows its own, and the one the
+            // book uses is tagged; another can be picked by swiping right or holding the row.
+            let pictured = mine.filter(\.hasPicture)
+            let inBook = mine.cover(number: number, modelId: modelId) ?? pictured.first
             ForEach(Array(mine.enumerated()), id: \.element.id) { i, s in
+                let choosable = pictured.count > 1 && s.hasPicture
                 HStack(alignment: .top, spacing: 12) {
                     VStack(spacing: 3) {
                         Circle().fill(i == 0 ? Palette.yellow : Palette.dim).frame(width: 9, height: 9)
-                        Rectangle().fill(Color.white.opacity(0.12)).frame(width: 1, height: 26)
+                        Rectangle().fill(Color.white.opacity(0.12)).frame(width: 1, height: choosable ? 40 : 26)
                     }
                     .padding(.top, 4)
                     VStack(alignment: .leading, spacing: 0) {
                         Text(Self.stamp.string(from: s.date))
                             .font(TaborFont.grotesk(13.5, 600))
                         Mono(logLine(s, isFirst: i == mine.count - 1), size: 11, spacing: 0.05, color: Palette.sub)
+                        if choosable, s.id == inBook?.id {
+                            Mono("IN THE BOOK", size: 9.5, weight: 700, spacing: 0.1, color: Palette.yellow)
+                                .padding(.top, 5)
+                        }
                     }
                     .padding(.bottom, 10)
                     Spacer(minLength: 0)
+                    if choosable {
+                        SightingPicture(sighting: s)
+                            .frame(width: 64, height: 44)
+                            .opacity(s.id == inBook?.id ? 1 : 0.55)
+                            .accessibilityHidden(true)
+                    }
                 }
                 .padding(.horizontal, 22)
                 .contentShape(Rectangle())
@@ -176,7 +191,16 @@ struct VehicleView: View {
                     Button { editing = s } label: { Label("Edit", systemImage: "pencil") }
                         .tint(Palette.dim)
                 }
+                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                    if choosable, s.id != inBook?.id {
+                        Button { useInBook(s, of: mine) } label: { Label("Show in book", systemImage: "book") }
+                            .tint(Palette.yellow)
+                    }
+                }
                 .contextMenu {
+                    if choosable, s.id != inBook?.id {
+                        Button { useInBook(s, of: mine) } label: { Label("Show this picture in the book", systemImage: "book") }
+                    }
                     Button { editing = s } label: { Label("Fix number, model or line", systemImage: "pencil") }
                     Button(role: .destructive) { delete(s, wasLast: mine.count == 1) } label: { Label("Delete sighting", systemImage: "trash") }
                 }
@@ -237,6 +261,13 @@ struct VehicleView: View {
         return catalog.secondCarModel(s.number, of: number, model: model)?.id == s.modelId
     }
 
+    /// The book, the widgets and the share card show this sighting's picture from now on.
+    private func useInBook(_ s: Sighting, of mine: [Sighting]) {
+        for other in mine { other.cover = other.id == s.id ? true : nil }
+        try? context.save()
+        Haptics.shared.tick()
+    }
+
     /// No dialog: it goes at once, and the toast at the bottom can bring it back.
     private func delete(_ s: Sighting, wasLast: Bool) {
         withAnimation { undo.delete(s, in: context, closingPage: wasLast) }
@@ -287,6 +318,23 @@ struct VehicleView: View {
 
 extension String {
     var nonEmpty: String? { isEmpty ? nil : self }
+}
+
+/// One sighting's own sticker, or its photo, small: for choosing which the book shows.
+private struct SightingPicture: View {
+    let sighting: Sighting
+
+    var body: some View {
+        if let sticker = sighting.stickerFile, let img = PhotoStore.thumbnail(sticker, maxPixel: 200) {
+            Image(uiImage: img)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            CatchPhoto(file: sighting.photoFile, maxPixel: 200)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        }
+    }
 }
 
 private extension View {

@@ -190,7 +190,9 @@ struct RootView: View {
         let latest = sightings.max { $0.date < $1.date }
         let vehicles = Set(sightings.map { "\($0.modelId)#\($0.number)" }).count
         return [String(sightings.count), String(vehicles), latest?.id.uuidString, latest?.modelId, latest.map { String($0.number) },
-                latest?.stickerFile, latest?.photoFile].map { $0 ?? "-" }.joined(separator: "|")
+                latest?.stickerFile, latest?.photoFile,
+                // A picture picked for the book changes the cards too.
+                sightings.filter { $0.cover == true }.map(\.id.uuidString).sorted().joined()].map { $0 ?? "-" }.joined(separator: "|")
     }
 }
 

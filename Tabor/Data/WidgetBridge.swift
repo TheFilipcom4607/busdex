@@ -45,20 +45,27 @@ enum WidgetBridge {
     /// rare for the shuffle. Also returns which picture file each card's PNG comes from.
     private static func cards(_ sightings: [Sighting], catalog: FleetCatalog)
         -> (recent: [WidgetSnapshot.Card], pile: [WidgetSnapshot.Card], files: [String: String]) {
-        struct Vehicle { var last: Date; var first: Date; var times: Int; var sticker: String?; var photo: String? }
+        struct Vehicle {
+            var last: Date; var first: Date; var times: Int; var sticker: String?; var photo: String?
+            /// The picture picked for the book is in, and nothing older replaces it.
+            var picked = false
+        }
         var byKey: [String: (modelId: String, number: Int, v: Vehicle)] = [:]
         for s in sightings.sorted(by: { $0.date > $1.date }) {
             let key = "\(s.modelId)#\(s.number)"
-            if var e = byKey[key] {
-                e.v.first = s.date
-                e.v.times += 1
+            var e = byKey[key] ?? (s.modelId, s.number, Vehicle(last: s.date, first: s.date, times: 0))
+            e.v.first = s.date
+            e.v.times += 1
+            // Like the book: the picked sighting's picture, else the newest.
+            if s.cover == true, s.hasPicture, !e.v.picked {
+                e.v.sticker = s.stickerFile
+                e.v.photo = s.photoFile ?? e.v.photo
+                e.v.picked = true
+            } else if !e.v.picked {
                 e.v.sticker = e.v.sticker ?? s.stickerFile
                 e.v.photo = e.v.photo ?? s.photoFile
-                byKey[key] = e
-            } else {
-                byKey[key] = (s.modelId, s.number, Vehicle(last: s.date, first: s.date, times: 1,
-                                                          sticker: s.stickerFile, photo: s.photoFile))
             }
+            byKey[key] = e
         }
 
         var files: [String: String] = [:]
