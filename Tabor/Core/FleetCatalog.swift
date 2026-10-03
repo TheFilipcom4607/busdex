@@ -91,6 +91,29 @@ public struct FleetCatalog: Sendable {
         return here.first { $0.formerly.contains(modelId) }?.id
     }
 
+    /// The model `other` goes under as `number`'s second car, or nil if it can't be that car:
+    /// a coupled car of the same model, or across models a trailer and a car that pulls it.
+    /// Only trams pull trailers, so a trailer's number that's a bus's too still means the tram.
+    public func secondCarModel(_ other: Int, of number: Int, model: VehicleModel) -> VehicleModel? {
+        guard other != number else { return nil }
+        if model.isCoupled(number), model.isCoupled(other) { return model }
+        let trams = (byNumber[other] ?? []).filter { $0.kind == .tram }
+        if model.isTrailer(number) { return trams.first { $0.pullsTrailers(other) } }
+        if model.pullsTrailers(number) { return trams.first { $0.isTrailer(other) } }
+        return nil
+    }
+
+    /// The models `number`'s second car can be from.
+    public func secondCarModels(of number: Int, model: VehicleModel) -> [VehicleModel] {
+        models.filter { m in
+            (m.id == model.id && model.isCoupled(number))
+                || (model.isTrailer(number) && m.tows) || (model.pullsTrailers(number) && !m.trailers.isEmpty)
+        }
+    }
+
+    /// Every vintage trailer, by number.
+    public var trailers: [Int] { models.flatMap(\.trailers).sorted() }
+
     /// Vehicles on regular routes; vintage and test stock don't count toward the fleet.
     public var totalFleet: Int { models.filter { $0.regular }.reduce(0) { $0 + $1.fleet } }
 

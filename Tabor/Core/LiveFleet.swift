@@ -215,9 +215,11 @@ public enum LiveHints {
 
     /// The line the vehicle was running on at `date`, if the feed saw it recently enough.
     /// A coupled car the feed doesn't report takes its set's line: the lead car right there,
-    /// else its fixed partner, else the one neighbouring number that's running.
+    /// else its fixed partner, else the one neighbouring number that's running. A trailer
+    /// takes its motor car's (which needs `catalog`, to know which cars pull trailers).
     public static func line(for number: Int, kind: VehicleKind, snapshot: LiveSnapshot?, at date: Date,
-                            model: VehicleModel? = nil, nearby: [NearbyVehicle] = []) -> String? {
+                            model: VehicleModel? = nil, nearby: [NearbyVehicle] = [],
+                            catalog: FleetCatalog? = nil) -> String? {
         func reported(_ n: Int) -> String? {
             guard let v = snapshot?.vehicle(number: n, kind: kind), !v.line.isEmpty,
                   abs(date.timeIntervalSince(v.time)) <= lineWindow
@@ -225,8 +227,9 @@ public enum LiveHints {
             return v.line
         }
         if let line = reported(number) { return line }
-        guard let model, model.kind == kind, model.isCoupled(number) else { return nil }
-        if let lead = CoupledSet.partner(of: number, model: model, nearby: nearby), let line = reported(lead.number) {
+        guard let model, model.kind == kind, model.isCoupled(number) || model.isTrailer(number) else { return nil }
+        if let lead = CoupledSet.partner(of: number, model: model, nearby: nearby, catalog: catalog),
+           let line = reported(lead.number) {
             return line
         }
         if let fixed = model.fixedPartner(of: number) { return reported(fixed) }
@@ -237,16 +240,24 @@ public enum LiveHints {
 
 /// Trams that run as two coupled cars, each with its own number. The live feed has one row
 /// per set, under one car's number (usually the even one); the other car never shows up.
+/// A vintage trailer is the same: the feed has its motor car.
 public enum CoupledSet {
     /// The feed's lead car for `number`'s set: a same-model coupled tram within the rescue
     /// radius, and the only one, unless it's the fixed partner. Pairing isn't strict parity
     /// (1381 and 1387 lead sets) and a ±1 neighbour can be another model, so it goes by model.
-    public static func partner(of number: Int, model: VehicleModel, nearby: [NearbyVehicle]) -> LiveVehicle? {
-        guard model.kind == .tram, model.isCoupled(number) else { return nil }
-        let leads = nearby.filter {
+    /// For a trailer, the only car right there that pulls trailers (with `catalog`).
+    public static func partner(of number: Int, model: VehicleModel, nearby: [NearbyVehicle],
+                               catalog: FleetCatalog? = nil) -> LiveVehicle? {
+        guard model.kind == .tram else { return nil }
+        let close = nearby.filter {
             $0.distance <= LiveHints.rescueRadius && $0.vehicle.kind == .tram && $0.vehicle.number != number
-                && model.isCoupled($0.vehicle.number)
         }.map(\.vehicle)
+        if model.isTrailer(number), let catalog {
+            let motors = close.filter { catalog.secondCarModel($0.number, of: number, model: model) != nil }
+            return motors.count == 1 ? motors[0] : nil
+        }
+        guard model.isCoupled(number) else { return nil }
+        let leads = close.filter { model.isCoupled($0.number) }
         if let fixed = model.fixedPartner(of: number), let lead = leads.first(where: { $0.number == fixed }) { return lead }
         return leads.count == 1 ? leads[0] : nil
     }
@@ -256,14 +267,14 @@ public enum CoupledSet {
                                nearby: [NearbyVehicle]) -> (model: VehicleModel, lead: LiveVehicle)? {
         guard !nearby.isEmpty else { return nil }
         let hits = catalog.match(number: number, kind: .tram).candidates.compactMap { m in
-            partner(of: number, model: m, nearby: nearby).map { (model: m, lead: $0) }
+            partner(of: number, model: m, nearby: nearby, catalog: catalog).map { (model: m, lead: $0) }
         }
         return hits.count == 1 ? hits[0] : nil
     }
 
     public struct Suggestion: Sendable, Equatable {
         public enum Source: String, Sendable {
-            case fixed, photo, feed
+            case fixed, photo, feed, trailer
             case neighbour = "±1"
         }
         public let number: Int
@@ -271,19 +282,21 @@ public enum CoupledSet {
     }
 
     /// Up to three numbers for the car coupled to `number`, likeliest first: its fixed partner,
-    /// another number of the same model read in the photo, the feed's lead car, then n−1 and
-    /// n+1. Only real coupled cars of the same model, never the caught number itself.
+    /// another car it can run with read in the photo, the feed's lead car, a motor car's
+    /// trailers, then n−1 and n+1. Only cars it can really run with, never the caught number.
     public static func suggestions(for number: Int, model: VehicleModel, photoNumbers: [Int],
-                                   nearby: [NearbyVehicle]) -> [Suggestion] {
-        guard model.isCoupled(number) else { return [] }
+                                   nearby: [NearbyVehicle], catalog: FleetCatalog) -> [Suggestion] {
+        guard model.takesSecondCar(number) else { return [] }
         var out: [Suggestion] = []
         func add(_ n: Int?, _ source: Suggestion.Source) {
-            guard let n, n != number, model.isCoupled(n), !out.contains(where: { $0.number == n }) else { return }
+            guard let n, catalog.secondCarModel(n, of: number, model: model) != nil,
+                  !out.contains(where: { $0.number == n }) else { return }
             out.append(Suggestion(number: n, source: source))
         }
         add(model.fixedPartner(of: number), .fixed)
         photoNumbers.forEach { add($0, .photo) }
-        add(partner(of: number, model: model, nearby: nearby)?.number, .feed)
+        add(partner(of: number, model: model, nearby: nearby, catalog: catalog)?.number, .feed)
+        if model.pullsTrailers(number) { catalog.trailers.forEach { add($0, .trailer) } }
         add(number - 1, .neighbour)
         add(number + 1, .neighbour)
         return Array(out.prefix(3))

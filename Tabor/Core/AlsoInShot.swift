@@ -58,7 +58,7 @@ public enum AlsoInShot {
             let free = r.boxes.filter { box in !claimed.contains { overlaps(box, $0) } }
             claimed += r.boxes
             guard let box = free.max(by: { $0.height < $1.height }), r.number != partner,
-                  !isPartner(r.number, of: caught, model: caughtModel)
+                  !isPartner(r.number, of: caught, model: caughtModel, catalog: catalog)
             else { continue }
             // A number on a bus and a tram (2022) goes with the caught one's kind, as the
             // camera's mode does, unless the feed says otherwise.
@@ -68,7 +68,7 @@ public enum AlsoInShot {
             if live {
                 let running = nearby.contains {
                     $0.vehicle.number == r.number && $0.vehicle.kind == model.kind && $0.distance <= LiveHints.boostRadius
-                } || CoupledSet.partner(of: r.number, model: model, nearby: nearby) != nil
+                } || CoupledSet.partner(of: r.number, model: model, nearby: nearby, catalog: catalog) != nil
                 guard running else { continue }
             } else {
                 guard r.number >= 1000 else { continue }
@@ -83,9 +83,11 @@ public enum AlsoInShot {
     /// number read wrong, not a second vehicle.
     public static func couldBeMisread(_ n: Int, of caught: Int) -> Bool { LiveHints.oneDigitOff(n, caught) }
 
-    /// The caught tram's other car: that's the "+ SECOND CAR" chip's, not this.
-    static func isPartner(_ n: Int, of caught: Int, model: VehicleModel) -> Bool {
-        guard model.isCoupled(caught), model.isCoupled(n) else { return false }
+    /// The caught tram's other car: that's the "+ SECOND CAR" chip's, not this. A trailer
+    /// has no fixed motor car, so any car it can run with in the shot is its other car.
+    static func isPartner(_ n: Int, of caught: Int, model: VehicleModel, catalog: FleetCatalog) -> Bool {
+        guard let other = catalog.secondCarModel(n, of: caught, model: model) else { return false }
+        if other.id != model.id { return true }
         return model.fixedPartner(of: caught) == n || abs(n - caught) == 1
     }
 

@@ -7031,6 +7031,46 @@
           }
         }
       }
+    },
+    "Vintage trams can pull a trailer, which has a number of its own. Add the other car to your book with this one.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zabytkowe tramwaje mogą ciągnąć doczepę, która ma własny numer. Dodaj drugi wagon do albumu razem z tym."
+          }
+        }
+      }
+    },
+    "VINTAGE TRAILER": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZABYTKOWA DOCZEPA"
+          }
+        }
+      }
+    },
+    "NOT A CAR THAT PULLS TRAILERS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TEN WAGON NIE CIĄGNIE DOCZEP"
+          }
+        }
+      }
+    },
+    "NOT A VINTAGE TRAILER": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TO NIE ZABYTKOWA DOCZEPA"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

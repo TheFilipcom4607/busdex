@@ -74,6 +74,11 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     /// Cars that always run together, e.g. [[1000, 1001]]. In a model that isn't `coupled`,
     /// only these cars are.
     public let sets: [[Int]]
+    /// Its cars with no motor of their own, e.g. the vintage ND #1620: they run hitched behind a
+    /// car of a model that `tows`, any one of them, so they're paired across models.
+    public let trailers: [Int]
+    /// Its cars (other than its own `trailers`) can pull a trailer.
+    public let tows: Bool
     /// Ids its numbers had before a model was split, e.g. the 120N Tramicus was part of
     /// `tram-pesa-120n`: catches filed under one of them move here (`FleetCatalog.moved`).
     public let formerly: [String]
@@ -83,7 +88,7 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
                 vintage: Bool = false, onTest: Bool = false, runs: String? = nil, trial: String? = nil,
                 runsPl: String? = nil, trialPl: String? = nil, specs: ModelSpecs? = nil, variants: [SpecVariant] = [],
                 liveries: [String: String]? = nil, coupled: Bool = false, sets: [[Int]] = [],
-                formerly: [String] = []) {
+                trailers: [Int] = [], tows: Bool = false, formerly: [String] = []) {
         self.id = id
         self.name = name
         self.make = make
@@ -105,12 +110,14 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         self.liveries = liveries
         self.coupled = coupled
         self.sets = sets
+        self.trailers = trailers
+        self.tows = tows
         self.formerly = formerly
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, name, make, code, kind, operators, fleet, firstYear, lastYear, batches, vintage, onTest, runs, trial,
-             runsPl, trialPl, specs, variants, liveries, coupled, sets, formerly
+             runsPl, trialPl, specs, variants, liveries, coupled, sets, trailers, tows, formerly
     }
 
     public init(from decoder: Decoder) throws {
@@ -137,6 +144,8 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         liveries = try? c.decodeIfPresent([String: String].self, forKey: .liveries)
         coupled = try c.decodeIfPresent(Bool.self, forKey: .coupled) ?? false
         sets = (try? c.decodeIfPresent([[Int]].self, forKey: .sets)) ?? []
+        trailers = (try? c.decodeIfPresent([Int].self, forKey: .trailers)) ?? []
+        tows = (try? c.decodeIfPresent(Bool.self, forKey: .tows)) ?? false
         formerly = (try? c.decodeIfPresent([String].self, forKey: .formerly)) ?? []
     }
 
@@ -182,6 +191,18 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     /// This car runs coupled to another, so a catch can add its partner.
     public func isCoupled(_ number: Int) -> Bool {
         has(number) && (coupled || sets.contains { $0.contains(number) })
+    }
+
+    /// A car with no motor, pulled by a car of a model that `tows`.
+    public func isTrailer(_ number: Int) -> Bool { has(number) && trailers.contains(number) }
+
+    /// A car that can pull a trailer.
+    public func pullsTrailers(_ number: Int) -> Bool { tows && has(number) && !trailers.contains(number) }
+
+    /// A catch of this car can add a second car: a coupled tram's other car, a trailer's
+    /// motor car, or a motor car's trailer.
+    public func takesSecondCar(_ number: Int) -> Bool {
+        isCoupled(number) || isTrailer(number) || pullsTrailers(number)
     }
 
     /// The car it always runs with, if it's in a fixed set.

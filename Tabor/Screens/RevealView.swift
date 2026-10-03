@@ -68,8 +68,9 @@ struct RevealView: View {
         let modelOwned = model.map { stats.ownedCount(modelId: $0.id) } ?? 0
         // A coupled tram's other car goes in the book too, so the counts include it.
         let partner = secondCar(model: model, number: number)
-        let partnerIsNew = partner.map { p in model.map { stats.vehicle(number: p, modelId: $0.id) == nil } ?? false } ?? false
-        let added = (isNewVehicle ? 1 : 0) + (partnerIsNew ? 1 : 0)
+        let partnerIsNew = partner.map { stats.vehicle(number: $0.number, modelId: $0.model.id) == nil } ?? false
+        // A trailer and its motor car are different models: only a same-model car adds to this one's count.
+        let added = (isNewVehicle ? 1 : 0) + (partnerIsNew && partner?.model.id == model?.id ? 1 : 0)
         let isNewModel = modelOwned == 0
         let tier = model?.tier ?? .common
         let ready = model != nil && number != nil
@@ -143,9 +144,9 @@ struct RevealView: View {
                     .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: landed)
 
                     let also = draft.alsoInShot.filter { !misreads.contains($0.number) }
-                    if model.isCoupled(number) || !also.isEmpty {
+                    if model.takesSecondCar(number) || !also.isEmpty {
                         let chips = HStack(spacing: 8) {
-                            if model.isCoupled(number) { partnerChip(partner: partner, isNew: partnerIsNew) }
+                            if model.takesSecondCar(number) { partnerChip(partner: partner?.number, isNew: partnerIsNew) }
                             ForEach(also) { v in
                                 alsoChip(v, isNew: stats.vehicle(number: v.number, modelId: v.model.id) == nil)
                             }
@@ -164,7 +165,9 @@ struct RevealView: View {
                         .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.14), value: landed)
                     }
 
-                    let owned = Set(stats.owned(modelId: model.id).map(\.number)).union([number] + (partner.map { [$0] } ?? []))
+                    // A trailer is another model's: it doesn't count toward this one.
+                    let sameModel = partner.flatMap { $0.model.id == model.id ? [$0.number] : nil } ?? []
+                    let owned = Set(stats.owned(modelId: model.id).map(\.number)).union([number] + sameModel)
                     Text(RevealHint.text(model: model, number: number, owned: owned,
                                          isNewVehicle: isNewVehicle, timesSeen: (existing?.timesSeen ?? 0) + 1))
                         .font(TaborFont.grotesk(13))
@@ -231,7 +234,9 @@ struct RevealView: View {
         .sheet(isPresented: $pickingPartner) {
             if let model, let number {
                 PartnerSheet(model: model, number: number, suggestions: draft.partnerSuggestions,
-                             owned: Set(stats.owned(modelId: model.id).map(\.number)), partner: $draft.partner)
+                             owned: Set(catalog.secondCarModels(of: number, model: model)
+                                .flatMap { stats.owned(modelId: $0.id).map(\.number) }),
+                             partner: $draft.partner)
             }
         }
         // One key, so fixing number and model together replays the reveal once.
@@ -252,11 +257,13 @@ struct RevealView: View {
         }
     }
 
-    /// The other car, while it still fits the number and model on screen.
-    private func secondCar(model: VehicleModel?, number: Int?) -> Int? {
-        guard let p = draft.partner, let model, let number, p != number, model.isCoupled(number), model.isCoupled(p)
+    /// The other car and the model it goes under (a trailer's motor car is another model's),
+    /// while it still fits the number and model on screen.
+    private func secondCar(model: VehicleModel?, number: Int?) -> (number: Int, model: VehicleModel)? {
+        guard let p = draft.partner, let model, let number,
+              let other = catalog.secondCarModel(p, of: number, model: model)
         else { return nil }
-        return p
+        return (p, other)
     }
 
     /// "+ SECOND CAR", or the car you added, with a way to take it off again.
@@ -313,8 +320,8 @@ struct RevealView: View {
             return
         }
         draft.partnerSuggestions = CoupledSet.suggestions(for: number, model: model, photoNumbers: photoNumbers,
-                                                          nearby: draft.nearby)
-        draft.partner = secondCar(model: model, number: number)
+                                                          nearby: draft.nearby, catalog: catalog)
+        draft.partner = secondCar(model: model, number: number)?.number
     }
 
     /// "+ 5897 · ALSO IN SHOT" for another vehicle read in the photo; tap to add it as a catch
@@ -658,7 +665,7 @@ struct RevealView: View {
         if draft.fromCamera, (draft.line ?? "") == (draft.autoLine ?? ""),
            let number = draft.number, let model {
             draft.line = LiveHints.line(for: number, kind: model.kind, snapshot: LiveFleetService.shared.snapshot,
-                                        at: draft.date, model: model, nearby: draft.nearby)
+                                        at: draft.date, model: model, nearby: draft.nearby, catalog: catalog)
             draft.autoLine = draft.line
         }
         draft.debug?.log("edited", number: draft.number, modelId: draft.modelId, line: draft.line)
@@ -684,7 +691,7 @@ struct RevealView: View {
 
         let ownedBefore = Set(sightings.stats.owned(modelId: model.id).map(\.number))
         let partner = secondCar(model: model, number: number)
-        let cars = [number] + (partner.map { [$0] } ?? [])
+        let cars = [number] + (partner.flatMap { $0.model.id == model.id ? [$0.number] : nil } ?? [])
         // Peel: lift and straighten.
         withAnimation(.easeOut(duration: 0.2)) { tilt = .zero }
         try? await Task.sleep(for: .milliseconds(240))
@@ -713,18 +720,19 @@ struct RevealView: View {
         context.insert(s)
         draft.debug?.log("stuck", number: number, modelId: model.id, line: s.line)
         // A coupled tram's other car: a catch of its own, with its own copies of the files so
-        // deleting either car leaves the other whole. Always the model you shot (its number may
-        // be a bus's too), and a millisecond earlier so lists keep the shot car on top.
+        // deleting either car leaves the other whole. The model you shot, or for a trailer and
+        // its motor car the tram model that pairs (never `catalog.match`: its number may be a
+        // bus's too), and a millisecond earlier so lists keep the shot car on top.
         var cars = [s]
-        if let p = secondCar(model: model, number: number) {
-            let second = Sighting(number: p, modelId: model.id, date: draft.date.addingTimeInterval(-0.001), line: line,
+        if let (p, pModel) = secondCar(model: model, number: number) {
+            let second = Sighting(number: p, modelId: pModel.id, date: draft.date.addingTimeInterval(-0.001), line: line,
                                   photoFile: PhotoStore.save(draft.photo, ext: ext),
                                   stickerFile: stickerPNG.flatMap { PhotoStore.save($0, ext: "png") })
             second.pairedWith = number
             context.insert(second)
             cars.append(second)
             let source = draft.partnerSuggestions.first { $0.number == p }?.source.rawValue ?? "typed"
-            draft.debug?.log("partner", number: p, modelId: model.id, line: line, note: source)
+            draft.debug?.log("partner", number: p, modelId: pModel.id, line: line, note: source)
         }
         // The caught vehicle (and its second car) share the sticker; other vehicles in the shot
         // have their own, or none.
@@ -735,7 +743,7 @@ struct RevealView: View {
             guard let v = draft.alsoInShot.first(where: { $0.number == n }), !misreads.contains(n) else { continue }
             let vLine = draft.fromCamera
                 ? LiveHints.line(for: n, kind: v.model.kind, snapshot: LiveFleetService.shared.snapshot,
-                                 at: draft.date, model: v.model, nearby: draft.nearby)
+                                 at: draft.date, model: v.model, nearby: draft.nearby, catalog: catalog)
                 : nil
             let other = Sighting(number: n, modelId: v.model.id, date: draft.date.addingTimeInterval(-0.002 - 0.001 * Double(i)),
                                  line: vLine, photoFile: PhotoStore.save(draft.photo, ext: ext),

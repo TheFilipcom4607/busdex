@@ -1274,26 +1274,26 @@ private let n13 = catalog.model(id: "tram-konstal-13n")!
 }
 
 @Test func partnerSuggestionsInOrder() {
-    let s = CoupledSet.suggestions(for: 1283, model: n105, photoNumbers: [1286], nearby: nearby([live(1282, .tram)]))
+    let s = CoupledSet.suggestions(for: 1283, model: n105, photoNumbers: [1286], nearby: nearby([live(1282, .tram)]), catalog: catalog)
     #expect(s.map(\.number) == [1286, 1282, 1284])
     #expect(s.map(\.source) == [.photo, .feed, .neighbour])
-    let fixed = CoupledSet.suggestions(for: 1252, model: n105Vintage, photoNumbers: [1000], nearby: nearby([live(1001, .tram)]))
+    let fixed = CoupledSet.suggestions(for: 1252, model: n105Vintage, photoNumbers: [1000], nearby: nearby([live(1001, .tram)]), catalog: catalog)
     #expect(fixed.map(\.number) == [1251, 1000, 1001])
     #expect(fixed.first?.source == .fixed)
     // The caught number and numbers not in the model are skipped, and three is the most.
-    let capped = CoupledSet.suggestions(for: 1283, model: n105, photoNumbers: [1283, 99_999, 1286, 1289, 1290], nearby: [])
+    let capped = CoupledSet.suggestions(for: 1283, model: n105, photoNumbers: [1283, 99_999, 1286, 1289, 1290], nearby: [], catalog: catalog)
     #expect(capped.map(\.number) == [1286, 1289, 1290])
 }
 
 @Test func partnerSuggestionsStayInTheModel() {
     // 1390 is a 105Na: never offered for a 105N2k.
-    let s = CoupledSet.suggestions(for: 1391, model: n2k, photoNumbers: [1390], nearby: nearby([live(1390, .tram)]))
+    let s = CoupledSet.suggestions(for: 1391, model: n2k, photoNumbers: [1390], nearby: nearby([live(1390, .tram)]), catalog: catalog)
     #expect(!s.map(\.number).contains(1390))
     #expect(s.map(\.number) == [1392])
-    #expect(CoupledSet.suggestions(for: 821, model: n13, photoNumbers: [], nearby: []).map(\.number) == [818])
-    #expect(CoupledSet.suggestions(for: 795, model: n13, photoNumbers: [796], nearby: []).isEmpty)
+    #expect(CoupledSet.suggestions(for: 821, model: n13, photoNumbers: [], nearby: [], catalog: catalog).map(\.number) == [818])
+    #expect(CoupledSet.suggestions(for: 795, model: n13, photoNumbers: [796], nearby: [], catalog: catalog).isEmpty)
     let swing = catalog.model(id: "tram-pesa-120n")!
-    #expect(CoupledSet.suggestions(for: swing.numbers[1], model: swing, photoNumbers: [], nearby: []).isEmpty)
+    #expect(CoupledSet.suggestions(for: swing.numbers[1], model: swing, photoNumbers: [], nearby: [], catalog: catalog).isEmpty)
 }
 
 @Test func coupledFleetData() throws {
@@ -1308,7 +1308,63 @@ private let n13 = catalog.model(id: "tram-konstal-13n")!
     // Fleet files from before coupling decode as single cars.
     let old = Data(#"{"id":"x","name":"X","make":"X","kind":"TRAM","operators":[],"fleet":1,"batches":[]}"#.utf8)
     let m = try JSONDecoder().decode(VehicleModel.self, from: old)
-    #expect(!m.coupled && m.sets.isEmpty)
+    #expect(!m.coupled && m.sets.isEmpty && m.trailers.isEmpty && !m.tows)
+}
+
+// MARK: - Vintage trailers (#33)
+
+private let nModel = catalog.model(id: "tram-konstal-n")!
+private let n4 = catalog.model(id: "tram-konstal-4n")!
+private let kModel = catalog.model(id: "tram-gdanska-fabryka-wagonow-wiwk-k")!
+
+@Test func trailerFleetData() {
+    #expect(catalog.trailers == [1620, 1811])
+    #expect(nModel.isTrailer(1620) && nModel.isTrailer(1811) && !nModel.pullsTrailers(1620))
+    #expect(nModel.pullsTrailers(607) && n4.pullsTrailers(838) && kModel.pullsTrailers(445))
+    #expect(nModel.takesSecondCar(1620) && !n13.takesSecondCar(795) && n13.takesSecondCar(821))
+    // Works cars ZTM still lists are left out.
+    #expect(!kModel.has(2405) && !nModel.has(1770) && !n13.has(534))
+}
+
+@Test func trailerPairsAcrossModels() {
+    #expect(catalog.secondCarModel(838, of: 1620, model: nModel)?.id == n4.id)
+    #expect(catalog.secondCarModel(1811, of: 445, model: kModel)?.id == nModel.id)
+    #expect(catalog.secondCarModel(607, of: 1620, model: nModel)?.id == nModel.id)
+    // 1811 is an Urbino 12's number too: next to a motor car it's the trailer.
+    #expect(catalog.secondCarModel(1811, of: 838, model: n4)?.id == nModel.id)
+    // Two motor cars, two trailers, or a car that pulls none: not a pair.
+    #expect(catalog.secondCarModel(838, of: 873, model: n4) == nil)
+    #expect(catalog.secondCarModel(1811, of: 1620, model: nModel) == nil)
+    #expect(catalog.secondCarModel(1620, of: 795, model: n13) == nil)
+    #expect(Set(catalog.secondCarModels(of: 1620, model: nModel).map(\.id)) == [nModel.id, n4.id, kModel.id])
+    #expect(catalog.secondCarModels(of: 838, model: n4).map(\.id) == [nModel.id])
+}
+
+@Test func trailerSuggestions() {
+    // A motor car: a trailer read in the photo first, then the other one.
+    let motor = CoupledSet.suggestions(for: 838, model: n4, photoNumbers: [1811], nearby: [], catalog: catalog)
+    #expect(motor.map(\.number) == [1811, 1620])
+    #expect(motor.map(\.source) == [.photo, .trailer])
+    // A trailer: the one motor car running right there.
+    let trailer = CoupledSet.suggestions(for: 1620, model: nModel, photoNumbers: [], nearby: nearby([live(838, .tram)]),
+                                         catalog: catalog)
+    #expect(trailer.map(\.number) == [838])
+    #expect(trailer.first?.source == .feed)
+}
+
+@Test func trailerRunsWithItsMotorCar() {
+    let snap = LiveSnapshot(vehicles: [live(838, .tram, line: "T", metres: 40)], fetched: fixtureNow)
+    let near = nearby([live(838, .tram, line: "T", metres: 40)])
+    #expect(LiveHints.line(for: 1620, kind: .tram, snapshot: snap, at: fixtureNow, model: nModel, nearby: near,
+                           catalog: catalog) == "T")
+    // Two motor cars right there: no telling which pulls it.
+    let two = nearby([live(838, .tram, line: "T"), live(607, .tram, line: "W", metres: 80)])
+    #expect(CoupledSet.partner(of: 1620, model: nModel, nearby: two, catalog: catalog) == nil)
+    // A motor car running right there settles 1811 as the trailer, not the Urbino.
+    #expect(LiveHints.resolve(catalog.match(number: 1811), number: 1811, nearby: near, catalog: catalog) == .certain(nModel))
+    // In the shot with the motor car you caught, it's the second car, not another catch.
+    #expect(AlsoInShot.isPartner(1620, of: 838, model: n4, catalog: catalog))
+    #expect(!AlsoInShot.isPartner(873, of: 838, model: n4, catalog: catalog))
 }
 
 @Test func secondCarCountsForTheBookNotTheDayOut() {

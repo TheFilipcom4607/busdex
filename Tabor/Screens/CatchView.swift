@@ -622,7 +622,7 @@ struct CatchView: View {
     private func liveLine(_ n: Int?, model: VehicleModel) -> String? {
         guard let n else { return nil }
         let v = live.nearby.first { $0.vehicle.number == n && $0.vehicle.kind == model.kind }?.vehicle
-            ?? CoupledSet.partner(of: n, model: model, nearby: live.nearby)
+            ?? CoupledSet.partner(of: n, model: model, nearby: live.nearby, catalog: catalog)
         return v?.line.nonEmpty
     }
 
@@ -780,13 +780,15 @@ struct CatchView: View {
             d.modelId = match.suggested?.id
             if fromCamera, let model = match.suggested {
                 let snapshot = self.live.snapshot
-                d.line = LiveHints.line(for: n, kind: model.kind, snapshot: snapshot, at: d.date, model: model, nearby: nearby)
+                d.line = LiveHints.line(for: n, kind: model.kind, snapshot: snapshot, at: d.date, model: model, nearby: nearby,
+                                        catalog: catalog)
                 d.autoLine = d.line
                 // "set": borrowed from the coupled car the feed reports instead.
                 liveInfo.lineSource = d.line == nil ? "none" : snapshot?.vehicle(number: n, kind: model.kind) == nil ? "set" : "live"
             }
             if let model = match.suggested {
-                d.partnerSuggestions = CoupledSet.suggestions(for: n, model: model, photoNumbers: photoNumbers, nearby: nearby)
+                d.partnerSuggestions = CoupledSet.suggestions(for: n, model: model, photoNumbers: photoNumbers, nearby: nearby,
+                                                              catalog: catalog)
             }
             let described = DebugRecord.describe(match), suggested = d.modelId
             record?.update {

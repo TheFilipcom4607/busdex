@@ -62,12 +62,12 @@ struct VehicleView: View {
                         }
                         if let coupled = coupledWith {
                             Button {
-                                router.openVehicle(modelId: modelId, number: coupled)
+                                router.openVehicle(modelId: coupled.modelId, number: coupled.number)
                             } label: {
                                 HStack(spacing: 5) {
                                     Image(systemName: "link")
                                         .font(.system(size: 9, weight: .bold))
-                                    Mono("COUPLED WITH #\(String(coupled))", size: 10, weight: 700, spacing: 0.1, color: Palette.ink)
+                                    Mono("COUPLED WITH #\(String(coupled.number))", size: 10, weight: 700, spacing: 0.1, color: Palette.ink)
                                 }
                                 .foregroundStyle(Palette.ink)
                                 .padding(.top, 5)
@@ -207,7 +207,7 @@ struct VehicleView: View {
             guard let latest = mine.first else { return share = nil }
             // The second car added with it in the same catch, if any.
             let partner = latest.pairedWith ?? sightings.first {
-                $0.modelId == modelId && $0.pairedWith == number && abs($0.date.timeIntervalSince(latest.date)) < 1
+                isSecondCar($0) && abs($0.date.timeIntervalSince(latest.date)) < 1
             }?.number
             share = CatchShare.make(number: number, model: model, sighting: latest,
                                     sticker: sightings.sticker(number: number, modelId: modelId),
@@ -217,12 +217,24 @@ struct VehicleView: View {
     }
 
     /// The car this one was last caught coupled to: the car it was added with, or the second
-    /// car added with it.
-    private var coupledWith: Int? {
-        sightings.lazy.compactMap { s in
-            if s.modelId == modelId, s.number == number { return s.pairedWith }
-            return s.modelId == modelId && s.pairedWith == number ? s.number : nil
+    /// car added with it. A trailer's motor car is another model's.
+    private var coupledWith: (number: Int, modelId: String)? {
+        let catalog = Fleet.catalog
+        guard let model = catalog.model(id: modelId) else { return nil }
+        return sightings.lazy.compactMap { s in
+            if s.modelId == modelId, s.number == number, let p = s.pairedWith {
+                return catalog.secondCarModel(p, of: number, model: model).map { (p, $0.id) }
+            }
+            return isSecondCar(s) ? (s.number, s.modelId) : nil
         }.first
+    }
+
+    /// A catch added as this vehicle's second car: paired with its number, in a model that pairs
+    /// with it (so not a second car of a bus or tram that only shares the number).
+    private func isSecondCar(_ s: Sighting) -> Bool {
+        let catalog = Fleet.catalog
+        guard s.pairedWith == number, let model = catalog.model(id: modelId) else { return false }
+        return catalog.secondCarModel(s.number, of: number, model: model)?.id == s.modelId
     }
 
     /// No dialog: it goes at once, and the toast at the bottom can bring it back.
@@ -323,14 +335,21 @@ struct EditSightingSheet: View {
         onSave(moved)
     }
 
-    /// A coupled link only holds between coupled cars of one model: a second car added with
-    /// this one follows its corrected number, and a link that no longer fits goes.
+    /// A coupled link only holds between cars that run together (coupled cars of one model, or
+    /// a trailer and a car that pulls it): a second car added with this one follows its
+    /// corrected number, and a link that no longer fits goes.
     private func relink(to number: Int, modelId: String) {
-        let fits = modelId == sighting.modelId && Fleet.catalog.model(id: modelId)?.isCoupled(number) == true
-        if let p = sighting.pairedWith, !fits || p == number { sighting.pairedWith = nil }
-        for second in sightings where second.modelId == sighting.modelId && second.pairedWith == sighting.number
+        let catalog = Fleet.catalog
+        if let p = sighting.pairedWith, !catalog.match(number: p, kind: .tram).candidates.contains(where: {
+            catalog.secondCarModel(number, of: p, model: $0)?.id == modelId
+        }) {
+            sighting.pairedWith = nil
+        }
+        let model = catalog.model(id: modelId)
+        for second in sightings where second.pairedWith == sighting.number && second.id != sighting.id
             && abs(second.date.timeIntervalSince(sighting.date)) < 1 {
-            second.pairedWith = fits && second.number != number ? number : nil
+            let fits = model.flatMap { catalog.secondCarModel(second.number, of: number, model: $0) }?.id == second.modelId
+            second.pairedWith = fits ? number : nil
         }
     }
 }

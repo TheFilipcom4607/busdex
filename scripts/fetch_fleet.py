@@ -205,7 +205,8 @@ def with_city(vehicles, city, report=True):
         print(f"  ? {kind} type {id_marki} fits no model yet, left out: {', '.join(numbers)}")
     missing = defaultdict(list)
     for v in vehicles:
-        if (v["kind"], v["number"]) not in listed and v["number"].isdigit():
+        retired = RETIRED.get((v["kind"], v["make"], v["model"], short_carrier(v["carrier"])), set())
+        if (v["kind"], v["number"]) not in listed and v["number"].isdigit() and int(v["number"]) not in retired:
             missing[(v["kind"], v["make"], v["model"])].append(int(v["number"]))
     for (kind, make, model), numbers in sorted(missing.items()):
         print(f"  - not in the city's list: {kind} {make} {model} {span(numbers)}")
@@ -349,7 +350,7 @@ VINTAGE_NUMBERS = {
 # "all 30 cars coupled in 15 sets" (Warszawikia). In the live feed (checked for issue #23), 46 of
 # 47 running 105Na numbers were even, 44 of 44 105N2k and 10 of 10 123N; single-car models split
 # about half and half.
-# Left out: N/4N cars with ND/4ND trailers, since which numbers are the trailers isn't confirmed.
+# The vintage N/4N trailers are TRAILERS below, not sets.
 COUPLED = {
     "tram-konstal-105n", "tram-alstom-konstal-105n", "tram-hcp-123n", "tram-konstal-105n-vintage",
 }
@@ -358,6 +359,14 @@ COUPLED = {
 # 13N "żaba" pair on tourist line 36 (kmkm.waw.pl/wlt-2026). A set in a model that isn't in
 # COUPLED marks only its own two cars as coupled.
 FIXED_SETS = [(1000, 1001), (1252, 1251), (821, 818)]
+
+# Vintage trailers with no motor of their own: ND #1620 and 4ND #1811 (kmkm.waw.pl/tramwaje-lista;
+# ZTM files both under "Konstal N"). They're hitched behind whichever motor car runs that day:
+# Warszawikia has K #403 + 4ND, 4Nj + 4ND and 4Nj + ND on line W, so there are no fixed pairs.
+# TOWING are the models whose cars pull them (issue #33). Emitted as "trailers" on the model that
+# holds them and "tows" on the towing models; older app versions ignore both keys.
+TRAILERS = {1620, 1811}
+TOWING = {"tram-konstal-n", "tram-konstal-4n", "tram-gdanska-fabryka-wagonow-wiwk-k"}
 
 # Preserved buses that aren't in the ZTM database at all: the KMKM club's collection
 # (kmkm.waw.pl/autobusy-lista, 2026-09-22) plus MZA heritage buses on tourist line 100
@@ -465,6 +474,11 @@ TRIALS = {(make, model): t for make, model, _, _, _, *t in TEST_BUSES}
 
 RETIRED = {
     ("BUS", "MAN", "A37", "Mobilis"): set(range(9501, 9562)),
+    # Old trams ZTM still lists that neither KMKM's heritage list nor Warszawikia has: works cars,
+    # or (#504) sold to a private buyer (issue #33, 2026-10-03).
+    ("TRAM", "Gdańska Fabryka Wagonów / WIwK", "K", "Tramwaje Warszawskie"): {2405},
+    ("TRAM", "Konstal", "N", "Tramwaje Warszawskie"): {775, 1724, 1727, 1770},
+    ("TRAM", "Konstal", "13N", "Tramwaje Warszawskie"): {504, 534, 535},
 }
 
 
@@ -599,6 +613,12 @@ def build(vehicles, city=None):
             m["coupled"] = True
         if sets:
             m["sets"] = sets
+        if m["kind"] == "TRAM" and (trailers := sorted(TRAILERS & numbers[m["id"]])):
+            m["trailers"] = trailers
+        if m["id"] in TOWING:
+            m["tows"] = True
+    assert sum(len(m.get("trailers", [])) for m in models) == len(TRAILERS), "a TRAILERS number isn't in the data"
+    assert not TOWING - numbers.keys(), f"TOWING ids not in the data any more: {TOWING - numbers.keys()}"
     missing = COUPLED - numbers.keys()
     assert not missing, f"COUPLED ids not in the data any more: {missing}"
     placed = sum(1 for m in models for _ in m.get("sets", []))
