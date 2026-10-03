@@ -87,6 +87,10 @@ private func sampleModel() -> VehicleModel {
     #expect(NumberExtractor.digitTokens("WX-2021").isEmpty)
     #expect(NumberExtractor.digitTokens("NR 1974").map(\.value) == [1974])
     #expect(NumberExtractor.digitTokens("LINIA 119").map(\.value) == [119])
+    // The stripe and lamp after a Solbus's 2022 read as "/6"; a line and brigade stays out.
+    #expect(NumberExtractor.digitTokens("2022/6").map(\.value) == [2022])
+    #expect(NumberExtractor.digitTokens("180/6").isEmpty)
+    #expect(NumberExtractor.digitTokens("6/2022").isEmpty)
 }
 
 @Test func lookalikeLettersReadAsDigits() {
@@ -140,6 +144,15 @@ private func sampleModel() -> VehicleModel {
     // On its own, a 3-digit fleet number still reads.
     #expect(NumberExtractor.best(in: [TextObservation(text: "503", confidence: 1, height: 0.03)],
                                  mode: .auto, catalog: catalog) == 503)
+}
+
+@Test func certainModelLeadsOverABusOrTram() {
+    // #2022 (a Solbus, and a 105N2k tram) a little bigger in the frame than #5941.
+    let obs = [TextObservation(text: "2022", confidence: 1, height: 0.0416),
+               TextObservation(text: "5941", confidence: 1, height: 0.0357)]
+    #expect(NumberExtractor.best(in: obs, mode: .auto, catalog: catalog) == 5941)
+    // In BUS mode 2022 is just the Solbus.
+    #expect(NumberExtractor.best(in: obs, mode: .bus, catalog: catalog) == 2022)
 }
 
 @Test func extractorIgnoresUnknownShortNumbers() {

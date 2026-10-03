@@ -70,6 +70,9 @@ public enum NumberExtractor {
                 if knownHere { score += 2 } else if knownAnywhere { score += 1.5 }
                 if digits < 3 { score -= 1 }
                 if lookalike { score -= 0.5 }
+                // On a bus and a tram alike (2022): its model is a guess, so a number of about
+                // the same size whose model is certain leads.
+                if knownHere, catalog.match(number: value, kind: mode.kind).candidates.count > 1 { score -= 0.3 }
                 scored.append((value, score, digits))
             }
         }
@@ -114,8 +117,11 @@ public enum NumberExtractor {
             let len = j - i
             // Digits glued to letters are plates ("WX 2043F") or codes, not fleet numbers.
             let lettered = before.isLetter || after.isLetter
+            // A slash after 4-5 digits isn't a line's brigade ("180/6": lines have 3 at most);
+            // it's paint read as text, like the stripe and lamp after #2022.
+            let gluedAfter = glue.contains(after) && !(after == "/" && len >= 4)
             if (2...5).contains(len), !lettered, !platePrefix(chars, before: i),
-               !glue.contains(before), !glue.contains(after),
+               !glue.contains(before), !gluedAfter,
                let n = Int(String(chars[i..<j])) {
                 out.append((n, len))
             }
