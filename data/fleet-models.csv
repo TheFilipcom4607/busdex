@@ -7,14 +7,11 @@ number range,model and make,year,count,rarity,ztm code,type,depot,operator,coupl
 407,Konstal 13N,1967,1,VINTAGE,Konstal 13N,tram,R-4 Żoliborz,Tramwaje Warszawskie,
 445-446,Gdańsk type K,1940,2,VINTAGE,Gdańska Fabryka Wagonów / WIwK K,tram,R-3 Mokotów,Tramwaje Warszawskie,
 503,Konstal 13N,1959,1,VINTAGE,Konstal 13N,tram,R-4 Żoliborz,Tramwaje Warszawskie,
-504,Konstal 13N,1959,1,VINTAGE,Konstal 13N,tram,,Tramwaje Warszawskie,
-534-535,Konstal 13N,1968,2,VINTAGE,Konstal 13N,tram,,Tramwaje Warszawskie,
 541,Linke-Hofmann Lw,1925,1,VINTAGE,Linke-Hoffmann Lw,tram,R-3 Mokotów,Tramwaje Warszawskie,
 607,Konstal N,1949,1,VINTAGE,Konstal N,tram,R-3 Mokotów,Tramwaje Warszawskie,
 642,Konstal 13N,1968,1,VINTAGE,Konstal 13N,tram,R-4 Żoliborz,Tramwaje Warszawskie,
 716,Konstal N,1953,1,VINTAGE,Konstal N,tram,R-3 Mokotów,Tramwaje Warszawskie,
 734,Konstal N,1952,1,VINTAGE,Konstal N,tram,R-3 Mokotów,Tramwaje Warszawskie,
-775,Konstal N,1955,1,VINTAGE,Konstal N,tram,,Tramwaje Warszawskie,
 795,Konstal 13N,1969,1,VINTAGE,Konstal 13N,tram,R-4 Żoliborz,Tramwaje Warszawskie,
 818,Konstal 13N,1969,1,VINTAGE,Konstal 13N,tram,R-4 Żoliborz,Tramwaje Warszawskie,yes
 821,Konstal 13N,1969,1,VINTAGE,Konstal 13N,tram,R-4 Żoliborz,Tramwaje Warszawskie,yes
@@ -76,9 +73,6 @@ number range,model and make,year,count,rarity,ztm code,type,depot,operator,coupl
 1457-1468,Konstal 105Na,1996,12,COMMON,Konstal 105N,tram,R-3 Mokotów,Tramwaje Warszawskie,yes
 1469-1470,Konstal 105Na,1997,2,COMMON,Konstal 105N,tram,R-3 Mokotów,Tramwaje Warszawskie,yes
 1620,Konstal N,1951,1,VINTAGE,Konstal N,tram,R-3 Mokotów,Tramwaje Warszawskie,
-1724,Konstal N,1955,1,VINTAGE,Konstal N,tram,,Tramwaje Warszawskie,
-1727,Konstal N,1955,1,VINTAGE,Konstal N,tram,,Tramwaje Warszawskie,
-1770,Konstal N,1956,1,VINTAGE,Konstal N,tram,,Tramwaje Warszawskie,
 1811,Konstal N,1961,1,VINTAGE,Konstal N,tram,R-3 Mokotów,Tramwaje Warszawskie,
 2006-2007,Konstal 105Na,1989,2,COMMON,Konstal 105N,tram,R-1 Wola,Tramwaje Warszawskie,yes
 2008-2009,Konstal 105Na,1992,2,COMMON,Konstal 105N,tram,R-1 Wola,Tramwaje Warszawskie,yes
@@ -93,9 +87,8 @@ number range,model and make,year,count,rarity,ztm code,type,depot,operator,coupl
 2074-2135,Konstal 105N2k,2001,62,COMMON,Alstom Konstal 105N,tram,R-3 Mokotów,Tramwaje Warszawskie,yes
 2136-2138,Cegielski 123N,2006,3,GOLD,HCP 123N,tram,R-5 Annopol,Tramwaje Warszawskie,yes
 2139-2165,Cegielski 123N,2007,27,GOLD,HCP 123N,tram,R-5 Annopol,Tramwaje Warszawskie,yes
-2204,Lilpop C,1928,1,VINTAGE,Lilpop C,tram,,Tramwaje Warszawskie,
+2204,Warsztaty Główne W,1928,1,VINTAGE,Warsztaty Główne W,tram,,Tramwaje Warszawskie,
 2400,Gdańsk type K,1940,1,VINTAGE,Gdańska Fabryka Wagonów / WIwK K,tram,,Tramwaje Warszawskie,
-2405,Gdańsk type K,1940,1,VINTAGE,Gdańska Fabryka Wagonów / WIwK K,tram,,Tramwaje Warszawskie,
 3001,Konstal 112N,1995,1,LEGENDARY,Konstal 112N,tram,R-1 Wola,Tramwaje Warszawskie,
 3002-3004,Alstom 116Na,1998,3,GOLD,Alstom Konstal 116N,tram,R-2 Praga,Tramwaje Warszawskie,
 3005-3024,Alstom 116Na,1999,20,GOLD,Alstom Konstal 116N,tram,R-2 Praga,Tramwaje Warszawskie,
@@ -368,7 +361,9 @@ number range,model and make,year,count,rarity,ztm code,type,depot,operator,coupl
 6930,Ikarus 260,1993,1,VINTAGE,Ikarus 260,bus,R-4 Stalowa,MZA,
 6941,Ikarus 280,1997,1,VINTAGE,Ikarus 280,bus,R-4 Stalowa,MZA,
 6954,Ikarus 280,1992,1,VINTAGE,Ikarus 280,bus,R-4 Stalowa,MZA,
+6960,Neoplan N4020td,1999,1,VINTAGE,Neoplan N4020td,bus,,MZA,
 6962,Solaris Urbino 15,1999,1,VINTAGE,Solaris Urbino 15,bus,R-4 Stalowa,MZA,
+6971,Jelcz M181M,1999,1,VINTAGE,Jelcz M181M,bus,,MZA,
 7200-7249,MAN Lion’s City G,2019,50,COMMON,MAN A23,bus,R-2 Kleszczowa,MZA,
 7250-7259,MAN Lion’s City G,2020,10,COMMON,MAN A23,bus,R-2 Kleszczowa,MZA,
 7301,Solbus Solcity 18,2014,1,RARE,Solbus SM18,bus,R-3 Ostrobramska,MZA,

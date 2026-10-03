@@ -402,6 +402,10 @@ EXTRA_VINTAGE_BUSES = [
     ("San", "H-100A", 8082, "KMKM", 1972),
     ("San", "H-100B", 160, "KMKM", 1973),
     ("Solaris", "Urbino 15", 8731, "KMKM", 2001),
+    # MZA's own heritage buses on line 100 (issue #36; build years from wawakom.pl). The 1932
+    # Somua is left out: it has no fleet number, so it can't be caught.
+    ("Jelcz", "M181M", 6971, "MZA", 1999),
+    ("Neoplan", "N4020td", 6960, "MZA", 1999),
 ]
 
 
