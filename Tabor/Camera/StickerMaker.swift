@@ -440,6 +440,30 @@ struct StickerCut: Sendable {
         return .failure(failure)
     }
 
+    enum Other: Sendable {
+        case sticker(Data)
+        /// The number is painted on the caught vehicle itself.
+        case sameObject
+        /// Not on any object, or it wouldn't cut.
+        case none
+    }
+
+    /// Another vehicle in the same photo: the object its number at `numberBox` is on, when
+    /// that isn't `label` (the caught vehicle's). Two buses touching can lift as one, so
+    /// `sameObject` alone doesn't prove it's the same vehicle.
+    static func other(_ lift: StickerMaker.Lift, numberBox: CGRect, avoiding label: Int) -> Other {
+        guard let pick = StickerMaker.rank(lift, numberBox: numberBox), pick.reason == .number,
+              let first = pick.order.first
+        else { return .none }
+        guard first != label else { return .sameObject }
+        guard let cg = try? StickerMaker.cut(lift, instance: first).get(), let png = StickerMaker.pngData(cg)
+        else { return .none }
+        return .sticker(png)
+    }
+
+    /// The label of the object showing.
+    var label: Int { order[index] }
+
     /// The next object in line, wrapping round; nil when none of the others will cut.
     func next() -> StickerCut? {
         for step in 1..<max(order.count, 1) {

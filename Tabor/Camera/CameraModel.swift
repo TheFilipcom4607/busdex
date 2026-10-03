@@ -547,9 +547,17 @@ enum TextReader {
 
         /// Where `number` is written: the tallest text that reads as it. A number the live
         /// feed rescued was printed as the one it was rescued from.
-        func box(of number: Int) -> CGRect? {
+        func box(of number: Int) -> CGRect? { boxes(of: number).max { $0.height < $1.height } }
+
+        /// Everywhere `number` is written; none for a feed neighbour offered for a misread.
+        func boxes(of number: Int) -> [CGRect] {
             let written = live.rescued.first { $0.to == number }?.from ?? number
-            return NumberExtractor.boxes(of: written, in: full + tiles).max { $0.height < $1.height }
+            return NumberExtractor.boxes(of: written, in: full + tiles)
+        }
+
+        /// The numbers read, with where each is written, for `AlsoInShot`.
+        var reads: [AlsoInShot.Read] {
+            candidates.map { AlsoInShot.Read(number: $0.number, score: $0.score, boxes: boxes(of: $0.number)) }
         }
 
         var numberBox: CGRect? { number.flatMap(box(of:)) }

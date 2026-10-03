@@ -179,6 +179,16 @@
         }
       }
     },
+    "%@, %@, added. Leave it out": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@, dodany. Pomiń go"
+          }
+        }
+      }
+    },
     "%@, %lld out now": {
       "localizations": {
         "en": {
@@ -1284,6 +1294,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "MOŻE TO TEŻ %@ · POPRAWISZ PO ZDJĘCIU"
+          }
+        }
+      }
+    },
+    "ALSO IN SHOT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TEŻ NA ZDJĘCIU"
+          }
+        }
+      }
+    },
+    "Also in the photo: %@, %@. Add it": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Też na zdjęciu: %1$@, %2$@. Dodaj go"
           }
         }
       }

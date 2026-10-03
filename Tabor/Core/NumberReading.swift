@@ -54,7 +54,7 @@ public enum NumberExtractor {
     /// Every plausible number in the frame with its score; `best` picks the top one.
     public static func candidates(in observations: [TextObservation], mode: CatchMode,
                                   catalog: FleetCatalog) -> [(number: Int, score: Double)] {
-        var scored: [(number: Int, score: Double)] = []
+        var scored: [(number: Int, score: Double, digits: Int)] = []
         for obs in observations {
             let tokens = digitTokens(obs.text).map { (value: $0.value, digits: $0.digits, lookalike: false) }
                 + lookalikeTokens(obs.text).map { (value: $0.value, digits: $0.digits, lookalike: true) }
@@ -70,10 +70,13 @@ public enum NumberExtractor {
                 if knownHere { score += 2 } else if knownAnywhere { score += 1.5 }
                 if digits < 3 { score -= 1 }
                 if lookalike { score -= 0.5 }
-                scored.append((value, score))
+                scored.append((value, score, digits))
             }
         }
-        return scored
+        // A display's line is big, and can be a fleet number too (the 503 is a 13N tram's): next
+        // to a known 4-digit number, a 3-digit one is the line.
+        let longKnown = scored.contains { $0.digits >= 4 && catalog.isKnown(number: $0.number) }
+        return scored.map { ($0.number, longKnown && $0.digits == 3 ? $0.score - 1.5 : $0.score) }
     }
 
     /// Boxes of the text that reads as `number`, by the same rules `candidates` uses.

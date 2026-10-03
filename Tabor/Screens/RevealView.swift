@@ -34,6 +34,12 @@ struct RevealView: View {
     @State private var pickingPartner = false
     /// Every number read in the photo, once the read is done; feeds the partner suggestions.
     @State private var photoNumbers: [Int] = []
+    /// The whole read, for other vehicles in the photo.
+    @State private var photoReport: TextReader.Report?
+    /// Other vehicles' stickers, cut as soon as they're offered, by number. A number that
+    /// turns out to be painted on the caught vehicle is in `misreads` instead.
+    @State private var alsoStickers: [Int: Data] = [:]
+    @State private var misreads: Set<Int> = []
 
     private let catalog = Fleet.catalog
     private let holdDuration = 0.55
@@ -136,13 +142,26 @@ struct RevealView: View {
                     .offset(y: landed ? 0 : 14)
                     .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.1), value: landed)
 
-                    if model.isCoupled(number) {
-                        partnerChip(partner: partner, isNew: partnerIsNew)
-                            .padding(.top, 12)
-                            .padding(.horizontal, 26)
-                            .opacity(landed ? 1 : 0)
-                            .offset(y: landed ? 0 : 16)
-                            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.14), value: landed)
+                    let also = draft.alsoInShot.filter { !misreads.contains($0.number) }
+                    if model.isCoupled(number) || !also.isEmpty {
+                        let chips = HStack(spacing: 8) {
+                            if model.isCoupled(number) { partnerChip(partner: partner, isNew: partnerIsNew) }
+                            ForEach(also) { v in
+                                alsoChip(v, isNew: stats.vehicle(number: v.number, modelId: v.model.id) == nil)
+                            }
+                        }
+                        .padding(.horizontal, 26)
+                        // Two other vehicles and a second car don't fit across: then they scroll.
+                        ViewThatFits(in: .horizontal) {
+                            chips.frame(maxWidth: .infinity, alignment: .leading)
+                            ScrollView(.horizontal, showsIndicators: false) { chips }
+                        }
+                        // A scroll view takes any height it's offered; just the chips'.
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 12)
+                        .opacity(landed ? 1 : 0)
+                        .offset(y: landed ? 0 : 16)
+                        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.14), value: landed)
                     }
 
                     let owned = Set(stats.owned(modelId: model.id).map(\.number)).union([number] + (partner.map { [$0] } ?? []))
@@ -217,6 +236,7 @@ struct RevealView: View {
         }
         // One key, so fixing number and model together replays the reveal once.
         .onChange(of: "\(draft.number ?? -1)|\(draft.modelId ?? "")") { _, _ in edited() }
+        .onChange(of: draft.partner) { _, _ in refreshAlso() }
         .task {
             Haptics.shared.warmUp()
             await playReveal(run: 0)
@@ -224,6 +244,10 @@ struct RevealView: View {
             if let read = draft.photoNumbers {
                 photoNumbers = await read.value
                 refreshPartner()
+            }
+            if let read = draft.photoRead {
+                photoReport = await read.value
+                refreshAlso()
             }
         }
     }
@@ -291,6 +315,86 @@ struct RevealView: View {
         draft.partnerSuggestions = CoupledSet.suggestions(for: number, model: model, photoNumbers: photoNumbers,
                                                           nearby: draft.nearby)
         draft.partner = secondCar(model: model, number: number)
+    }
+
+    /// "+ 5897 · ALSO IN SHOT" for another vehicle read in the photo; tap to add it as a catch
+    /// of its own, tap again to leave it out.
+    private func alsoChip(_ v: AlsoInShot.Vehicle, isNew: Bool) -> some View {
+        let added = draft.alsoAdded.contains(v.number)
+        let tint = !added ? Palette.yellow : isNew ? Palette.green : Palette.ink
+        return Button {
+            Haptics.shared.tick()
+            withAnimation(.snappy) {
+                if added { draft.alsoAdded.removeAll { $0 == v.number } } else { draft.alsoAdded.append(v.number) }
+            }
+        } label: {
+            HStack(spacing: 7) {
+                // Its sticker says which vehicle in the photo this is.
+                if let png = alsoStickers[v.number], let img = UIImage(data: png) {
+                    Image(uiImage: img).resizable().scaledToFit().frame(width: 30, height: 20)
+                } else {
+                    Image(systemName: v.model.kind == .tram ? "tram.fill" : "bus.fill").font(.system(size: 11, weight: .bold))
+                }
+                if added {
+                    let tag = isNew ? String(localized: "NEW", comment: "Reveal tile: a model new to you") : String(localized: "SEEN AGAIN")
+                    Mono("+ \(String(v.number)) · \(tag)" as String, size: 12, weight: 700, spacing: 0.1, color: tint)
+                    Image(systemName: "xmark").font(.system(size: 10, weight: .bold)).foregroundStyle(Palette.sub)
+                } else {
+                    Mono("+ \(String(v.number)) · \(String(localized: "ALSO IN SHOT"))" as String, size: 12, weight: 700,
+                         spacing: 0.1, color: tint)
+                }
+            }
+            .foregroundStyle(tint)
+            .padding(.vertical, alsoStickers[v.number] == nil ? 10 : 6)
+            .padding(.horizontal, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .overlay(Capsule().strokeBorder(added ? Color.white.opacity(0.14) : Palette.yellow.opacity(0.6),
+                                        style: StrokeStyle(lineWidth: 1, dash: added ? [] : [4, 3])))
+        .accessibilityLabel(added ? Text("\(String(v.number)), \(v.model.name), added. Leave it out")
+                                  : Text("Also in the photo: \(String(v.number)), \(v.model.name). Add it"))
+    }
+
+    /// Other vehicles follow the number, model and second car; one you added that's no longer
+    /// offered goes. Each gets its sticker cut straight away: a number one digit off the caught
+    /// one that's painted on the caught vehicle is a misreading, and drops out.
+    private func refreshAlso() {
+        guard let report = photoReport, let model, let number = draft.number else {
+            draft.alsoInShot = []
+            draft.alsoAdded = []
+            return
+        }
+        draft.alsoInShot = AlsoInShot.vehicles(in: report.reads, caught: number, model: model, partner: draft.partner,
+                                               catalog: catalog, nearby: draft.nearby, manual: manual.map)
+        let offered = Set(draft.alsoInShot.map(\.number))
+        draft.alsoAdded.removeAll { !offered.contains($0) }
+        let caught = number
+        for v in draft.alsoInShot where alsoStickers[v.number] == nil && !misreads.contains(v.number) {
+            guard let task = draft.sticker else { continue }
+            let avoid = cut?.label, box = v.box, n = v.number
+            Task {
+                let other = await Task.detached(priority: .userInitiated) { () -> StickerCut.Other in
+                    guard let main = await task.value else { return .none }
+                    return StickerCut.other(main.lift, numberBox: box, avoiding: avoid ?? main.label)
+                }.value
+                // The number was fixed meanwhile: this was judged against the old one.
+                guard draft.number == caught else { return }
+                switch other {
+                case .sticker(let png):
+                    withAnimation(.snappy) { alsoStickers[n] = png }
+                case .sameObject where AlsoInShot.couldBeMisread(n, of: caught):
+                    withAnimation(.snappy) {
+                        misreads.insert(n)
+                        draft.alsoAdded.removeAll { $0 == n }
+                    }
+                default:
+                    break
+                }
+                draft.debug?.log("also-in-shot", number: n, modelId: draft.alsoInShot.first { $0.number == n }?.model.id,
+                                 note: "\(other)")
+            }
+        }
     }
 
     private func secondaryLabel(_ text: String) -> some View {
@@ -546,6 +650,10 @@ struct RevealView: View {
 
     private func edited() {
         refreshPartner()
+        // Misreads were judged against the old number, and a cut avoided the old vehicle.
+        misreads = []
+        alsoStickers = [:]
+        refreshAlso()
         // A line the feed filled in follows a corrected number, unless you typed your own.
         if draft.fromCamera, (draft.line ?? "") == (draft.autoLine ?? ""),
            let number = draft.number, let model {
@@ -618,6 +726,24 @@ struct RevealView: View {
             let source = draft.partnerSuggestions.first { $0.number == p }?.source.rawValue ?? "typed"
             draft.debug?.log("partner", number: p, modelId: model.id, line: line, note: source)
         }
+        // The caught vehicle (and its second car) share the sticker; other vehicles in the shot
+        // have their own, or none.
+        let shot = cars
+        // Other vehicles in the shot: catches of their own, each with its own copy of the photo,
+        // and a moment earlier still so the one you shot stays on top.
+        for (i, n) in draft.alsoAdded.enumerated() {
+            guard let v = draft.alsoInShot.first(where: { $0.number == n }), !misreads.contains(n) else { continue }
+            let vLine = draft.fromCamera
+                ? LiveHints.line(for: n, kind: v.model.kind, snapshot: LiveFleetService.shared.snapshot,
+                                 at: draft.date, model: v.model, nearby: draft.nearby)
+                : nil
+            let other = Sighting(number: n, modelId: v.model.id, date: draft.date.addingTimeInterval(-0.002 - 0.001 * Double(i)),
+                                 line: vLine, photoFile: PhotoStore.save(draft.photo, ext: ext),
+                                 stickerFile: alsoStickers[n].flatMap { PhotoStore.save($0, ext: "png") })
+            context.insert(other)
+            cars.append(other)
+            draft.debug?.log("also-added", number: n, modelId: v.model.id, line: vLine)
+        }
         if draft.modelPickedByHand {
             context.assign(number: number, to: model.id, existing: manual)
         }
@@ -653,7 +779,7 @@ struct RevealView: View {
         if s.stickerFile == nil, let stickerTask = draft.sticker {
             Task { @MainActor in
                 guard let png = await stickerTask.value?.png else { return }
-                for car in cars where car.stickerFile == nil && !car.isDeleted && car.modelContext != nil {
+                for car in shot where car.stickerFile == nil && !car.isDeleted && car.modelContext != nil {
                     car.stickerFile = PhotoStore.save(png, ext: "png")
                 }
                 try? context.save()

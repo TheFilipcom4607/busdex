@@ -129,6 +129,19 @@ private func sampleModel() -> VehicleModel {
     #expect(NumberExtractor.best(in: obs, mode: .auto, catalog: catalog) == 8592)
 }
 
+@Test func lineOnTheDisplayLosesToTheFleetNumber() {
+    // Two Urbinos on Krakowskie Przedmieście: the 503's display is the biggest text, and 503
+    // is also a 13N tram.
+    let obs = [TextObservation(text: "503 NATOLIN PŁN.", confidence: 1, height: 0.05),
+               TextObservation(text: "116 WILANÓW", confidence: 1, height: 0.05),
+               TextObservation(text: "5918", confidence: 1, height: 0.025),
+               TextObservation(text: "5897", confidence: 1, height: 0.022)]
+    #expect(NumberExtractor.best(in: obs, mode: .auto, catalog: catalog) == 5918)
+    // On its own, a 3-digit fleet number still reads.
+    #expect(NumberExtractor.best(in: [TextObservation(text: "503", confidence: 1, height: 0.03)],
+                                 mode: .auto, catalog: catalog) == 503)
+}
+
 @Test func extractorIgnoresUnknownShortNumbers() {
     // A line number on its own must not be read as a fleet number.
     let obs = [TextObservation(text: "705", confidence: 1, height: 0.2)]
@@ -1336,4 +1349,62 @@ private func mask(_ rows: [String]) -> [UInt8] { rows.joined().map { $0 == "#" ?
     let after = mask(["..########", "..########", "..########", "..########", "..########", ".........."])
     let person = CGRect(x: 0, y: 0, width: 0.2, height: 1)
     #expect(Notch.shares(before: before, after: after, width: 10, height: 6, boxes: [person]) == [0])
+}
+
+// MARK: - Also in shot (#30)
+
+private let tramicus = catalog.model(id: "tram-pesa-120n-tramicus")!
+private func read(_ n: Int, _ score: Double, x: Double, y: Double = 0.5) -> AlsoInShot.Read {
+    AlsoInShot.Read(number: n, score: score, boxes: [CGRect(x: x, y: y, width: 0.08, height: 0.03)])
+}
+
+@Test func passingVehicleIsOffered() {
+    let reads = [read(3105, 4, x: 0.2), read(3200, 3.5, x: 0.7)]
+    let found = AlsoInShot.vehicles(in: reads, caught: 3105, model: tramicus, partner: nil, catalog: catalog, nearby: [])
+    #expect(found.map(\.number) == [3200])
+    #expect(found.first?.model.id == "tram-pesa-120n")
+    #expect(found.first?.box.minX == 0.7)
+}
+
+@Test func alsoInShotSkipsMisreadsAndGuesses() {
+    func found(_ reads: [AlsoInShot.Read], caught: Int = 3105, model: VehicleModel = tramicus,
+               nearby: [NearbyVehicle] = []) -> [Int] {
+        AlsoInShot.vehicles(in: reads, caught: caught, model: model, partner: nil, catalog: catalog, nearby: nearby)
+            .map(\.number)
+    }
+    // Vision's second reading of the caught number's own text.
+    #expect(found([read(3105, 4, x: 0.2), read(3150, 3, x: 0.21)]).isEmpty)
+    // Neighbours park side by side (9353 and 9355); the app checks it's another object.
+    let urbino12 = catalog.model(id: "bus-solaris-urbino-12")!
+    #expect(found([read(9353, 4, x: 0.3), read(9355, 3.8, x: 0.8)], caught: 9353, model: urbino12) == [9355])
+    #expect(AlsoInShot.couldBeMisread(9355, of: 9353) && !AlsoInShot.couldBeMisread(9320, of: 9556))
+    // Without the feed a 3-digit number could be a line on the display.
+    #expect(found([read(3105, 4, x: 0.2), read(821, 3, x: 0.7)]).isEmpty)
+    // The line on a bus's display, which is also a 13N tram's number.
+    let urbino = catalog.model(id: "bus-solaris-urbino-18e")!
+    #expect(found([read(5918, 4, x: 0.6), read(503, 3.5, x: 0.6, y: 0.3)], caught: 5918, model: urbino).isEmpty)
+    // With the feed, it has to be running right there.
+    #expect(found([read(3105, 4, x: 0.2), read(3200, 3, x: 0.7)], nearby: nearby([live(3105, .tram, line: "9")])).isEmpty)
+    // Not written in the photo: a feed neighbour offered for a misread.
+    #expect(found([read(3105, 4, x: 0.2), AlsoInShot.Read(number: 3200, score: 3, boxes: [])]).isEmpty)
+    // The caught tram's own second car belongs to the SECOND CAR chip.
+    #expect(found([read(1282, 4, x: 0.2), read(1281, 3, x: 0.7)], caught: 1282, model: n105).isEmpty)
+}
+
+@Test func numberOnABusAndATramGoesWithTheCaughtKind() {
+    let urbino = catalog.model(id: "bus-solaris-urbino-18e")!
+    func model(_ caught: Int, _ m: VehicleModel, nearby: [NearbyVehicle] = []) -> String? {
+        AlsoInShot.vehicles(in: [read(caught, 4, x: 0.2), read(2022, 3, x: 0.7)], caught: caught, model: m,
+                            partner: nil, catalog: catalog, nearby: nearby).first?.model.id
+    }
+    #expect(model(5941, urbino) == "bus-solbus-sm18")
+    #expect(model(3105, tramicus) == "tram-alstom-konstal-105n")
+    // The feed knows better: the tram 2022 is the one right there.
+    #expect(model(5941, urbino, nearby: nearby([live(5941), live(2022, .tram, line: "17")])) == "tram-alstom-konstal-105n")
+}
+
+@Test func alsoInShotKeepsToTheLikeliestFew() {
+    let reads = [read(3105, 4, x: 0.1), read(3200, 2, x: 0.3), read(3250, 3, x: 0.5), read(3290, 2.5, x: 0.7)]
+    let found = AlsoInShot.vehicles(in: reads, caught: 3105, model: tramicus, partner: nil, catalog: catalog, nearby: [])
+    #expect(found.map(\.number) == [3250, 3290])
 }

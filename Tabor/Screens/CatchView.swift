@@ -36,6 +36,12 @@ struct CatchDraft: Identifiable {
     /// Every number read in the photo, best first. A live lock skips the still read, so this
     /// may finish after the reveal opens.
     var photoNumbers: Task<[Int], Never>?
+    /// The whole read of the photo: where each number is written, for other vehicles in it.
+    var photoRead: Task<TextReader.Report, Never>?
+    /// Other vehicles read in the photo, offered on the reveal (`AlsoInShot`).
+    var alsoInShot: [AlsoInShot.Vehicle] = []
+    /// Numbers of those you added: each becomes a catch of its own.
+    var alsoAdded: [Int] = []
 }
 
 struct CatchView: View {
@@ -762,6 +768,7 @@ struct CatchView: View {
                            debug: record)
         d.nearby = nearby
         d.photoNumbers = Task { await ocr.value.candidates.sorted { $0.score > $1.score }.map(\.number) }
+        d.photoRead = ocr
         if let n = number {
             let plain = catalog.match(number: n, preferring: mode.kind, manual: manual.map)
             let match = lookup(n, nearby: nearby)
