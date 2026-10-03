@@ -83,6 +83,14 @@ public struct FleetCatalog: Sendable {
 
     public func model(id: String) -> VehicleModel? { byId[id] }
 
+    /// Where a catch or pick filed under `modelId` belongs since that model was split: the
+    /// model that has the number and lists `modelId` in `formerly`. Nil if it hasn't moved.
+    public func moved(modelId: String, number: Int) -> String? {
+        let here = byNumber[number] ?? []
+        guard !here.contains(where: { $0.id == modelId }) else { return nil }
+        return here.first { $0.formerly.contains(modelId) }?.id
+    }
+
     /// Vehicles on regular routes; vintage and test stock don't count toward the fleet.
     public var totalFleet: Int { models.filter { $0.regular }.reduce(0) { $0 + $1.fleet } }
 

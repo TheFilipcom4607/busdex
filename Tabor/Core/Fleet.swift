@@ -74,12 +74,16 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     /// Cars that always run together, e.g. [[1000, 1001]]. In a model that isn't `coupled`,
     /// only these cars are.
     public let sets: [[Int]]
+    /// Ids its numbers had before a model was split, e.g. the 120N Tramicus was part of
+    /// `tram-pesa-120n`: catches filed under one of them move here (`FleetCatalog.moved`).
+    public let formerly: [String]
 
     public init(id: String, name: String, make: String, code: String? = nil, kind: VehicleKind,
                 operators: [String], fleet: Int, firstYear: Int?, lastYear: Int?, batches: [Batch],
                 vintage: Bool = false, onTest: Bool = false, runs: String? = nil, trial: String? = nil,
                 runsPl: String? = nil, trialPl: String? = nil, specs: ModelSpecs? = nil, variants: [SpecVariant] = [],
-                liveries: [String: String]? = nil, coupled: Bool = false, sets: [[Int]] = []) {
+                liveries: [String: String]? = nil, coupled: Bool = false, sets: [[Int]] = [],
+                formerly: [String] = []) {
         self.id = id
         self.name = name
         self.make = make
@@ -101,11 +105,12 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         self.liveries = liveries
         self.coupled = coupled
         self.sets = sets
+        self.formerly = formerly
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, name, make, code, kind, operators, fleet, firstYear, lastYear, batches, vintage, onTest, runs, trial,
-             runsPl, trialPl, specs, variants, liveries, coupled, sets
+             runsPl, trialPl, specs, variants, liveries, coupled, sets, formerly
     }
 
     public init(from decoder: Decoder) throws {
@@ -132,6 +137,7 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         liveries = try? c.decodeIfPresent([String: String].self, forKey: .liveries)
         coupled = try c.decodeIfPresent(Bool.self, forKey: .coupled) ?? false
         sets = (try? c.decodeIfPresent([[Int]].self, forKey: .sets)) ?? []
+        formerly = (try? c.decodeIfPresent([String].self, forKey: .formerly)) ?? []
     }
 
     /// A special paint job, if this vehicle has one.

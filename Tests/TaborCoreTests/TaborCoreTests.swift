@@ -148,6 +148,28 @@ private func sampleModel() -> VehicleModel {
     #expect(catalog.match(number: 1971, preferring: .tram).suggested?.id == "bus-yutong-u12-b")
 }
 
+@Test func pesa120nFamilyIsSplitByNumber() throws {
+    let tramicus = try #require(catalog.model(id: "tram-pesa-120n-tramicus"))
+    let swing = try #require(catalog.model(id: "tram-pesa-120n"))
+    let duo = try #require(catalog.model(id: "tram-pesa-120naduo"))
+    #expect(tramicus.numbers == Array(3101...3115) && tramicus.tier == .gold)
+    #expect(swing.numbers == Array(3116...3295) && swing.tier == .common && swing.formerly.isEmpty)
+    #expect(duo.numbers == Array(3501...3506) && duo.tier == .legendary)
+    #expect(tramicus.formerly == ["tram-pesa-120n"] && duo.formerly == ["tram-pesa-120n"])
+    #expect(catalog.match(number: 3503, kind: .tram) == .certain(duo))
+}
+
+@Test func catchesFollowASplitModel() {
+    // Filed under the family's old id: the Tramicus and the Duo move, Swings stay.
+    #expect(catalog.moved(modelId: "tram-pesa-120n", number: 3105) == "tram-pesa-120n-tramicus")
+    #expect(catalog.moved(modelId: "tram-pesa-120n", number: 3501) == "tram-pesa-120naduo")
+    #expect(catalog.moved(modelId: "tram-pesa-120n", number: 3200) == nil)
+    #expect(catalog.moved(modelId: "tram-pesa-120n-tramicus", number: 3105) == nil)
+    // A number tied by hand to a model it isn't in, with no split behind it, stays put.
+    #expect(catalog.moved(modelId: "bus-solaris-urbino-18", number: 3105) == nil)
+    #expect(catalog.moved(modelId: "tram-pesa-120n", number: 99_999) == nil)
+}
+
 @Test func trialBusIsOnTestAndOutsideTheFleet() {
     // The Irizar ie tram on trial with MZA isn't in the ZTM database.
     let m = catalog.match(number: 959, kind: .bus).suggested

@@ -310,7 +310,10 @@ DISPLAY_NAMES = {
     ("Konstal", "105N"): "Konstal 105Na",
     ("Alstom Konstal", "105N"): "Konstal 105N2k",
     ("Alstom Konstal", "116N"): "Alstom 116Na",
-    ("Pesa", "120N"): "Pesa 120N / 120Na Swing",
+    # Split by SPLIT below; names per Warszawikia.
+    ("Pesa", "120N"): "Pesa 120N Tramicus",
+    ("Pesa", "120Na"): "Pesa 120Na Swing",
+    ("Pesa", "120NaDuo"): "Pesa 120NaDuo Swing Duo",
     ("Pesa", "128N"): "Pesa 128N Jazz Duo",
     ("Pesa", "134N"): "Pesa 134N Jazz",
     ("Linke-Hoffmann", "Lw"): "Linke-Hofmann Lw",
@@ -402,6 +405,22 @@ MERGE = {
 }
 
 
+# ZTM files some different types under one make/model string; these split them by number:
+# (kind, make, model) -> [(numbers, model, id)]. Each part names its id, since one of them
+# keeps the id the whole family had (the biggest, so most catches stay put) and the others
+# can't take the slug that's left. The app moves catches to the part that has their number
+# (`formerly` in fleet.json).
+SPLIT = {
+    # The 15 original 120Ns, the 180 Swings and the 6 two-way Swing Duos (Warszawikia; the
+    # city's list has them as types of their own: 31.82 m, 30.12 m, and 30.12 m with 28 seats).
+    ("TRAM", "Pesa", "120N"): [
+        (range(3101, 3116), "120N", "tram-pesa-120n-tramicus"),
+        (range(3116, 3296), "120Na", "tram-pesa-120n"),
+        (range(3501, 3507), "120NaDuo", "tram-pesa-120naduo"),
+    ],
+}
+
+
 # Where the ZTM database lags behind the street (per Warszawikia, 2 Sep 2026):
 # Mobilis's new Otokars run since 1 Sep 2026 but aren't listed yet, and its MAN Lion's
 # City Hybrids (#9501-9561) were retired in 2026 but are still listed. MZA's second
@@ -452,6 +471,9 @@ def with_vintage_extras(vehicles):
             continue
         make, model = MERGE.get((v["kind"], v["make"], v["model"]), (v["make"], v["model"]))
         v = {**v, "make": make, "model": model}
+        for numbers, part, part_id in SPLIT.get((v["kind"], make, model), []):
+            if v["number"].isdigit() and int(v["number"]) in numbers:
+                v = {**v, "model": part, "id": part_id, "formerly": slug(f"{v['kind']}-{make}-{model}")}
         split = VINTAGE_NUMBERS.get((v["kind"], v["make"], v["model"]), set())
         out.append({**v, "vintage": v["number"].isdigit() and int(v["number"]) in split})
     # Once ZTM catches up and lists one of these itself, its own row wins.
@@ -519,7 +541,10 @@ def build(vehicles, city=None):
                 "numbers": sorted(int(v["number"]) for v in bvs),
             })
         years = [v["year"] for v in vs if v["year"]]
-        model_id = slug(f"{kind}-{make}-{model}") + ("-vintage" if split else "")
+        model_id = vs[0].get("id") or slug(f"{kind}-{make}-{model}") + ("-vintage" if split else "")
+        if len({v.get("id") for v in vs}) != 1:
+            raise ValueError(f"{make} {model}: some numbers aren't in any SPLIT part")
+        formerly = sorted({v["formerly"] for v in vs if v.get("formerly")} - {model_id})
         # Specs from the type most of this model's vehicles are, in the city's list.
         in_city = [city_rows[(kind, v["number"])] for v in vs if (kind, v["number"]) in city_rows]
         majority = Counter(c["idMarki"] for c in in_city).most_common(1)
@@ -554,7 +579,11 @@ def build(vehicles, city=None):
             **({"specs": model_specs} if model_specs else {}),
             **({"variants": variants} if variants else {}),
             **({"liveries": dict(sorted(liveries.items(), key=lambda kv: int(kv[0])))} if liveries else {}),
+            # Ids this model's numbers were filed under before a SPLIT. Older apps ignore it.
+            **({"formerly": formerly} if formerly else {}),
         })
+    ids = Counter(m["id"] for m in models)
+    assert all(c == 1 for c in ids.values()), f"duplicate model ids: {[i for i, c in ids.items() if c > 1]}"
     numbers = {m["id"]: {n for b in m["batches"] for n in b["numbers"]} for m in models}
     for m in models:
         # Trams only: 1000 and 1001 are bus numbers too.

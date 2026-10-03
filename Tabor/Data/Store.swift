@@ -86,13 +86,50 @@ enum TaborStore {
             try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, groupContainer: .none,
                                                                                cloudKitDatabase: cloud))
         }
-        if let synced = try? open(.automatic) { return synced }
-        do {
-            return try open(.none)
-        } catch {
-            fatalError("Can't open the catch store: \(error)")
+        let container: ModelContainer
+        if let synced = try? open(.automatic) {
+            container = synced
+        } else {
+            do {
+                container = try open(.none)
+            } catch {
+                fatalError("Can't open the catch store: \(error)")
+            }
         }
+        // Before any screen reads the book, so nothing shows a catch under a model it left.
+        followSplits(in: ModelContext(container), catalog: Fleet.catalog)
+        return container
     }()
+
+    static let splitsSeenKey = "huntSplitsSeen"
+
+    /// When a model has been split (the 120N family into Tramicus, Swing and Swing Duo),
+    /// moves catches and hand-picked numbers to the part that has their number, and adds the
+    /// new parts to a HUNT filter that had the old model picked. That last step happens once
+    /// per part, so taking one out of the filter afterwards sticks.
+    static func followSplits(in context: ModelContext, catalog: FleetCatalog, defaults: UserDefaults = .standard) {
+        var changed = false
+        for s in (try? context.fetch(FetchDescriptor<Sighting>())) ?? [] {
+            if let to = catalog.moved(modelId: s.modelId, number: s.number) { s.modelId = to; changed = true }
+        }
+        for a in (try? context.fetch(FetchDescriptor<ManualAssignment>())) ?? [] {
+            if let to = catalog.moved(modelId: a.modelId, number: a.number) { a.modelId = to; changed = true }
+        }
+        if changed { try? context.save() }
+
+        let parts = catalog.models.filter { !$0.formerly.isEmpty }
+        var seen = Set(defaults.stringArray(forKey: splitsSeenKey) ?? [])
+        guard !parts.allSatisfy({ seen.contains($0.id) }) else { return }
+        if let raw = defaults.string(forKey: "huntTargets") {
+            var targets = HuntTargets(rawValue: raw)
+            for m in parts where !seen.contains(m.id) && !targets.models.isDisjoint(with: m.formerly) {
+                targets.models.insert(m.id)
+            }
+            defaults.set(targets.rawValue, forKey: "huntTargets")
+        }
+        seen.formUnion(parts.map(\.id))
+        defaults.set(Array(seen).sorted(), forKey: splitsSeenKey)
+    }
 }
 
 extension Array where Element == Sighting {
