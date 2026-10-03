@@ -23,4 +23,5 @@ __pycache__/
 # The proxy's local secrets and wrangler state
 proxy/.dev.vars
 proxy/.wrangler/
+/.wrangler/
 proxy/node_modules/
