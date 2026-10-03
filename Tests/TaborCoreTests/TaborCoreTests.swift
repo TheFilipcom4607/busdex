@@ -1591,3 +1591,17 @@ private func read(_ n: Int, _ score: Double, x: Double, y: Double = 0.5) -> Also
     let found = AlsoInShot.vehicles(in: reads, caught: 3105, model: tramicus, partner: nil, catalog: catalog, nearby: [])
     #expect(found.map(\.number) == [3250, 3290])
 }
+
+@Test func displayLineGetsACloserLookAndLosesToTheBumper() {
+    // A MAN on line 716 (TestFlight feedback): the board's "716" is a vintage Konstal N's
+    // number, and the whole-photo read saw nothing else.
+    let full = [TextObservation(text: "716", confidence: 1, height: 0.04),
+                TextObservation(text: "CM.WOLSKI", confidence: 1, height: 0.04)]
+    let first = NumberExtractor.candidates(in: full, mode: .auto, catalog: catalog)
+    #expect(first.map(\.number) == [716])
+    #expect(NumberExtractor.wantsCloserLook(first))
+    // The tiles find the small fleet number on the front.
+    let tiles = [TextObservation(text: "7205", confidence: 1, height: 0.015)]
+    #expect(NumberExtractor.best(in: full + tiles, mode: .auto, catalog: catalog) == 7205)
+    #expect(!NumberExtractor.wantsCloserLook([(7205, 3)]))
+}

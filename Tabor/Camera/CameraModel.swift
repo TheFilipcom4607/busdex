@@ -536,7 +536,7 @@ enum TextReader {
     /// Everything a still read saw, for debug mode.
     struct Report: Sendable {
         var number: Int?
-        /// "full", "tiles", "none", or "decode-failed".
+        /// "full", "tiles", "full+tiles" (only short numbers on the first read), "none", or "decode-failed".
         var pass: String
         var full: [TextObservation] = []
         var tiles: [TextObservation] = []
@@ -568,8 +568,9 @@ enum TextReader {
         await read(data, mode: mode, nearby: []).number
     }
 
-    /// Full frame first; if nothing is found, re-read overlapping 3×3 tiles so small
-    /// numbers on a whole-vehicle shot get enough pixels (e.g. yellow-on-black "4425").
+    /// Full frame first; if that finds nothing, or only short numbers that may be a display's
+    /// line, re-read overlapping 3×3 tiles so small numbers on a whole-vehicle shot get enough
+    /// pixels (e.g. yellow-on-black "4425"), and weigh both reads together.
     /// `nearby` (live vehicles around you) boosts and rescues candidates, see `LiveHints`.
     /// Without `tiles` it's the full pass only: quick, for when only the number's box is wanted.
     static func read(_ data: Data, mode: CatchMode, nearby: [NearbyVehicle], tiles: Bool = true) async -> Report {
@@ -580,14 +581,14 @@ enum TextReader {
             var report = Report(pass: "full")
             report.full = read(cg, orientation: orientation, roi: nil)
             report.candidates = NumberExtractor.candidates(in: report.full, mode: mode, catalog: Fleet.catalog)
-            if report.candidates.isEmpty, tiles {
-                report.pass = "tiles"
+            if tiles, NumberExtractor.wantsCloserLook(report.candidates) {
+                report.pass = report.candidates.isEmpty ? "tiles" : "full+tiles"
                 for y in [0.0, 0.3, 0.6] {
                     for x in [0.0, 0.3, 0.6] {
                         report.tiles += read(cg, orientation: orientation, roi: CGRect(x: x, y: y, width: 0.4, height: 0.4))
                     }
                 }
-                report.candidates = NumberExtractor.candidates(in: report.tiles, mode: mode, catalog: Fleet.catalog)
+                report.candidates = NumberExtractor.candidates(in: report.full + report.tiles, mode: mode, catalog: Fleet.catalog)
             }
             (report.candidates, report.live) = LiveHints.adjust(report.candidates, nearby: nearby, catalog: Fleet.catalog)
             report.number = report.candidates.max { $0.score < $1.score }?.number

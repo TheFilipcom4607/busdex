@@ -82,6 +82,14 @@ public enum NumberExtractor {
         return scored.map { ($0.number, longKnown && $0.digits == 3 ? $0.score - 1.5 : $0.score) }
     }
 
+    /// Whether a whole-photo read should be followed by a closer one (tiles). Yes when it found
+    /// nothing, and also when it found only short numbers: a display's big line number ("716"
+    /// to Cm. Wolski) is read at once, while the small fleet number on the bumper (7205) needs
+    /// the closer look, and only then does `candidates` take the line for what it is.
+    public static func wantsCloserLook(_ candidates: [(number: Int, score: Double)]) -> Bool {
+        !candidates.contains { $0.number >= 1000 }
+    }
+
     /// Boxes of the text that reads as `number`, by the same rules `candidates` uses.
     public static func boxes(of number: Int, in observations: [TextObservation]) -> [CGRect] {
         observations.compactMap { obs in
