@@ -40,6 +40,7 @@ struct RevealView: View {
     /// turns out to be painted on the caught vehicle is in `misreads` instead.
     @State private var alsoStickers: [Int: Data] = [:]
     @State private var misreads: Set<Int> = []
+    @State private var missingInsets = EdgeInsets()
 
     private let catalog = Fleet.catalog
     private let holdDuration = 0.55
@@ -84,18 +85,24 @@ struct RevealView: View {
                 .allowsHitTesting(false)
 
             VStack(alignment: .leading, spacing: 0) {
+                // Just the way out: a CONFIRM title here was taken for a button that did nothing.
                 HStack {
-                    Mono("CONFIRM", size: 12, spacing: 0.16)
                     Spacer()
                     Button {
                         draft.geotag?.cancel()
                         draft.debug?.log("retake", number: draft.number, modelId: draft.modelId)
                         dismiss()
-                    } label: { Mono(draft.fromCamera ? "RETAKE" : "CANCEL", size: 12) }
+                    } label: {
+                        Mono(draft.fromCamera ? "RETAKE" : "CANCEL", size: 12)
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 22)
+                            .contentShape(Rectangle())
+                    }
                     .buttonStyle(.plain)
                 }
-                .padding(.top, 10)
-                .padding(.horizontal, 22)
+                // The bigger target overlaps the space around the row, not the layout.
+                .padding(.top, -2)
+                .padding(.bottom, -12)
 
                 VStack(alignment: .leading, spacing: 7) {
                     Mono(kicker(isNewVehicle: isNewVehicle, isNewModel: isNewModel, modelOwned: modelOwned, added: added, existing: existing),
@@ -227,6 +234,21 @@ struct RevealView: View {
                 .opacity(sticking ? 0 : 1)
             }
             .foregroundStyle(Palette.ink)
+            .padding(.top, missingInsets.top)
+            .padding(.bottom, missingInsets.bottom)
+        }
+        // Belt and braces for imports: a reveal that came up while the photo picker was still
+        // leaving was laid out with no safe area (CANCEL under the status bar). Whatever the
+        // presentation reports, keep clear of what the window itself keeps clear of.
+        .background {
+            GeometryReader { geo in
+                Color.clear.onChange(of: geo.safeAreaInsets, initial: true) { _, insets in
+                    let window = UIApplication.shared.connectedScenes.lazy.compactMap { $0 as? UIWindowScene }
+                        .compactMap(\.keyWindow).first?.safeAreaInsets ?? .zero
+                    missingInsets = EdgeInsets(top: max(0, window.top - insets.top), leading: 0,
+                                               bottom: max(0, window.bottom - insets.bottom), trailing: 0)
+                }
+            }
         }
         .sheet(isPresented: $editing) {
             CorrectionSheet(draft: $draft)
