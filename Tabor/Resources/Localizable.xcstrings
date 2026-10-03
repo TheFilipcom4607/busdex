@@ -1553,6 +1553,16 @@
         }
       }
     },
+    "Nothing runs near you": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W pobliżu nic nie jeździ"
+          }
+        }
+      }
+    },
     "Show in book": {
       "localizations": {
         "pl": {
@@ -1569,6 +1579,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pokaż to zdjęcie w albumie"
+          }
+        }
+      }
+    },
+    "Show Warsaw": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż Warszawę"
           }
         }
       }
@@ -5494,6 +5514,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "TABOR"
+          }
+        }
+      }
+    },
+    "TABOR follows Warsaw's buses and trams. Pan over to Warsaw, or pick a filter to hunt across the whole city.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TABOR śledzi autobusy i tramwaje w Warszawie. Przesuń mapę nad Warszawę albo wybierz filtr, żeby polować w całym mieście."
           }
         }
       }

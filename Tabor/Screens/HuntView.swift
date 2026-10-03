@@ -72,6 +72,9 @@ struct HuntView: View {
     private static let warsaw = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 52.2297, longitude: 21.0122),
         span: MKCoordinateSpan(latitudeDelta: 0.06, longitudeDelta: 0.06))
+    /// Kilometres from the centre past which the feed has nothing (the suburban lines end
+    /// about 40 km out): further than this, you're not in Warsaw.
+    private static let feedReach = 50.0
 
     var body: some View {
         // Read once: the stored filter is decoded from a string on every read.
@@ -590,7 +593,7 @@ struct HuntView: View {
 
     /// Zoomed in or out from the default, or panned (or walked) away from its centre.
     private var offDefaultView: Bool {
-        guard let region = mapRegion, let here = location.recent(maxAge: 300)?.coordinate else { return false }
+        guard let region = mapRegion, let here else { return false }
         // Width, not height: on a tall phone screen the region fits the 6 km across.
         let across = Geo.km((region.center.latitude, region.center.longitude - region.span.longitudeDelta / 2),
                             (region.center.latitude, region.center.longitude + region.span.longitudeDelta / 2)) * 1000
@@ -745,7 +748,7 @@ struct HuntView: View {
     /// "LINE 523 · 2.1 KM · IN YOUR BOOK", or "NOT OUT NOW · OPEN IN BOOK".
     private func searchedSubtitle(_ v: HuntSearch.Vehicle, mine: Bool) -> String {
         guard let live = v.live else { return String(localized: "NOT OUT NOW · OPEN IN BOOK") }
-        let user = location.recent(maxAge: 300)?.coordinate
+        let user = here
         let distance = user.map { Geo.km(($0.latitude, $0.longitude), (live.latitude, live.longitude)) * 1000 }
         return [live.line.isEmpty ? nil : String(localized: "LINE \(live.line)"), distance.map(HuntDistance.text),
                 mine ? String(localized: "IN YOUR BOOK") : nil]
@@ -809,7 +812,7 @@ struct HuntView: View {
     /// A vehicle from the search as a pin, wherever it is and whether or not you've caught it.
     private func searchedPin(_ id: String, in snapshot: LiveSnapshot) -> WantedPin? {
         guard let v = snapshot.vehicles.first(where: { "\($0.kind.rawValue)#\($0.number)" == id }) else { return nil }
-        let user = location.recent(maxAge: 300)?.coordinate
+        let user = here
         return Wanted.pins(snapshot: LiveSnapshot(vehicles: [v], fetched: snapshot.fetched), catalog: catalog,
                            caught: sightings.stats, lat: v.latitude, lon: v.longitude, within: 10,
                            from: user.map { ($0.latitude, $0.longitude) }, includeCaught: true)
@@ -972,6 +975,31 @@ struct HuntView: View {
                                action: (String(localized: "Clear the filter"), { withAnimation(.snappy) { targets = HuntTargets() } }))
         }
         if nearYou(shown).isEmpty {
+            // Nothing of the kind running here at all, caught or not: say that, rather than that
+            // you've caught everything around you (what a tester in Bydgoszcz was told, #38).
+            // Your actual position, even outside Warsaw: that's the case to explain.
+            let around = location.recent(maxAge: 300)?.coordinate ?? mapCenter
+            let running = around.map { a in
+                live.snapshot?.nearby(lat: a.latitude, lon: a.longitude, within: Wanted.radius)
+                    .contains { targets.kind == nil || $0.vehicle.kind == targets.kind } ?? true
+            } ?? true
+            if !running, let around {
+                let center = Self.warsaw.center
+                if Geo.km((around.latitude, around.longitude), (center.latitude, center.longitude)) > Self.feedReach {
+                    return MessageCard(icon: "map", title: String(localized: "Nothing runs near you"),
+                                       text: String(localized: "TABOR follows Warsaw's buses and trams. Pan over to Warsaw, or pick a filter to hunt across the whole city."),
+                                       action: (String(localized: "Show Warsaw"), {
+                                           following = false
+                                           withAnimation(.easeInOut(duration: 0.7)) { position = .region(Self.warsaw) }
+                                       }))
+                }
+                let title = switch targets.kind {
+                case nil: String(localized: "Nothing within 3 km")
+                case .bus: String(localized: "No buses within 3 km")
+                case .tram: String(localized: "No trams within 3 km")
+                }
+                return MessageCard(icon: "location.magnifyingglass", title: title, text: String(localized: "Nothing running within 3 km right now."))
+            }
             let title = switch (filter, targets.kind) {
             case (.newModels, nil): String(localized: "No new models within 3 km")
             case (.newModels, .bus): String(localized: "No new bus models within 3 km")
@@ -997,7 +1025,16 @@ struct HuntView: View {
 
     // MARK: - State
 
-    private var hasFix: Bool { location.recent(maxAge: 300) != nil }
+    private var hasFix: Bool { here != nil }
+
+    /// Where you are, when it's somewhere the feed covers. From further away (a tester in
+    /// Bydgoszcz), HUNT works as it does without a fix: around where you're looking, with
+    /// distances from there, rather than measuring 230 km to every bus.
+    private var here: CLLocationCoordinate2D? {
+        guard let c = location.recent(maxAge: 300)?.coordinate else { return nil }
+        let center = Self.warsaw.center
+        return Geo.km((c.latitude, c.longitude), (center.latitude, center.longitude)) <= Self.feedReach ? c : nil
+    }
 
     private var statusColor: Color {
         switch live.status {
@@ -1020,7 +1057,7 @@ struct HuntView: View {
     /// distances from you when there's a fix.
     private func cityWide() -> [WantedPin] {
         guard let snapshot = live.snapshot else { return [] }
-        let user = location.recent(maxAge: 300)?.coordinate
+        let user = here
         let from = user ?? mapCenter ?? Self.warsaw.center
         if let line = targets.line {
             return Wanted.onLine(line, snapshot: snapshot, catalog: catalog, caught: sightings.stats,
@@ -1035,7 +1072,7 @@ struct HuntView: View {
 
     private func recompute(animated: Bool) {
         guard onScreen else { return }
-        let user = location.recent(maxAge: 300)?.coordinate
+        let user = here
         guard let snapshot = live.snapshot, let center = mapCenter ?? user else { return }
         // Half the visible diagonal, and never less than the 3 km the list needs.
         let visible = mapRegion.map { r in
@@ -1104,7 +1141,7 @@ struct HuntView: View {
     /// The straight-line guess from its trail, checked against its route when there is one:
     /// heading for you but turning off first isn't coming your way.
     private func motion(of pin: WantedPin) -> Motion? {
-        guard let here = location.recent(maxAge: 300)?.coordinate else { return nil }
+        guard let here else { return nil }
         let guess = live.trails.motion(pin.id, lat: here.latitude, lon: here.longitude)
         guard let match = routeMatch(pin) else { return guess }
         return match.motion(fallback: guess, lat: here.latitude, lon: here.longitude)
