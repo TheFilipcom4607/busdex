@@ -550,15 +550,18 @@ def build(vehicles, city=None):
     for (kind, make, model, split), vs in groups.items():
         if len({v["number"] for v in vs}) != len(vs):
             raise ValueError(f"duplicate fleet number in {make} {model}")
+        # A batch is one operator's vehicles of one year: KMKM's 1993 Ikarus 260 isn't part of
+        # MZA's (#36), and the "Every operator" badge credits the operator of the vehicle caught.
         by_year = defaultdict(list)
         for v in vs:
-            by_year[v["year"]].append(v)
+            by_year[(v["year"], short_carrier(v["carrier"]))].append(v)
         batches = []
-        for y, bvs in sorted(by_year.items(), key=lambda kv: (kv[0] is None, -(kv[0] or 0))):
+        for (y, carrier), bvs in sorted(by_year.items(), key=lambda kv: (kv[0][0] is None, -(kv[0][0] or 0), -len(kv[1]))):
             depot = Counter(parse_depot(v["depot"]) for v in bvs).most_common(1)[0][0]
             batches.append({
                 "year": y,
                 "depotCode": depot[0], "depotName": depot[1],
+                "operator": carrier,
                 "numbers": sorted(int(v["number"]) for v in bvs),
             })
         years = [v["year"] for v in vs if v["year"]]

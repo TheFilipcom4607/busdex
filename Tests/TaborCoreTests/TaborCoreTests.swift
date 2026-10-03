@@ -322,6 +322,24 @@ private func badge(_ id: String, _ sightings: [SightingRecord]) -> Achievement {
     #expect(badge("every-district", Array(all.prefix(3))).progress == 3)
 }
 
+/// Issue #35: Apple names these points "Praga", "Grochów", "Saska Kępa", "Tarchomin", "Raków".
+@Test func districtsFromCoordinates() {
+    #expect(Districts.at(52.2525, 21.0400) == "Praga-Północ")
+    #expect(Districts.at(52.2440, 21.0900) == "Praga-Południe")
+    #expect(Districts.at(52.2330, 21.0560) == "Praga-Południe")
+    #expect(Districts.at(52.3150, 20.9600) == "Białołęka")
+    #expect(Districts.at(52.1950, 20.9450) == "Włochy")
+    #expect(Districts.at(52.2297, 21.0122) == "Śródmieście")
+    #expect(Districts.at(52.0730, 21.0260) == nil)  // Piaseczno
+    #expect(Districts.at(52.3340, 20.8870) == nil)  // Łomianki
+    #expect(Set(Achievements.districts) == Set(Districts.encoded.map(\.name)))
+
+    // The coordinates win over the geocoder's name; the name still counts without them.
+    let grochow = SightingRecord(number: 1, modelId: "x", date: .now, district: "Grochów", latitude: 52.2440, longitude: 21.0900)
+    let named = SightingRecord(number: 2, modelId: "x", date: .now, district: "Stary Mokotów")
+    #expect(badge("every-district", [grochow, named]).proof.compactMap(\.note) == ["MOKOTÓW", "PRAGA-POŁUDNIE"])
+}
+
 @Test func tramDayCountsDistinctTramsOnOneDay() {
     var cal = Calendar(identifier: .gregorian)
     cal.timeZone = TimeZone(identifier: "Europe/Warsaw")!
@@ -555,6 +573,24 @@ private func any(_ modelId: String? = nil, number: Int? = nil, date: Date = day(
     #expect(eval((0..<10).map { _ in any(sticker: true) })["photographer"]!.level == 1)
     let ops = eval([any()])["all-operators"]!
     #expect(ops.goal > 3 && ops.progress == 1)
+}
+
+/// Issue #35: a model several operators run counts for the operator of the vehicle caught.
+@Test func operatorsByTheVehiclesOwnBatch() {
+    let cng = catalog.models.first { $0.id == "bus-solaris-urbino-18cng" }!
+    let conecto = catalog.models.first { $0.id == "bus-mercedes-benz-628b02" }!
+    let relobus = SightingRecord(number: 9925, modelId: cng.id, date: .now)
+    let mza = SightingRecord(number: 6218, modelId: conecto.id, date: .now)
+    let ops = badge("all-operators", [relobus, mza])
+    #expect(ops.proof.compactMap(\.note) == ["MZA", "RELOBUS"])
+    // Operators that are never a model's main one (Grygiel, Średnicki) are in the goal.
+    #expect(ops.goal == 10)
+
+    // #6306 is KMKM's, not part of MZA's 1993 Ikarus 260s at Stalowa (#36).
+    let ikarus = catalog.models.first { $0.id == "bus-ikarus-260" }!
+    #expect(ikarus.batch(containing: 6306)?.operator == "KMKM")
+    #expect(ikarus.batch(containing: 6306)?.placeDisplay == "KMKM")
+    #expect(ikarus.batch(containing: 6930)?.placeDisplay == "R-4 STALOWA")
 }
 
 // MARK: - Weather lookup
@@ -1112,10 +1148,13 @@ private func drive(from lon0: Double, step: Double, fixes: Int, lat: Double = ro
     let e18 = catalog.model(id: "bus-solaris-urbino-18e")!
     #expect(e18.spread?.drives == [.electric])
     #expect(e18.drive(of: e18.batches[0]) == nil)
-    // A year that mixes types names no drive: the 2017 Ursus CS2s are 10 electric, 2 diesel.
+    // A batch that mixes types names no drive: MZA's 2015 Solbus SM18s are LNG and diesel.
+    let sm18 = catalog.model(id: "bus-solbus-sm18")!
+    #expect(sm18.drive(of: sm18.batches.first { $0.year == 2015 }!) == nil)
+    // The 2017 Ursus CS2s are two operators' batches: MZA's 10 electric, KM Łomianki's 2 diesel.
     let cs2 = catalog.model(id: "bus-ursus-cs2")!
     #expect(cs2.spread?.drives == [.electric, .diesel])
-    #expect(cs2.batches.contains { cs2.drive(of: $0) == nil })
+    #expect(cs2.drive(of: cs2.batch(containing: 762)!) == .diesel)
 }
 
 @Test func spreadMixesAirConAndKeepsOldFilesWorking() throws {

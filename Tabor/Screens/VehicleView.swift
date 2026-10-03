@@ -48,7 +48,7 @@ struct VehicleView: View {
                         Text(model?.name ?? String(localized: "Unknown model"))
                             .font(TaborFont.grotesk(14, 600))
                             .lineLimit(1)
-                        Mono(batch?.depotDisplay ?? model?.operators.first?.uppercased() ?? "", size: 11, color: Palette.sub)
+                        Mono(batch?.placeDisplay.nonEmpty ?? model?.operators.first?.uppercased() ?? "", size: 11, color: Palette.sub)
                             .lineLimit(1)
                         if let livery = model?.livery(of: number) {
                             HStack(spacing: 5) {

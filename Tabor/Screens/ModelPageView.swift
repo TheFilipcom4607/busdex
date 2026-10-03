@@ -269,7 +269,7 @@ struct ModelPageView: View {
         let year = b.year.map { String(localized: "\(String($0)) BATCH") } ?? trial ?? String(localized: "YEAR UNKNOWN")
         let done = have == b.numbers.count
         return HStack(spacing: 8) {
-            Mono([year, drive?.name ?? "", b.depotDisplay, b.rangeDisplay].filter { !$0.isEmpty }.joined(separator: " · "),
+            Mono([year, drive?.name ?? "", b.placeDisplay, b.rangeDisplay].filter { !$0.isEmpty }.joined(separator: " · "),
                  size: 10, spacing: 0.14, color: Palette.dim)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)

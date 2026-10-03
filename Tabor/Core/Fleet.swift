@@ -13,18 +13,21 @@ public enum VehicleKind: String, Codable, Sendable, CaseIterable {
     }
 }
 
-/// Vehicles of one model delivered in the same production year — the design's
+/// One operator's vehicles of one model from the same production year — the design's
 /// "2024 BATCH · R-1 WORONICZA · 1970—1987" section.
 public struct Batch: Codable, Hashable, Sendable {
     public let year: Int?
     public let depotCode: String
     public let depotName: String
+    /// Short name, e.g. "MZA", "KMKM". Fleet files before 2026-10-03 have none.
+    public let `operator`: String?
     public let numbers: [Int]
 
-    public init(year: Int?, depotCode: String, depotName: String, numbers: [Int]) {
+    public init(year: Int?, depotCode: String, depotName: String, operator: String? = nil, numbers: [Int]) {
         self.year = year
         self.depotCode = depotCode
         self.depotName = depotName
+        self.operator = `operator`
         self.numbers = numbers
     }
 
@@ -33,6 +36,11 @@ public struct Batch: Codable, Hashable, Sendable {
     /// "R-1 WORONICZA", or just the depot name when it has no R-code.
     public var depotDisplay: String {
         (depotCode.isEmpty ? depotName : "\(depotCode) \(depotName)").uppercased()
+    }
+
+    /// The depot, or the owner when there's none (KMKM's preserved buses): "KMKM".
+    public var placeDisplay: String {
+        depotName.isEmpty ? (self.operator ?? "").uppercased() : depotDisplay
     }
 }
 

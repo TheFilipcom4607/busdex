@@ -1483,6 +1483,16 @@
         }
       }
     },
+    "District outlines for the badges: © OpenStreetMap contributors.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Granice dzielnic do odznak: © autorzy OpenStreetMap."
+          }
+        }
+      }
+    },
     "Some air-conditioned": {
       "localizations": {
         "pl": {

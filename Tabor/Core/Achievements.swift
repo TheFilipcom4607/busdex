@@ -342,26 +342,37 @@ public enum Achievements {
                            proof: c.proof(shown.map(\.0)) { String(localized: "\(age["\($0.modelId)#\($0.number)"] ?? 0) YEARS OLD") })
     }
 
-    /// Operators are counted by each model's main one: a model shared by several
-    /// operators doesn't tick them all off.
+    /// Each vehicle counts for its own batch's operator: Urbino 18 CNGs run for MZA and
+    /// ReloBus, and #9925 is ReloBus's (#35). Older fleet files fall back to the model's main one.
     static func allOperators(_ c: Context) -> Achievement? {
         let regular = c.catalog.models.filter { $0.regular }
-        let all = Set(regular.compactMap(\.operators.first))
+        let all = Set(regular.flatMap { m in m.batches.compactMap { $0.operator ?? m.operators.first } })
         guard !all.isEmpty else { return nil }
-        let have = Set(regular.filter(c.has).compactMap(\.operators.first))
-        // Your first catch from each operator.
-        let proof = have.sorted().compactMap { op in
-            c.sightings.sorted { $0.date < $1.date }.first { s in c.model(s).map { $0.regular && $0.operators.first == op } ?? false }
-                .map { Achievement.Proof(modelId: $0.modelId, number: $0.number, note: op.uppercased()) }
+        let op = { (s: SightingRecord) -> String? in
+            guard let m = c.model(s), m.regular else { return nil }
+            return m.batch(containing: s.number)?.operator ?? m.operators.first
         }
+        // Your first catch from each operator.
+        var first: [String: SightingRecord] = [:]
+        for s in c.sightings.sorted(by: { $0.date < $1.date }) {
+            if let o = op(s), first[o] == nil { first[o] = s }
+        }
+        let proof = first.sorted { $0.key < $1.key }
+            .map { o, s in Achievement.Proof(modelId: s.modelId, number: s.number, note: o.uppercased()) }
         return Achievement(id: "all-operators", title: String(localized: "Every operator"), detail: String(localized: "A vehicle from all \(all.count) operators"),
-                           symbol: "person.3.fill", progress: have.count, goal: all.count, proof: proof)
+                           symbol: "person.3.fill", progress: first.count, goal: all.count, proof: proof)
     }
 
     // MARK: Places
 
+    /// By the catch's coordinates: the geocoder's name is usually a neighbourhood ("Grochów"),
+    /// so it's only the fallback, for catches without them or in a sliver between two outlines.
     static func everyDistrict(_ c: Context) -> Achievement {
-        let byDistrict = Dictionary(grouping: c.sightings.sorted { $0.date < $1.date }) { $0.district.flatMap(district(of:)) }
+        let byDistrict = Dictionary(grouping: c.sightings.sorted { $0.date < $1.date }) { s in
+            let named = s.district.flatMap(district(of:))
+            guard let lat = s.latitude, let lon = s.longitude else { return named }
+            return Districts.at(lat, lon) ?? (Geo.inWarsaw(lat, lon) ? named : nil)
+        }
         let proof = byDistrict.compactMap { d, ss in d.map { Achievement.Proof(modelId: ss[0].modelId, number: ss[0].number, note: $0.uppercased()) } }
             .sorted { ($0.note ?? "") < ($1.note ?? "") }
         return Achievement(id: "every-district", title: String(localized: "Every district"), detail: String(localized: "A catch in all \(districts.count) districts of Warsaw"),
@@ -561,5 +572,40 @@ public enum Geo {
     /// suburbs inside the box don't count, which is fine for a badge).
     public static func inWarsaw(_ lat: Double, _ lon: Double) -> Bool {
         (52.0977...52.3681).contains(lat) && (20.8517...21.2712).contains(lon)
+    }
+}
+
+/// Which of Warsaw's districts a point is in, from their outlines (Districts.swift, generated).
+public enum Districts {
+    private struct Shape {
+        let name: String
+        let ring: [(latitude: Double, longitude: Double)]
+        let lat: ClosedRange<Double>, lon: ClosedRange<Double>
+    }
+
+    private static let shapes: [Shape] = encoded.map { name, polyline in
+        let ring = Polyline.decode(polyline)
+        return Shape(name: name, ring: ring,
+                     lat: ring.map(\.latitude).min()!...ring.map(\.latitude).max()!,
+                     lon: ring.map(\.longitude).min()!...ring.map(\.longitude).max()!)
+    }
+
+    /// nil outside the city, and in the few-metre slivers simplifying leaves between neighbours.
+    public static func at(_ lat: Double, _ lon: Double) -> String? {
+        shapes.first { s in
+            guard s.lat.contains(lat), s.lon.contains(lon) else { return false }
+            // Ray casting: an odd number of edge crossings to the east means inside.
+            var inside = false
+            var j = s.ring.count - 1
+            for i in s.ring.indices {
+                let a = s.ring[i], b = s.ring[j]
+                if (a.latitude > lat) != (b.latitude > lat),
+                   lon < (b.longitude - a.longitude) * (lat - a.latitude) / (b.latitude - a.latitude) + a.longitude {
+                    inside.toggle()
+                }
+                j = i
+            }
+            return inside
+        }?.name
     }
 }

@@ -500,6 +500,7 @@ struct SettingsSheet: View {
                         if let fleetStatus { Text(fleetStatus).foregroundStyle(Palette.yellow) }
                         Text(Fleet.catalog.sourceDisplay)
                         Text("New deliveries show up without an app update: TABOR checks GitHub for a fresher ZTM snapshot once a day.")
+                        Text("District outlines for the badges: © OpenStreetMap contributors.")
                     }
                 }
                 Section {

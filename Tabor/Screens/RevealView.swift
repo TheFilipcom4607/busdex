@@ -534,7 +534,7 @@ struct RevealView: View {
                 .rotationEffect(.degrees(-2))
                 .shadow(color: .black.opacity(0.4), radius: 4, y: 3)
             VStack(alignment: .leading, spacing: 4) {
-                Mono([batch?.depotDisplay, batch?.year.map(String.init)].compactMap { $0 }.joined(separator: " · ")
+                Mono([batch?.placeDisplay.nonEmpty, batch?.year.map(String.init)].compactMap { $0 }.joined(separator: " · ")
                      .nonEmpty ?? (model?.kind.name ?? String(localized: "NUMBER NOT READ")), size: 10.5, spacing: 0.12, color: Palette.sub)
                     .lineLimit(1)
                 if let model { TierPill(tier: tier, fleet: model.fleet, solid: false) }
