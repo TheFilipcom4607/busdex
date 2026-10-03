@@ -1641,3 +1641,15 @@ private func read(_ n: Int, _ score: Double, x: Double, y: Double = 0.5) -> Also
     let days = CatchLog.days(records.map(\.date), calendar: utc)
     #expect(days.map(\.indices) == [[0, 3], [2, 1]])
 }
+
+@Test func aFilteredHuntReachesWarsawFromAnywhere() {
+    // #38: from Bydgoszcz, every filter counted 0.
+    let hrc = catalog.model(id: "tram-hrc-140n")!
+    let snap = LiveSnapshot(vehicles: [
+        live(hrc.numbers[0], .tram, metres: 230_000),
+        live(hrc.numbers[1], .tram, metres: 1_000),
+    ], fetched: fixtureNow)
+    let pins = Wanted.anywhere(snapshot: snap, catalog: catalog, caught: CollectionStats(sightings: []),
+                               lat: here.lat, lon: here.lon)
+    #expect(Set(pins.map(\.vehicle.number)) == [hrc.numbers[0], hrc.numbers[1]])
+}

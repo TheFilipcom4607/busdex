@@ -72,8 +72,6 @@ struct HuntView: View {
     private static let warsaw = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 52.2297, longitude: 21.0122),
         span: MKCoordinateSpan(latitudeDelta: 0.06, longitudeDelta: 0.06))
-    /// A filtered hunt looks this far: all of Warsaw and the suburban lines.
-    private static let cityRadius = 60_000.0
 
     var body: some View {
         // Read once: the stored filter is decoded from a string on every read.
@@ -1028,9 +1026,9 @@ struct HuntView: View {
             return Wanted.onLine(line, snapshot: snapshot, catalog: catalog, caught: sightings.stats,
                                  lat: from.latitude, lon: from.longitude, from: user.map { ($0.latitude, $0.longitude) })
         }
-        return Wanted.pins(snapshot: snapshot, catalog: catalog, caught: sightings.stats,
-                           lat: from.latitude, lon: from.longitude, within: Self.cityRadius,
-                           from: user.map { ($0.latitude, $0.longitude) }, includeCaught: filter == .everything)
+        return Wanted.anywhere(snapshot: snapshot, catalog: catalog, caught: sightings.stats,
+                               lat: from.latitude, lon: from.longitude,
+                               from: user.map { ($0.latitude, $0.longitude) }, includeCaught: filter == .everything)
     }
 
     private var onScreen: Bool { router.tab == .hunt }

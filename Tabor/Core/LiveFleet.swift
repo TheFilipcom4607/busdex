@@ -348,17 +348,26 @@ public enum Wanted {
         }.prefix(limit))
     }
 
-    /// Everything on one line, picked from HUNT's search: wherever it is and whether or not you
-    /// have it, nearest first, so the map shows the line the search counted (#37). With the
-    /// usual limits (60 km, uncaught only) a line you'd caught all of, or a search from outside
-    /// Warsaw, said "4 out now" and then showed nothing.
+    /// Everything out on the feed, however far from you: what a filtered HUNT looks through.
+    /// The feed is only Warsaw's, so there's no radius to keep to; with one (60 km around you),
+    /// a tester in Bydgoszcz saw 0 next to every filter and an empty map (#38).
+    public static func anywhere(snapshot: LiveSnapshot, catalog: FleetCatalog, caught: CollectionStats,
+                                lat: Double, lon: Double, from user: (lat: Double, lon: Double)? = nil,
+                                includeCaught: Bool = false) -> [WantedPin] {
+        pins(snapshot: snapshot, catalog: catalog, caught: caught, lat: lat, lon: lon, within: .infinity,
+             from: user, includeCaught: includeCaught)
+    }
+
+    /// Everything on one line, picked from HUNT's search: whether or not you have it, nearest
+    /// first, so the map shows the line the search counted (#37). Through the header filter, a
+    /// line you'd caught all of said "4 out now" and then showed nothing.
     public static func onLine(_ line: String, snapshot: LiveSnapshot, catalog: FleetCatalog, caught: CollectionStats,
                               lat: Double, lon: Double, from user: (lat: Double, lon: Double)? = nil) -> [WantedPin] {
         let key = HuntSearch.lineKey(line)
         let on = LiveSnapshot(vehicles: snapshot.vehicles.filter { HuntSearch.lineKey($0.line) == key },
                               fetched: snapshot.fetched)
-        return pins(snapshot: on, catalog: catalog, caught: caught, lat: lat, lon: lon, within: .infinity,
-                    from: user, includeCaught: true).sorted { $0.distance < $1.distance }
+        return anywhere(snapshot: on, catalog: catalog, caught: caught, lat: lat, lon: lon,
+                        from: user, includeCaught: true).sorted { $0.distance < $1.distance }
     }
 
     /// Vintage and test stock sort last in the book, but one that's actually out running
