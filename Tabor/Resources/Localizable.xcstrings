@@ -1543,6 +1543,26 @@
         }
       }
     },
+    "iCloud": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud"
+          }
+        }
+      }
+    },
+    "iCloud storage full": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak miejsca w iCloud"
+          }
+        }
+      }
+    },
     "IN THE BOOK": {
       "localizations": {
         "pl": {
@@ -1553,12 +1573,32 @@
         }
       }
     },
+    "Not syncing": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bez synchronizacji"
+          }
+        }
+      }
+    },
     "Nothing runs near you": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "W pobliżu nic nie jeździ"
+          }
+        }
+      }
+    },
+    "Off for TABOR": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyłączone dla TABORU"
           }
         }
       }
@@ -1589,6 +1629,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pokaż Warszawę"
+          }
+        }
+      }
+    },
+    "Signed out": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niezalogowano"
           }
         }
       }
@@ -5508,6 +5558,26 @@
         }
       }
     },
+    "Synced %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zsynchronizowano %@"
+          }
+        }
+      }
+    },
+    "Syncing…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronizacja…"
+          }
+        }
+      }
+    },
     "TABOR": {
       "localizations": {
         "pl": {
@@ -6207,6 +6277,16 @@
         }
       }
     },
+    "Waiting to sync": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czeka na synchronizację"
+          }
+        }
+      }
+    },
     "WAKING THE CAMERA": {
       "localizations": {
         "pl": {
@@ -6448,6 +6528,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "TWÓJ ALBUM"
+          }
+        }
+      }
+    },
+    "Your book syncs through iCloud to your other devices, and comes back if you reinstall TABOR. Export a ZIP for a copy of your own: it keeps every sighting, photo and sticker. Importing only adds what's missing.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twój album synchronizuje się przez iCloud z innymi urządzeniami i wraca po ponownej instalacji TABORU. Eksportuj ZIP, jeśli chcesz mieć własną kopię: zachowa każdą obserwację, zdjęcie i naklejkę. Import dodaje tylko to, czego brakuje."
           }
         }
       }

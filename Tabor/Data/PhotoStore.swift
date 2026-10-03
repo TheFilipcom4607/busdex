@@ -1,50 +1,110 @@
 import ImageIO
 import Photos
+import SwiftData
 import UIKit
 import UniformTypeIdentifiers
 
-/// Catch photos live in Application Support; stickers load downsampled thumbnails.
+/// Catch photos and stickers. They live in the store as `StoredFile`s, so iCloud syncs them
+/// with the catches; the names are what sightings point at. Stickers load as downsampled
+/// thumbnails.
 enum PhotoStore {
+    /// Where builds before iCloud sync kept them as loose files. Reads still look here until
+    /// `moveFolderIntoStore` has taken them in.
     private static let dir: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let url = base.appendingPathComponent("Photos", isDirectory: true)
-        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        return url
+        return base.appendingPathComponent("Photos", isDirectory: true)
     }()
 
     private static let cache = NSCache<NSString, UIImage>()
+    private static let aspects = NSCache<NSString, NSNumber>()
+
+    /// Goes up when files may have arrived from iCloud. Thumbnails read it, so a sticker
+    /// that synced in after its catch shows up without the screen being reopened.
+    @MainActor static let revision = Revision()
+
+    @Observable final class Revision {
+        var value = 0
+    }
+
+    // A context per call: what it fetches (whole photos) goes when it does, instead of piling
+    // up in a long-lived one.
+    private static func fetch(_ name: String, in context: ModelContext) -> [StoredFile] {
+        (try? context.fetch(FetchDescriptor<StoredFile>(predicate: #Predicate { $0.name == name }))) ?? []
+    }
 
     static func save(_ data: Data, ext: String = "jpg") -> String? {
         let name = UUID().uuidString + "." + ext
         do {
-            try data.write(to: dir.appendingPathComponent(name), options: .atomic)
+            try write(data, name: name)
             return name
         } catch {
             return nil
         }
     }
 
-    static func url(_ file: String) -> URL { dir.appendingPathComponent(file) }
+    static func data(_ file: String) -> Data? {
+        let context = ModelContext(TaborStore.container)
+        if let data = fetch(file, in: context).lazy.compactMap(\.data).first { return data }
+        return try? Data(contentsOf: dir.appendingPathComponent(file))
+    }
 
-    static func exists(_ file: String) -> Bool { FileManager.default.fileExists(atPath: url(file).path) }
+    static func exists(_ file: String) -> Bool {
+        let context = ModelContext(TaborStore.container)
+        let count = (try? context.fetchCount(FetchDescriptor<StoredFile>(predicate: #Predicate { $0.name == file }))) ?? 0
+        return count > 0 || FileManager.default.fileExists(atPath: dir.appendingPathComponent(file).path)
+    }
 
-    /// Writes a file under a given name (restoring a backup keeps the original names).
+    /// Stores a file under a given name (restoring a backup keeps the original names).
     static func write(_ data: Data, name: String) throws {
-        try data.write(to: url(name), options: .atomic)
+        let context = ModelContext(TaborStore.container)
+        context.insert(StoredFile(name: name, data: data))
+        try context.save()
     }
 
     static func delete(_ file: String) {
-        try? FileManager.default.removeItem(at: url(file))
+        let context = ModelContext(TaborStore.container)
+        fetch(file, in: context).forEach(context.delete)
+        try? context.save()
+        try? FileManager.default.removeItem(at: dir.appendingPathComponent(file))
         cache.removeAllObjects()
     }
 
-    /// Removes every stored photo and sticker (the folder itself stays).
+    /// Removes every stored photo and sticker.
     static func deleteAll() {
-        let fm = FileManager.default
-        for f in (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [] {
-            try? fm.removeItem(at: f)
-        }
+        let context = ModelContext(TaborStore.container)
+        try? context.delete(model: StoredFile.self)
+        try? context.save()
+        try? FileManager.default.removeItem(at: dir)
         cache.removeAllObjects()
+    }
+
+    /// Takes the loose files of builds before iCloud sync into the store, a few at a time, and
+    /// deletes each once it's safely in. Only files a catch points at: anything else is a
+    /// leftover that iCloud shouldn't carry, and stays where it is.
+    static func moveFolderIntoStore() {
+        let fm = FileManager.default
+        guard let names = try? fm.contentsOfDirectory(atPath: dir.path), !names.isEmpty else { return }
+        let context = ModelContext(TaborStore.container)
+        let sightings = (try? context.fetch(FetchDescriptor<Sighting>())) ?? []
+        let used = Set(sightings.flatMap { [$0.photoFile, $0.stickerFile] }.compactMap { $0 })
+        let moving = names.filter(used.contains)
+        for start in stride(from: 0, to: moving.count, by: 8) {
+            let ok: Bool = autoreleasepool {
+                let context = ModelContext(TaborStore.container)
+                var moved: [String] = []
+                for name in moving[start..<min(start + 8, moving.count)] {
+                    let url = dir.appendingPathComponent(name)
+                    guard let data = try? Data(contentsOf: url) else { continue }
+                    if fetch(name, in: context).isEmpty { context.insert(StoredFile(name: name, data: data)) }
+                    moved.append(name)
+                }
+                do { try context.save() } catch { return false }
+                moved.forEach { try? fm.removeItem(at: dir.appendingPathComponent($0)) }
+                return true
+            }
+            // Can't save (disk full?): the rest stay as files, still read from the folder.
+            guard ok else { return }
+        }
     }
 
     /// The book's own copy of a catch: the app never shows it bigger than a screen, so it keeps
@@ -138,20 +198,24 @@ enum PhotoStore {
 
     /// Width over height as the photo is seen (EXIF rotation applied), from its header alone.
     static func aspect(_ file: String) -> Double? {
-        guard let src = CGImageSourceCreateWithURL(url(file) as CFURL, nil),
+        if let hit = aspects.object(forKey: file as NSString) { return hit.doubleValue }
+        guard let data = data(file), let src = CGImageSourceCreateWithData(data as CFData, nil),
               let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
               let w = props[kCGImagePropertyPixelWidth] as? Double, let h = props[kCGImagePropertyPixelHeight] as? Double,
               w > 0, h > 0
         else { return nil }
         // Orientations 5–8 are turned a quarter.
         let turned = (props[kCGImagePropertyOrientation] as? Int).map { $0 >= 5 } ?? false
-        return turned ? h / w : w / h
+        let aspect = turned ? h / w : w / h
+        aspects.setObject(aspect as NSNumber, forKey: file as NSString)
+        return aspect
     }
 
-    static func thumbnail(_ file: String, maxPixel: Int) -> UIImage? {
+    @MainActor static func thumbnail(_ file: String, maxPixel: Int) -> UIImage? {
+        _ = revision.value
         let key = "\(file)@\(maxPixel)" as NSString
         if let hit = cache.object(forKey: key) { return hit }
-        guard let src = CGImageSourceCreateWithURL(url(file) as CFURL, nil) else { return nil }
+        guard let data = data(file), let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
         let opts: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceCreateThumbnailWithTransform: true,

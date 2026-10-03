@@ -20,8 +20,9 @@ enum WidgetBridge {
         let imageChanged = imageSource != .some(source)
         if imageChanged {
             // Widgets have a tight memory budget: hand them a small PNG, not the full photo.
-            await Task.detached(priority: .utility) { writeImage(source, to: imageURL, maxPixel: 480) }.value
-            imageSource = .some(source)
+            let wrote = await Task.detached(priority: .utility) { writeImage(source, to: imageURL, maxPixel: 480) }.value
+            // A sticker still on its way from iCloud: try again next time.
+            if wrote || source == nil { imageSource = .some(source) }
         }
 
         let (recent, pile, files) = cards(sightings, catalog: catalog)
@@ -114,13 +115,14 @@ enum WidgetBridge {
         }
     }
 
-    nonisolated private static func writeImage(_ source: String?, to url: URL, maxPixel: Int) {
-        if let source, let data = try? Data(contentsOf: PhotoStore.url(source)),
+    @discardableResult
+    nonisolated private static func writeImage(_ source: String?, to url: URL, maxPixel: Int) -> Bool {
+        if let source, let data = PhotoStore.data(source),
            let cg = PhotoStore.downsample(data, maxPixel: maxPixel),
            let png = UIImage(cgImage: cg).pngData() {
-            try? png.write(to: url, options: .atomic)
-        } else {
-            try? FileManager.default.removeItem(at: url)
+            return (try? png.write(to: url, options: .atomic)) != nil
         }
+        try? FileManager.default.removeItem(at: url)
+        return false
     }
 }

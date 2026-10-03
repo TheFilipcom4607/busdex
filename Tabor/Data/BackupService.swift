@@ -16,7 +16,7 @@ enum BackupService {
         for file in manifest.files {
             // One file at a time, so memory stays flat however big the book is.
             try autoreleasepool {
-                guard let data = try? Data(contentsOf: PhotoStore.url(file)) else { return }
+                guard let data = PhotoStore.data(file) else { return }
                 try zip.add(path: BackupManifest.photosFolder + file, data: data)
             }
         }

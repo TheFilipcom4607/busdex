@@ -3,6 +3,10 @@ import SwiftUI
 
 @main
 struct TaborApp: App {
+    init() {
+        CloudSync.shared.start()
+    }
+
     var body: some Scene {
         WindowGroup {
             LaunchGate()
@@ -29,6 +33,9 @@ struct LaunchGate: View {
     static let onboardedKey = "onboarded"
     @AppStorage(Self.onboardedKey) private var onboarded = false
     @Query(Self.oneCatch) private var anyCatch: [Sighting]
+    /// Whether there were catches when the intro would have started. Kept, so a book syncing
+    /// in from iCloud halfway through doesn't cut the intro short before its permission pages.
+    @State private var hadCatches: Bool?
 
     private static var oneCatch: FetchDescriptor<Sighting> {
         var d = FetchDescriptor<Sighting>()
@@ -37,13 +44,16 @@ struct LaunchGate: View {
     }
 
     var body: some View {
-        if onboarded || !anyCatch.isEmpty {
-            RootView()
-                .transition(.opacity)
-        } else {
-            OnboardingView { withAnimation(.easeInOut(duration: 0.35)) { onboarded = true } }
-                .transition(.opacity)
+        Group {
+            if onboarded || (hadCatches ?? !anyCatch.isEmpty) {
+                RootView()
+                    .transition(.opacity)
+            } else {
+                OnboardingView { withAnimation(.easeInOut(duration: 0.35)) { onboarded = true } }
+                    .transition(.opacity)
+            }
         }
+        .onAppear { hadCatches = hadCatches ?? !anyCatch.isEmpty }
     }
 }
 
@@ -190,7 +200,7 @@ struct RootView: View {
         let latest = sightings.max { $0.date < $1.date }
         let vehicles = Set(sightings.map { "\($0.modelId)#\($0.number)" }).count
         return [String(sightings.count), String(vehicles), latest?.id.uuidString, latest?.modelId, latest.map { String($0.number) },
-                latest?.stickerFile, latest?.photoFile,
+                latest?.stickerFile, latest?.photoFile, String(PhotoStore.revision.value),
                 // A picture picked for the book changes the cards too.
                 sightings.filter { $0.cover == true }.map(\.id.uuidString).sorted().joined()].map { $0 ?? "-" }.joined(separator: "|")
     }

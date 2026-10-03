@@ -478,6 +478,12 @@ struct SettingsSheet: View {
                     Text("HUNT and the camera use Warsaw's open-data feed of live bus and tram positions (dane.um.warszawa.pl) — only while they're on screen. Leave the key empty to go through TABOR's server, or get your own free key at dane.um.warszawa.pl.")
                 }
                 Section {
+                    LabeledContent("iCloud") {
+                        HStack(spacing: 6) {
+                            if CloudSync.shared.state == .syncing { ProgressView().controlSize(.small) }
+                            Text(cloudStatus.text).foregroundStyle(cloudStatus.color)
+                        }
+                    }
                     Button(backingUp ? "Packing…" : "Export catches") { exportBackup() }
                         .disabled(allSightings.isEmpty || backingUp)
                     Button("Import a backup…") { importing = true }
@@ -485,9 +491,12 @@ struct SettingsSheet: View {
                 } header: {
                     Text("Backup")
                 } footer: {
-                    // No iCloud entitlement in this build (personal teams can't sign it), so the
-                    // book only lives on this phone: don't promise sync or a restore on reinstall.
-                    Text("Your book lives on this phone — deleting TABOR deletes it. Export a ZIP now and then: it keeps every sighting, photo and sticker. Importing only adds what's missing.")
+                    // Only promise a restore on reinstall while iCloud is actually carrying the book.
+                    if CloudSync.shared.state.carriesBook {
+                        Text("Your book syncs through iCloud to your other devices, and comes back if you reinstall TABOR. Export a ZIP for a copy of your own: it keeps every sighting, photo and sticker. Importing only adds what's missing.")
+                    } else {
+                        Text("Your book lives on this phone — deleting TABOR deletes it. Export a ZIP now and then: it keeps every sighting, photo and sticker. Importing only adds what's missing.")
+                    }
                 }
                 Section {
                     if Fleet.catalog.models.isEmpty {
@@ -560,6 +569,19 @@ extension SettingsSheet {
             let n = live.snapshot?.vehicles.count ?? 0
             return (String(localized: "Working · \(n) vehicles"), Palette.green)
         case .error(let why): return (live.fresh(maxAge: 120) != nil ? String(localized: "Working (last call failed)") : why, Palette.red)
+        }
+    }
+
+    var cloudStatus: (text: String, color: Color) {
+        switch CloudSync.shared.state {
+        case .checking: (String(localized: "Checking…"), Palette.sub)
+        case .local: (String(localized: "Not syncing"), Palette.red)
+        case .signedOut: (String(localized: "Signed out"), Palette.yellow)
+        case .unavailable: (String(localized: "Off for TABOR"), Palette.yellow)
+        case .syncing: (String(localized: "Syncing…"), Palette.sub)
+        case .synced(let date): (String(localized: "Synced \(date.formatted(date: .omitted, time: .shortened))"), Palette.green)
+        case .full: (String(localized: "iCloud storage full"), Palette.red)
+        case .failed: (String(localized: "Waiting to sync"), Palette.yellow)
         }
     }
 

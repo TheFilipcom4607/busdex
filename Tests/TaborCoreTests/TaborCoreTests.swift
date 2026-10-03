@@ -1653,3 +1653,17 @@ private func read(_ n: Int, _ score: Double, x: Double, y: Double = 0.5) -> Also
                                lat: here.lat, lon: here.lon)
     #expect(Set(pins.map(\.vehicle.number)) == [hrc.numbers[0], hrc.numbers[1]])
 }
+
+// MARK: - iCloud sync
+
+@Test func syncDedupeKeepsTheSameCopyEverywhere() {
+    let low = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+    let high = UUID(uuidString: "F0000000-0000-0000-0000-000000000000")!
+    struct Row: Equatable { let id: String; let tag: UUID? }
+    let rows = [Row(id: "a", tag: high), Row(id: "a", tag: low), Row(id: "b", tag: high), Row(id: "a", tag: nil)]
+    // Either phone's order, the same verdict: the higher tag goes, untagged rows wait.
+    for order in [rows, rows.reversed()] {
+        #expect(SyncDedupe.extras(order, key: \.id, tag: \.tag) == [Row(id: "a", tag: high)])
+    }
+    #expect(SyncDedupe.extras([Row(id: "a", tag: nil), Row(id: "a", tag: nil)], key: \.id, tag: \.tag).isEmpty)
+}

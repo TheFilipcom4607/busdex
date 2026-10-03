@@ -27,9 +27,13 @@ final class Sighting {
     /// Picked on the vehicle page as the picture the book shows for this vehicle, instead of
     /// the newest. Only one per vehicle is set; if two ever are, the newest wins.
     var cover: Bool?
+    /// Picks which copy stays when two phones hold the same sighting (see `SyncDedupe`).
+    /// Nil only on catches from before iCloud sync, until `TaborStore.tagOwnRows` runs.
+    var syncTag: UUID?
 
     init(id: UUID = UUID(), number: Int, modelId: String, date: Date = .now, line: String? = nil,
          photoFile: String? = nil, stickerFile: String? = nil) {
+        self.syncTag = UUID()
         self.id = id
         self.number = number
         self.modelId = modelId
@@ -62,6 +66,22 @@ final class ManualAssignment {
     }
 }
 
+/// A photo or sticker, kept in the store rather than as a loose file so iCloud carries it
+/// with the catches (big data goes up as a CKAsset). `PhotoStore` is the way in.
+@Model
+final class StoredFile {
+    #Index<StoredFile>([\.name])
+    var name: String = ""
+    @Attribute(.externalStorage) var data: Data?
+    var syncTag: UUID?
+
+    init(name: String, data: Data) {
+        self.name = name
+        self.data = data
+        self.syncTag = UUID()
+    }
+}
+
 enum Fleet {
     /// The bundled snapshot, or a newer one downloaded from GitHub (see `FleetUpdater`).
     /// Picked once per launch; if neither loads, the app opens with an empty catalog.
@@ -79,7 +99,10 @@ enum Fleet {
 }
 
 enum TaborStore {
-    static let models: [any PersistentModel.Type] = [Sighting.self, ManualAssignment.self]
+    static let models: [any PersistentModel.Type] = [Sighting.self, ManualAssignment.self, StoredFile.self]
+
+    /// False when the store couldn't open with CloudKit and stays on this phone.
+    private(set) static var syncs = false
 
     /// Syncs through iCloud when the app has the CloudKit entitlement and the user is signed
     /// in; otherwise (or if the CloudKit store can't open) the same store stays local.
@@ -94,6 +117,7 @@ enum TaborStore {
         let container: ModelContainer
         if let synced = try? open(.automatic) {
             container = synced
+            syncs = true
         } else {
             do {
                 container = try open(.none)
@@ -103,8 +127,40 @@ enum TaborStore {
         }
         // Before any screen reads the book, so nothing shows a catch under a model it left.
         followSplits(in: ModelContext(container), catalog: Fleet.catalog)
+        tagOwnRows(in: ModelContext(container))
         return container
     }()
+
+    private static let taggedKey = "syncTagged"
+
+    /// Once, on the first launch with iCloud sync: tags the catches made before it. They can
+    /// only be this phone's own (no build before synced), so no other phone tags them too.
+    static func tagOwnRows(in context: ModelContext, defaults: UserDefaults = .standard) {
+        guard !defaults.bool(forKey: taggedKey) else { return }
+        for s in (try? context.fetch(FetchDescriptor<Sighting>(predicate: #Predicate { $0.syncTag == nil }))) ?? [] {
+            s.syncTag = UUID()
+        }
+        do {
+            try context.save()
+            defaults.set(true, forKey: taggedKey)
+        } catch {}
+    }
+
+    /// Drops the second copy of a sighting or file that two phones both had (one backup
+    /// imported on each). A duplicate sighting shares its files with the one kept, so only
+    /// the row goes.
+    static func removeDuplicates(in context: ModelContext) {
+        let sightings = (try? context.fetch(FetchDescriptor<Sighting>())) ?? []
+        var files = FetchDescriptor<StoredFile>()
+        // Leaves the data itself unread.
+        files.propertiesToFetch = [\.name, \.syncTag]
+        let extraSightings = SyncDedupe.extras(sightings, key: \.id.uuidString, tag: \.syncTag)
+        let extraFiles = SyncDedupe.extras((try? context.fetch(files)) ?? [], key: \.name, tag: \.syncTag)
+        guard !extraSightings.isEmpty || !extraFiles.isEmpty else { return }
+        extraSightings.forEach(context.delete)
+        extraFiles.forEach(context.delete)
+        try? context.save()
+    }
 
     static let splitsSeenKey = "huntSplitsSeen"
 
