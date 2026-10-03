@@ -79,6 +79,7 @@ struct CatchView: View {
     /// Zoom when the current pinch started.
     @State private var pinchStart: CGFloat?
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(Router.self) private var router
 
     private let catalog = Fleet.catalog
 
@@ -204,6 +205,8 @@ struct CatchView: View {
             let isNew = m.suggested.map { stats.vehicle(number: n, modelId: $0.id) == nil } ?? false
             Haptics.shared.numberLocked(isNew: isNew)
         }
+        // A photo shared from another app (Photos, Lightroom…): caught like an imported one.
+        .onChange(of: router.sharedPhotos, initial: true) { takeShared() }
         .onChange(of: pickerItem) { _, item in
             guard let item else { return }
             // The picker is still sliding away; a reveal presented under it comes out laid out
@@ -226,6 +229,8 @@ struct CatchView: View {
             frozen = nil
             camera.resetReading()
             if visible { Task { await camera.start() } }
+            // Shared while this reveal was up.
+            takeShared()
         }) { d in
             RevealView(draft: d)
                 .windowControlsClearance()
@@ -687,6 +692,16 @@ struct CatchView: View {
             let first = await group.next() ?? nil
             group.cancelAll()
             return first
+        }
+    }
+
+    /// The photo waiting in the share inbox, if any and if nothing else is being caught.
+    private func takeShared() {
+        guard draft == nil, !capturing, let data = ShareInbox.take() else { return }
+        Task {
+            capturing = true
+            defer { capturing = false }
+            await begin(with: data, live: nil, fromCamera: false, record: DebugRecord.begin(source: "share", mode: mode))
         }
     }
 

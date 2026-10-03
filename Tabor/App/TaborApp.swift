@@ -56,6 +56,16 @@ enum BookRoute: Hashable {
 final class Router {
     var tab: AppTab = .catchTab
     var bookPath: [BookRoute] = []
+    /// Goes up when a photo shared from another app is waiting in `ShareInbox`: CATCH takes it.
+    var sharedPhotos = 0
+
+    /// A photo shared to TABOR: catch it on CATCH, like one picked from the library.
+    func catchShared() {
+        guard !ShareInbox.isEmpty else { return }
+        tab = .catchTab
+        bookPath.removeAll()
+        sharedPhotos += 1
+    }
 
     /// After sticking a catch in: jump to its model page in the book.
     func openModel(_ id: String) {
@@ -116,7 +126,11 @@ struct RootView: View {
         // Keep the live feed ticking on every tab, so HUNT opens with trails already drawn.
         .onAppear { LiveFleetService.shared.start(LiveFleetService.appClient) }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { LiveFleetService.shared.start(LiveFleetService.appClient) }
+            if phase == .active {
+                LiveFleetService.shared.start(LiveFleetService.appClient)
+                // Shared while TABOR was closed, or the share sheet couldn't open it.
+                router.catchShared()
+            }
             if phase == .background {
                 LiveFleetService.shared.stop(LiveFleetService.appClient)
                 undo.finish()
@@ -134,6 +148,7 @@ struct RootView: View {
         }
         // Widget taps.
         .onOpenURL { url in
+            if url == ShareInbox.url { return router.catchShared() }
             switch WidgetLink.target(url) {
             case .book:
                 router.tab = .book
