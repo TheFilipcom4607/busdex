@@ -1624,3 +1624,20 @@ private func read(_ n: Int, _ score: Double, x: Double, y: Double = 0.5) -> Also
     #expect(Wanted.onLine("L4", snapshot: snap, catalog: catalog, caught: caught, lat: here.lat, lon: here.lon)
         .map(\.vehicle.number) == [hrc.numbers[4]])
 }
+
+@Test func catchLogMarksFirstsAndGroupsByDay() {
+    let day: TimeInterval = 86_400
+    let t0 = Date(timeIntervalSince1970: 1_790_000_000)
+    // Out of order, as a query might hand them over.
+    let records = [
+        SightingRecord(number: 7205, modelId: "man", date: t0 + day + 60),   // seen again, next day
+        SightingRecord(number: 7205, modelId: "man", date: t0),              // first MAN
+        SightingRecord(number: 7240, modelId: "man", date: t0 + 120),        // a new MAN
+        SightingRecord(number: 3105, modelId: "tramicus", date: t0 + day),   // first Tramicus
+    ]
+    #expect(CatchLog.marks(records) == [.again, .newModel, .newVehicle, .newModel])
+    var utc = Calendar(identifier: .gregorian)
+    utc.timeZone = TimeZone(identifier: "UTC")!
+    let days = CatchLog.days(records.map(\.date), calendar: utc)
+    #expect(days.map(\.indices) == [[0, 3], [2, 1]])
+}

@@ -409,6 +409,16 @@
         }
       }
     },
+    "%lld IN ALL": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RAZEM %lld"
+          }
+        }
+      }
+    },
     "%lld KM LATER": {
       "localizations": {
         "pl": {
@@ -1483,12 +1493,82 @@
         }
       }
     },
+    "CATCH LOG": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DZIENNIK ZŁAPAŃ"
+          }
+        }
+      }
+    },
+    "Catch log": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dziennik złapań"
+          }
+        }
+      }
+    },
     "District outlines for the badges: © OpenStreetMap contributors.": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "Granice dzielnic do odznak: © autorzy OpenStreetMap."
+          }
+        }
+      }
+    },
+    "DONE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GOTOWE"
+          }
+        }
+      }
+    },
+    "FULL LOG": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CAŁY DZIENNIK"
+          }
+        }
+      }
+    },
+    "IN THE BOOK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W ALBUMIE"
+          }
+        }
+      }
+    },
+    "Show in book": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż w albumie"
+          }
+        }
+      }
+    },
+    "Show this picture in the book": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż to zdjęcie w albumie"
           }
         }
       }
@@ -5498,6 +5578,16 @@
         }
       }
     },
+    "TODAY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DZIŚ"
+          }
+        }
+      }
+    },
     "TOURIST LINE 100 & EVENTS · SUMMER WEEKENDS": {
       "localizations": {
         "pl": {
@@ -6281,6 +6371,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ROCZNIK NIEZNANY"
+          }
+        }
+      }
+    },
+    "YESTERDAY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WCZORAJ"
           }
         }
       }

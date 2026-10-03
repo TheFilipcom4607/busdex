@@ -64,6 +64,12 @@ struct MeView: View {
                     .padding(.top, 18)
                     .padding(.horizontal, 22)
 
+                if !sightings.isEmpty {
+                    CatchLogSection(sightings: sightings)
+                        .padding(.top, 16)
+                        .padding(.horizontal, 22)
+                }
+
                 HStack(alignment: .firstTextBaseline) {
                     SectionLabel(text: String(localized: "WHERE YOU SPOT"))
                     Spacer()
