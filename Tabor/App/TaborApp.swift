@@ -86,6 +86,7 @@ struct RootView: View {
     /// Tabs opened so far. They stay alive behind the current one, so switching back is
     /// instant and keeps where you were: HUNT's map and pins, how far down the book you were.
     @State private var opened: Set<AppTab> = []
+    @State private var tabBarHeight: CGFloat = 0
     @Query private var sightings: [Sighting]
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
@@ -95,7 +96,7 @@ struct RootView: View {
             // CATCH goes when you leave it: that's what turns the camera off.
             if router.tab == .catchTab { CatchView() }
             if keeps(.hunt) { HuntView().tabLayer(on: router.tab == .hunt) }
-            if keeps(.book) { BookTab().tabLayer(on: router.tab == .book) }
+            if keeps(.book) { BookTab(tabBarHeight: tabBarHeight).tabLayer(on: router.tab == .book) }
             if keeps(.me) { MeView().tabLayer(on: router.tab == .me) }
         }
         .onChange(of: router.tab, initial: true) { _, tab in opened.insert(tab) }
@@ -119,6 +120,7 @@ struct RootView: View {
                 // Like any tab bar: tapping BOOK again goes back to the index.
                 if tab == .book, !router.bookPath.isEmpty { router.bookPath.removeAll() }
             }
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { tabBarHeight = $0 }
         }
         .background(Palette.bg.ignoresSafeArea())
         .environment(router)
@@ -201,17 +203,24 @@ struct RootView: View {
 }
 
 struct BookTab: View {
+    /// The tab bar's inset stops at the NavigationStack, so each page gets it again here,
+    /// or the end of every book list runs under the bar (#43).
+    let tabBarHeight: CGFloat
     @Environment(Router.self) private var router
 
     var body: some View {
         @Bindable var router = router
         NavigationStack(path: $router.bookPath) {
             BookIndexView()
+                .safeAreaPadding(.bottom, tabBarHeight)
                 .navigationDestination(for: BookRoute.self) { route in
-                    switch route {
-                    case .model(let id): ModelPageView(modelId: id)
-                    case .vehicle(let modelId, let number): VehicleView(modelId: modelId, number: number)
+                    Group {
+                        switch route {
+                        case .model(let id): ModelPageView(modelId: id)
+                        case .vehicle(let modelId, let number): VehicleView(modelId: modelId, number: number)
+                        }
                     }
+                    .safeAreaPadding(.bottom, tabBarHeight)
                 }
         }
     }
