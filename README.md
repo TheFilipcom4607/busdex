@@ -75,17 +75,6 @@ cd proxy && npx wrangler secret put DANE_TOKEN && npx wrangler deploy
 
 Lock Screen tracking is pushed by the proxy with TABOR's own APNs key, so in a
 build signed with another team it starts but doesn't update.
-
-The proxy's public feeds can be read from any website, and it can tell other
-projects what a vehicle is:
-
-```bash
-curl https://taborapi.thefilip.com/v1/fleet/5221,1983
-```
-
-That's the model, year, operator, depot, specs and tier, from the same
-`fleet.json` the app uses, for up to 100 numbers in one call.
-
 ---
 
 ## CATCH
