@@ -8709,6 +8709,36 @@
           }
         }
       }
+    },
+    "Turn the map back to north": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obróć mapę z powrotem na północ"
+          }
+        }
+      }
+    },
+    "Turn the map the way you're facing": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obróć mapę tam, gdzie patrzysz"
+          }
+        }
+      }
+    },
+    "You": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ty"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

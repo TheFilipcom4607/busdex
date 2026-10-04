@@ -68,6 +68,13 @@ struct HuntView: View {
     @State private var mapRegion: MKCoordinateRegion?
     /// The map's rotation, so direction arrows keep pointing the right way on the ground.
     @State private var mapHeading: Double = 0
+    /// The same, for your dot: MapKit draws the user annotation once, so it reads this itself.
+    @State private var turn = MapTurn()
+    /// How far the camera is up, so turning the map the way you face keeps the zoom.
+    @State private var mapDistance: CLLocationDistance?
+    /// The map turned the way you're facing, centred on you (the second tap on 3 KM).
+    /// Anything else that moves the map ends it.
+    @State private var facing = false
     private var mapCenter: CLLocationCoordinate2D? { mapRegion?.center }
 
     private static let warsaw = MKCoordinateRegion(
@@ -115,8 +122,8 @@ struct HuntView: View {
                         followButton(selected)
                             .transition(.scale(scale: 0.8, anchor: .trailing).combined(with: .opacity))
                     }
-                    if offDefaultView {
-                        resetButton
+                    if here != nil, offDefaultView || facing || location.heading != nil {
+                        locationButton
                             .transition(.scale(scale: 0.8, anchor: .trailing).combined(with: .opacity))
                     }
                     mapStyleButton
@@ -127,6 +134,7 @@ struct HuntView: View {
                     .padding(.bottom, 10)
             }
             .animation(.snappy, value: offDefaultView)
+            .animation(.snappy, value: facing)
             .animation(.snappy, value: following)
             .animation(.snappy, value: picked)
         }
@@ -138,8 +146,12 @@ struct HuntView: View {
         // The tab stays alive behind the others once opened, so it comes back at once: the
         // fast polling and the refreshes only run while it's the one on screen.
         .onChange(of: onScreen, initial: true) { _, on in
-            guard on else { return live.stop("hunt") }
+            guard on else {
+                location.stopHeading("hunt")
+                return live.stop("hunt")
+            }
             live.start("hunt")
+            location.startHeading("hunt")
             routes.prepare()
             centerOnceOnYou()
             // Models a fleet update dropped can't match anything; don't leave them as ghost chips.
@@ -152,8 +164,10 @@ struct HuntView: View {
             if phase == .background { live.stop("hunt") }
         }
         .onChange(of: live.snapshot?.fetched, initial: true) { recompute(animated: true) }
+        .onChange(of: location.heading) { turnToFacing() }
         .onChange(of: location.latest) {
             centerOnceOnYou()
+            turnToFacing()
             live.locationMoved()
             recompute(animated: false)
         }
@@ -241,7 +255,9 @@ struct HuntView: View {
                     }
                 }
             }
-            UserAnnotation()
+            // Drawn here rather than MapKit's own dot, which only shows which way you face
+            // while the map follows your heading.
+            UserAnnotation(anchor: .center) { _ in YouDot(turn: turn) }
             // Rarest on top: SwiftUI draws later annotations above earlier ones.
             ForEach(groups(shown).reversed()) { g in
                 if g.pins.count == 1 {
@@ -266,14 +282,22 @@ struct HuntView: View {
                   : .standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
         .mapControls {}
         .environment(\.colorScheme, .dark)
-        .onMapCameraChange(frequency: .continuous) { ctx in mapHeading = ctx.camera.heading }
+        .onMapCameraChange(frequency: .continuous) { ctx in
+            mapHeading = ctx.camera.heading
+            turn.heading = ctx.camera.heading
+            mapDistance = ctx.camera.distance
+        }
         .onMapCameraChange(frequency: .onEnd) { ctx in
             mapRegion = ctx.region
             // Moved by hand: leave the map where it was put. Moves made in code don't count.
-            if position.positionedByUser { following = false }
+            if position.positionedByUser {
+                following = false
+                facing = false
+            }
             recompute(animated: false)
         }
         .onChange(of: selectedId) { _, id in
+            if id != nil { facing = false }
             guard let id else {
                 following = false
                 return
@@ -537,22 +561,33 @@ struct HuntView: View {
         .accessibilityLabel("Remove \(text.capitalized) from the filter")
     }
 
-    /// Back to the 3 km around you: shown once you've zoomed or panned away from it.
-    private var resetButton: some View {
-        Button(action: resetView) {
+    /// Like Apple Maps' arrow: away from the 3 km around you, it goes back there; on it, it
+    /// turns the map the way you're facing; facing, it turns it back to north.
+    private var locationButton: some View {
+        let away = !facing && offDefaultView
+        return Button {
+            if facing || away { return resetView() }
+            Haptics.shared.tick()
+            following = false
+            facing = true
+            turnToFacing()
+        } label: {
             HStack(spacing: 5) {
-                Image(systemName: "location.fill")
+                Image(systemName: facing ? "location.north.line.fill" : away ? "location" : "location.fill")
                     .font(.system(size: 10.5, weight: .bold))
+                    .contentTransition(.symbolEffect(.replace))
                 Mono("3 KM", size: 11, weight: 600, spacing: 0.1, color: Palette.radar)
             }
             .foregroundStyle(Palette.radar)
             .padding(.vertical, 8)
             .padding(.horizontal, 12)
             .glass(Capsule())
+            .overlay(Capsule().fill(Palette.radar.opacity(facing ? 0.16 : 0)).allowsHitTesting(false))
             .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Back to 3 kilometres around you")
+        .accessibilityLabel(facing ? "Turn the map back to north"
+                            : away ? "Back to 3 kilometres around you" : "Turn the map the way you're facing")
     }
 
     /// Back to following the selected vehicle: shown once you've moved the map away from it.
@@ -617,10 +652,18 @@ struct HuntView: View {
         position = .region(region)
     }
 
+    /// Facing: you in the middle, the map turned the way the phone points, at the same zoom.
+    private func turnToFacing() {
+        guard facing, let here, let heading = location.heading else { return }
+        let camera = MapCamera(centerCoordinate: here, distance: mapDistance ?? Wanted.radius * 4, heading: heading.degrees, pitch: 0)
+        withAnimation(.easeOut(duration: 0.25)) { position = .camera(camera) }
+    }
+
     private func resetView() {
         guard let region = defaultRegion() else { return }
         Haptics.shared.tick()
         following = false
+        facing = false
         withAnimation(.easeInOut(duration: 0.7)) { position = .region(region) }
     }
 
@@ -797,6 +840,7 @@ struct HuntView: View {
         let center = CLLocationCoordinate2D(latitude: (lats.max()! + lats.min()!) / 2 - latSpan * 0.09,
                                             longitude: (lons.max()! + lons.min()!) / 2)
         following = false
+        facing = false
         withAnimation(.easeInOut(duration: 0.7)) { position = .region(MKCoordinateRegion(center: center, span: span)) }
     }
 
@@ -1000,6 +1044,7 @@ struct HuntView: View {
                                        text: String(localized: "TABOR follows Warsaw's buses and trams. Pan over to Warsaw, or pick a filter to hunt across the whole city."),
                                        action: (String(localized: "Show Warsaw"), {
                                            following = false
+                                           facing = false
                                            withAnimation(.easeInOut(duration: 0.7)) { position = .region(Self.warsaw) }
                                        }))
                 }
@@ -1324,6 +1369,50 @@ private struct WantedPinView: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: selected)
         .accessibilityLabel("\(pin.model.tier.name.lowercased()) \(pin.model.name), line \(pin.vehicle.line)")
         .accessibilityAddTraits(.isButton)
+    }
+}
+
+@Observable
+private final class MapTurn {
+    /// Degrees clockwise from north.
+    var heading: Double = 0
+}
+
+/// You on the map: Apple's blue dot, with a beam the way the phone points. Like Apple Maps,
+/// the beam widens when the compass isn't sure.
+private struct YouDot: View {
+    let turn: MapTurn
+    private static let blue = Color(uiColor: .systemBlue)
+
+    var body: some View {
+        ZStack {
+            if let heading = LocationService.shared.heading {
+                Beam(spread: min(max(heading.accuracy, 20), 60))
+                    .fill(RadialGradient(colors: [Self.blue.opacity(0.6), Self.blue.opacity(0)],
+                                         center: .center, startRadius: 6, endRadius: 46))
+                    .rotationEffect(.degrees(heading.degrees - turn.heading))
+            }
+            Circle().fill(.white).frame(width: 20, height: 20)
+                .shadow(color: .black.opacity(0.35), radius: 3)
+            Circle().fill(Self.blue).frame(width: 14, height: 14)
+        }
+        .frame(width: 92, height: 92)
+        .allowsHitTesting(false)
+        .accessibilityLabel("You")
+    }
+
+    private struct Beam: Shape {
+        /// Half the beam's angle, in degrees.
+        var spread: Double
+
+        func path(in rect: CGRect) -> Path {
+            let c = CGPoint(x: rect.midX, y: rect.midY)
+            var p = Path()
+            p.move(to: c)
+            p.addArc(center: c, radius: rect.width / 2, startAngle: .degrees(-90 - spread), endAngle: .degrees(-90 + spread), clockwise: false)
+            p.closeSubpath()
+            return p
+        }
     }
 }
 
