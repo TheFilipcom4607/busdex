@@ -23,6 +23,12 @@ name = "PER_IP"
 namespace_id = "1001"
 simple = { limit = 60, period = 60 }
 
+# The fleet lookup for other projects (src/lookup.js), kept apart from the app's limit.
+[[ratelimits]]
+name = "LOOKUP_PER_IP"
+namespace_id = "1002"
+simple = { limit = 30, period = 60 }
+
 # routes.json for HUNT's future trails (src/routes.js). KV, not R2: one small write a day.
 [[kv_namespaces]]
 binding = "ROUTES"

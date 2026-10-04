@@ -7,12 +7,14 @@
 //   GET /v1/routes            every line's street shapes and stops (routes.js)
 //   PUT /v1/routes            the daily upload of those, from the GitHub Action
 //   GET /v1/gtfs              ZTM's GTFS zip, passed through for that Action
+//   GET /v1/fleet/5221        what a vehicle is (model, year, specs), for other projects (lookup.js)
 //   POST/DELETE /v1/track     a phone following a vehicle on its Lock Screen (track.js)
 //
 // The vehicles body is the old service's shape, {"result": [...]}, whichever service
 // answered, so the app parses it exactly as before.
 
 import { fetchDane, fetchOld } from './city.js';
+import { lookup } from './lookup.js';
 import { getGtfs, getRoutes, putRoutes } from './routes.js';
 import { handleTrack } from './track.js';
 
@@ -43,10 +45,13 @@ const CORS = {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    if (!PUBLIC.includes(url.pathname)) return handle(request, env, ctx, url);
+    const fleet = url.pathname === '/v1/fleet' || url.pathname.startsWith('/v1/fleet/');
+    if (!fleet && !PUBLIC.includes(url.pathname)) return handle(request, env, ctx, url);
     // A browser asks first before a GET carrying If-None-Match. Nothing goes upstream, so it
     // doesn't count against the limit.
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+    // Before the app's limit, under its own: lookups mustn't use up a phone's polls.
+    if (fleet) return withCors(await lookup(request, env, url));
     return withCors(await handle(request, env, ctx, url));
   },
 };
