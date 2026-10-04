@@ -519,9 +519,12 @@ def with_vintage_extras(vehicles):
         out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
                     "carrier": owner, "depot": depot, "kind": "BUS", "year": None,
                     "vintage": False, "onTest": True})
+    # Neither of ZTM's lists has these, so a city row with one of their numbers is another
+    # vehicle (#1983 is also MZA's 2024 Yutong U12): "unlisted" keeps its specs off them.
     for make, model, number, owner, year in EXTRA_VINTAGE_BUSES:
         out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
-                    "carrier": owner, "depot": "", "kind": "BUS", "year": year, "vintage": True})
+                    "carrier": owner, "depot": "", "kind": "BUS", "year": year, "vintage": True,
+                    "unlisted": True})
     return out
 
 
@@ -579,7 +582,8 @@ def build(vehicles, city=None):
             raise ValueError(f"{make} {model}: some numbers aren't in any SPLIT part")
         formerly = sorted({v["formerly"] for v in vs if v.get("formerly")} - {model_id})
         # Specs from the type most of this model's vehicles are, in the city's list.
-        in_city = [city_rows[(kind, v["number"])] for v in vs if (kind, v["number"]) in city_rows]
+        in_city = [city_rows[(kind, v["number"])] for v in vs
+                   if (kind, v["number"]) in city_rows and not v.get("unlisted")]
         majority = Counter(c["idMarki"] for c in in_city).most_common(1)
         model_specs = specs(types[(kind, majority[0][0])], kind) if majority and (kind, majority[0][0]) in types else None
         # Vehicles of another type with other specs: the 2010 Lion's City Gs are diesel, the

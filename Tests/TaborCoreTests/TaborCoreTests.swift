@@ -1173,6 +1173,9 @@ private func drive(from lon0: Double, step: Double, fixes: Int, lat: Double = ro
     #expect(catalog.model(id: "bus-mercus-syn2z")?.liveries?.values.allSatisfy { $0 == "suburbanBlue" } == true)
     // Trams are all electric: the city gives no drive for them.
     #expect(catalog.model(id: "tram-hrc-140n")?.specs?.drive == nil)
+    // Club buses ZTM doesn't list share numbers with regular ones: the KMKM's 1977 Jelcz 272 MEX
+    // #1983 isn't MZA's 2024 Yutong U12 #1983, so it doesn't get that bus's specs.
+    #expect(catalog.model(id: "bus-jelcz-272-mex")?.specs == nil)
 }
 
 @Test func vehiclesOfAnotherTypeKeepTheirOwnSpecs() {
