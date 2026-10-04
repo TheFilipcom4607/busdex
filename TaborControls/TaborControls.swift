@@ -13,6 +13,7 @@ struct TaborControlsBundle: WidgetBundle {
         ShuffleWidget()
         StatsWidget()
         MemoryWidget()
+        TrackLiveActivity()
     }
 }
 

@@ -181,7 +181,11 @@ struct RootView: View {
             await WeatherService.backfill(sightings, context: context)
         }
         // Refresh the Home / Lock Screen widgets whenever what they show could have changed.
-        .task(id: widgetKey) { await WidgetBridge.publish(sightings) }
+        .task(id: widgetKey) {
+            await WidgetBridge.publish(sightings)
+            // A tracked vehicle just went into the book: its Live Activity says so and ends.
+            TrackService.shared.endCaught(sightings)
+        }
     }
 
     private func keeps(_ tab: AppTab) -> Bool { router.tab == tab || opened.contains(tab) }

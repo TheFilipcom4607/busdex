@@ -8609,6 +8609,46 @@
           }
         }
       }
+    },
+    "Stop tracking it on the Lock Screen": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przestań obserwować go na ekranie blokady"
+          }
+        }
+      }
+    },
+    "TRACK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OBSERWUJ"
+          }
+        }
+      }
+    },
+    "Track it on the Lock Screen until it reaches you": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obserwuj go na ekranie blokady, aż do ciebie dojedzie"
+          }
+        }
+      }
+    },
+    "TRACKING": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OBSERWUJESZ"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

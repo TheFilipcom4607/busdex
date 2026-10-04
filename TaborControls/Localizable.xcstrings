@@ -1236,6 +1236,278 @@
           }
         }
       }
+    },
+    "%@ · YOU": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · TY"
+          }
+        }
+      }
+    },
+    "%@ turned off before you": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ zjechał z trasy przed tobą"
+          }
+        }
+      }
+    },
+    "%@ went past your stop": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ minął twój przystanek"
+          }
+        }
+      }
+    },
+    "1 STOP": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 PRZYSTANEK"
+          }
+        }
+      }
+    },
+    "AT YOUR STOP": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NA TWOIM PRZYSTANKU"
+          }
+        }
+      }
+    },
+    "CATCH": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZŁAP"
+          }
+        }
+      }
+    },
+    "Caught %@!": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złapany: %@!"
+          }
+        }
+      }
+    },
+    "COMING": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JEDZIE"
+          }
+        }
+      }
+    },
+    "GET THE CAMERA OUT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "APARAT W DŁOŃ"
+          }
+        }
+      }
+    },
+    "GONE PAST": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MINĄŁ CIĘ"
+          }
+        }
+      }
+    },
+    "HERE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JEST"
+          }
+        }
+      }
+    },
+    "IN YOUR BOOK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W TWOIM ALBUMIE"
+          }
+        }
+      }
+    },
+    "LEFT THE ROUTE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZJECHAŁ Z TRASY"
+          }
+        }
+      }
+    },
+    "LEFT THE ROUTE AFTER %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZJECHAŁ Z TRASY ZA: %@"
+          }
+        }
+      }
+    },
+    "Lost %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zgubiony: %@"
+          }
+        }
+      }
+    },
+    "NEW MODEL": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWY MODEL"
+          }
+        }
+      }
+    },
+    "NEW VEHICLE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWY POJAZD"
+          }
+        }
+      }
+    },
+    "NOW AT %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TERAZ: %@"
+          }
+        }
+      }
+    },
+    "STOPPED REPORTING WHERE IT IS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PRZESTAŁ PODAWAĆ POZYCJĘ"
+          }
+        }
+      }
+    },
+    "STOPPED TRACKING": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "KONIEC OBSERWOWANIA"
+          }
+        }
+      }
+    },
+    "Stopped tracking %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koniec obserwowania: %@"
+          }
+        }
+      }
+    },
+    "YOU": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TY"
+          }
+        }
+      }
+    },
+    "%lld STOPS": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld STOP"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld STOPS"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld PRZYSTANEK"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld PRZYSTANKI"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld PRZYSTANKÓW"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld PRZYSTANKU"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "version": "1.0"

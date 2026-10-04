@@ -45,6 +45,7 @@ struct HuntView: View {
     private let live = LiveFleetService.shared
     private let location = LocationService.shared
     private let routes = RoutesUpdater.shared
+    private let track = TrackService.shared
     private let catalog = Fleet.catalog
 
     @State private var position: MapCameraPosition = .region(Self.warsaw)
@@ -628,6 +629,7 @@ struct HuntView: View {
                         showDistance: hasFix, motion: motion(of: selected),
                         nextStops: creeping(selected)?.upcoming(stops: 3).stops.map(\.name) ?? [],
                         ending: creeping(selected)?.ending(within: 3),
+                        track: trackButton(selected),
                         onOpen: {
                             if selected.kind == .caught {
                                 router.openVehicle(modelId: selected.model.id, number: selected.vehicle.number)
@@ -1165,6 +1167,14 @@ struct HuntView: View {
         routeMatch(pin)?.advanced(by: date.timeIntervalSince(pin.vehicle.time), stopped: live.trails.isStopped(pin.id))
     }
 
+    /// TRACK on the card: offered while it's coming your way, and while it's tracked (to stop).
+    private func trackButton(_ pin: WantedPin) -> PinCard.Track? {
+        if track.isTracking(pin) { return PinCard.Track(on: true) { track.stop() } }
+        guard track.enabled, let here, motion(of: pin) == .approaching, let m = creeping(pin) ?? routeMatch(pin),
+              let plan = TrackPlan.make(match: m, lat: here.latitude, lon: here.longitude) else { return nil }
+        return PinCard.Track(on: false) { track.start(pin, plan: plan, sightings: sightings) }
+    }
+
     /// The selected vehicle, moved on to the last tick.
     private func creeping(_ pin: WantedPin) -> RouteMatch? { advanced(pin, at: tick) }
 
@@ -1356,7 +1366,15 @@ private struct PinCard: View {
     let nextStops: [String]
     /// Its route ends within those stops, or it's at the last one.
     let ending: (end: RouteEnd, arrived: Bool)?
+    /// Follow it on the Lock Screen (#42), when it's coming your way.
+    let track: Track?
     let onOpen: () -> Void
+
+    struct Track {
+        /// Already followed: the button stops it.
+        let on: Bool
+        let action: () -> Void
+    }
     /// Off to the camera to catch it.
     let onCatch: () -> Void
     let onClose: () -> Void
@@ -1455,6 +1473,27 @@ private struct PinCard: View {
                 }
                 .buttonStyle(StickerPressStyle())
                 .accessibilityLabel("Open \(pin.model.name) in the book")
+                if let track {
+                    Button {
+                        Haptics.shared.tick()
+                        track.action()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: track.on ? "bell.fill" : "bell")
+                                .font(.system(size: 11, weight: .bold))
+                            Mono(track.on ? "TRACKING" : "TRACK", size: 12, weight: 700, spacing: 0.12,
+                                 color: track.on ? Palette.bg : Palette.radar)
+                        }
+                        .foregroundStyle(track.on ? Palette.bg : Palette.radar)
+                        .padding(.vertical, 13)
+                        .padding(.horizontal, 14)
+                        .background(track.on ? Palette.radar : Palette.chip, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(Palette.radar.opacity(0.4)))
+                    }
+                    .buttonStyle(StickerPressStyle())
+                    .accessibilityLabel(track.on ? "Stop tracking it on the Lock Screen" : "Track it on the Lock Screen until it reaches you")
+                    .transition(.scale(scale: 0.8).combined(with: .opacity))
+                }
                 Button(action: onCatch) {
                     HStack(spacing: 7) {
                         Image(systemName: AppTab.catchTab.symbol)

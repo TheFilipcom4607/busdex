@@ -1750,3 +1750,29 @@ private var warsaw: Calendar {
     let nothing = Memory.pick(for: today, hasCatches: { _ in false }, randomCount: 3, calendar: warsaw)
     #expect(nothing?.kind == .first || nothing?.kind == .random)
 }
+
+// MARK: - Tracking
+
+@Test func trackPlanRunsToYourStop() throws {
+    let m = RouteMatch(shape: eastbound, along: 100, speed: 8)
+    // Waiting just off the street by the third stop.
+    let plan = try #require(TrackPlan.make(match: m, lat: routeLat + 0.0004, lon: 21.0151))
+    let stop = try #require(eastbound.stops.first { $0.name == "east30" })
+    #expect(plan.stop == "east30")
+    #expect(plan.stops == 3)
+    #expect(abs(plan.distance - (stop.along - 100)) < 1)
+    #expect(plan.at == nil)
+    // The path covers the vehicle and your stop, with some room either side.
+    #expect(eastbound.project((plan.path.first!.latitude, plan.path.first!.longitude))!.along < 1)
+    #expect(eastbound.project((plan.path.last!.latitude, plan.path.last!.longitude))!.along > stop.along + 300)
+    #expect(plan.pathStops.map(\.name).prefix(3) == ["east10", "east20", "east30"])
+}
+
+@Test func trackPlanNeedsTheRouteToComePastYou() {
+    let m = RouteMatch(shape: eastbound, along: 700, speed: 8)
+    // Far off the street, and behind the vehicle: neither is coming your way.
+    #expect(TrackPlan.make(match: m, lat: routeLat + 0.005, lon: 21.02) == nil)
+    #expect(TrackPlan.make(match: m, lat: routeLat, lon: 21.002) == nil)
+    let moving = TrackPlan.make(match: m, lat: routeLat, lon: 21.025)
+    #expect(moving?.at == "east20")
+}
