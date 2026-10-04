@@ -91,6 +91,18 @@ private func sampleModel() -> VehicleModel {
     #expect(NumberExtractor.digitTokens("2022/6").map(\.value) == [2022])
     #expect(NumberExtractor.digitTokens("180/6").isEmpty)
     #expect(NumberExtractor.digitTokens("6/2022").isEmpty)
+    // A plate's digits read apart from "WGM" (TestFlight: "WGM 02115" offered tram 2115).
+    #expect(NumberExtractor.digitTokens("02115").isEmpty)
+}
+
+@Test func plateDigitsReadOnTheirOwnAreNotAVehicle() {
+    let obs = [
+        TextObservation(text: "9833", confidence: 1, height: 0.04),
+        TextObservation(text: "WGM", confidence: 1, height: 0.02),
+        TextObservation(text: "02115", confidence: 1, height: 0.02),
+        TextObservation(text: "O2115", confidence: 1, height: 0.02),
+    ]
+    #expect(NumberExtractor.candidates(in: obs, mode: .auto, catalog: catalog).map(\.number) == [9833])
 }
 
 @Test func lookalikeLettersReadAsDigits() {

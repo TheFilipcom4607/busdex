@@ -110,7 +110,8 @@ public enum NumberExtractor {
 
     /// Standalone 2–5 digit runs with their length: "8465", "Nr 1974", but not
     /// "123456", "20:15", "3.14" or plates like "WI 5814N" / "WX 2021" (OCR often drops the
-    /// trailing letter). Leading zeros are kept in the length.
+    /// trailing letter), or a plate's digits read apart from its county code ("02115" from
+    /// "WGM 02115": no fleet number is painted with a leading zero).
     public static func digitTokens(_ text: String) -> [(value: Int, digits: Int)] {
         var out: [(Int, Int)] = []
         let chars = Array(text)
@@ -128,7 +129,7 @@ public enum NumberExtractor {
             // A slash after 4-5 digits isn't a line's brigade ("180/6": lines have 3 at most);
             // it's paint read as text, like the stripe and lamp after #2022.
             let gluedAfter = glue.contains(after) && !(after == "/" && len >= 4)
-            if (2...5).contains(len), !lettered, !platePrefix(chars, before: i),
+            if (2...5).contains(len), chars[i] != "0", !lettered, !platePrefix(chars, before: i),
                !glue.contains(before), !gluedAfter,
                let n = Int(String(chars[i..<j])) {
                 out.append((n, len))
@@ -163,7 +164,7 @@ public enum NumberExtractor {
             let letters = run.filter { !isDigit($0) }.count
             let before: Character = i > 0 ? chars[i - 1] : " "
             let after: Character = j < chars.count ? chars[j] : " "
-            if (3...5).contains(run.count), letters == 1,
+            if (3...5).contains(run.count), letters == 1, (lookalikes[run.first!] ?? run.first!) != "0",
                !before.isLetter, !after.isLetter, !platePrefix(chars, before: i),
                !glue.contains(before), !glue.contains(after),
                let n = Int(String(run.map { lookalikes[$0] ?? $0 })) {
