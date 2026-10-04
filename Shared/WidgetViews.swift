@@ -69,7 +69,7 @@ struct CardPicture: View {
 
     var body: some View {
         if let url = WidgetSnapshot.imageURL(card.image), let image = UIImage(contentsOfFile: url.path) {
-            let pic = Image(uiImage: image).resizable()
+            let pic = Image(uiImage: image).resizable().widgetAccentedRenderingMode(.desaturated)
             if card.cutout {
                 pic.scaledToFit()
                     .shadow(color: .black.opacity(0.5), radius: 3, y: 2)
@@ -91,14 +91,21 @@ struct WidgetNumberTag: View {
     let number: Int
     let tier: String?
     var size: CGFloat = 11
+    @Environment(\.widgetRenderingMode) private var mode
 
     var body: some View {
-        Text(String(number))
-            .font(mono(size, .bold))
-            .foregroundStyle(tier == "LEGENDARY" ? WidgetPalette.ink : .black)
+        let text = Text(String(number)).font(mono(size, .bold))
             .padding(.horizontal, size * 0.45)
             .padding(.vertical, size * 0.18)
-            .background(WidgetPalette.tag(tier), in: RoundedRectangle(cornerRadius: 4))
+        // Clear and tinted Home Screens paint everything one colour, so dark text on a filled
+        // tag would vanish into it: an outlined tag there instead.
+        if mode == .accented {
+            text.overlay(RoundedRectangle(cornerRadius: 4).stroke(lineWidth: 1))
+                .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 4))
+        } else {
+            text.foregroundStyle(tier == "LEGENDARY" ? WidgetPalette.ink : .black)
+                .background(WidgetPalette.tag(tier), in: RoundedRectangle(cornerRadius: 4))
+        }
     }
 }
 
@@ -270,7 +277,7 @@ struct ProgressWidgetView: View {
     /// The die-cut sticker, the photo in a rounded frame, or an empty dashed slot.
     @ViewBuilder private var sticker: some View {
         if let image = entry.image {
-            let pic = Image(uiImage: image).resizable()
+            let pic = Image(uiImage: image).resizable().widgetAccentedRenderingMode(.desaturated)
             if s.imageIsCutout {
                 pic.scaledToFit()
                     .shadow(color: .black.opacity(0.5), radius: 4, y: 2)

@@ -61,7 +61,7 @@ struct WidgetPicture: View {
 
     var body: some View {
         if let name = image, let url = WidgetSnapshot.imageURL(name), let ui = UIImage(contentsOfFile: url.path) {
-            let pic = Image(uiImage: ui).resizable()
+            let pic = Image(uiImage: ui).resizable().widgetAccentedRenderingMode(.desaturated)
             if cutout {
                 pic.scaledToFit()
                     .shadow(color: .black.opacity(0.5), radius: 3, y: 2)

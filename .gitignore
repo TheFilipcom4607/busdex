@@ -25,3 +25,6 @@ proxy/.dev.vars
 proxy/.wrangler/
 /.wrangler/
 proxy/node_modules/
+
+# Apple auth keys (APNs, App Store Connect): never in the repo.
+*.p8
