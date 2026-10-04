@@ -80,6 +80,7 @@
 			membershipExceptions = (
 				OpenCatchIntent.swift,
 				OpenHuntIntent.swift,
+				StatsWidgetViews.swift,
 				WidgetViews.swift,
 			);
 			target = A10000000000000000000070 /* TaborShare */;

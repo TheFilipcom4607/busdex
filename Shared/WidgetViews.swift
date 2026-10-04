@@ -16,6 +16,9 @@ enum WidgetPalette {
     static let green = Color(red: 0.137, green: 0.898, blue: 0.627)
     static let brass = Color(red: 0.824, green: 0.627, blue: 0.392)
     static let violet = Color(red: 0.718, green: 0.608, blue: 1)
+    static let card = Color(red: 0.078, green: 0.086, blue: 0.102)
+    static let thumb = Color(red: 0.106, green: 0.118, blue: 0.137)
+    static let routeInk = Color(red: 0.788, green: 0.804, blue: 0.827)
 
     /// The number tag's colour for a tier; white for COMMON, like the stickers in the app.
     static func tag(_ name: String?) -> Color {
@@ -61,6 +64,7 @@ func fleetPercent(_ caught: Int, of fleet: Int) -> String {
 /// A card's sticker, or its photo in a rounded frame, with the number tag in the corner.
 struct CardPicture: View {
     let card: WidgetSnapshot.Card
+    /// The number tag's size; 0 leaves it off.
     var tag: CGFloat = 10
 
     var body: some View {
@@ -70,12 +74,12 @@ struct CardPicture: View {
                 pic.scaledToFit()
                     .shadow(color: .black.opacity(0.5), radius: 3, y: 2)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .overlay(alignment: .bottomTrailing) { WidgetNumberTag(number: card.number, tier: card.tier, size: tag) }
+                    .overlay(alignment: .bottomTrailing) { if tag > 0 { WidgetNumberTag(number: card.number, tier: card.tier, size: tag) } }
             } else {
                 pic.scaledToFill()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .overlay(alignment: .bottomTrailing) { WidgetNumberTag(number: card.number, tier: card.tier, size: tag).padding(4) }
+                    .overlay(alignment: .bottomTrailing) { if tag > 0 { WidgetNumberTag(number: card.number, tier: card.tier, size: tag).padding(4) } }
             }
         } else {
             WidgetEmptySlot()
@@ -135,6 +139,7 @@ struct ProgressWidgetView: View {
 
     private var s: WidgetSnapshot { entry.snapshot }
     private var progress: String { "\(s.caught.formatted()) / \(s.fleet.formatted())" }
+    private var share: Double { s.fleet > 0 ? Double(s.caught) / Double(s.fleet) : 0 }
 
     var body: some View {
         switch family {
@@ -150,7 +155,7 @@ struct ProgressWidgetView: View {
             .widgetAccentable()
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
-                Label(streakText, systemImage: "flame.fill")
+                Label(String(localized: "\(entry.streak) DAYS"), systemImage: "flame.fill")
                     .font(.system(.headline, design: .monospaced, weight: .bold))
                     .widgetAccentable()
                 Text("\(progress) caught").font(.system(.caption, design: .monospaced))
@@ -160,62 +165,105 @@ struct ProgressWidgetView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         case .systemMedium:
-            HStack(spacing: 14) {
-                sticker.frame(maxWidth: .infinity, maxHeight: .infinity)
-                VStack(alignment: .leading, spacing: 8) {
-                    streakBlock
-                    Spacer(minLength: 0)
-                    caughtBlock
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            medium
         default:
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    streakBadge
-                    Spacer()
-                }
-                sticker.frame(maxWidth: .infinity, maxHeight: .infinity)
-                Text(progress)
-                    .font(.system(size: 15, weight: .bold, design: .monospaced))
+            if entry.atRisk { atRisk } else { small }
+        }
+    }
+
+    /// The share of the fleet up top, the counts underneath.
+    private var small: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            WidgetKey(text: String(localized: "YOUR BOOK"))
+            Text(sharePercent(share)).font(.system(size: 42, weight: .medium)).tracking(-1.5)
+                .foregroundStyle(WidgetPalette.yellow).minimumScaleFactor(0.6).lineLimit(1)
+                .padding(.top, 4)
+            WidgetMeter(share: share).padding(.top, 6)
+            Spacer(minLength: 6)
+            row(String(localized: "CAUGHT"), caughtText)
+            row(String(localized: "MODELS"), modelsText)
+            row(String(localized: "STREAK"), streakText, last: true)
+        }
+    }
+
+    /// Yesterday kept the streak alive; today hasn't yet. The clock runs to midnight.
+    private var atRisk: some View {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: entry.date)
+        let midnight = cal.date(byAdding: .day, value: 1, to: today) ?? entry.date
+        return VStack(alignment: .leading, spacing: 0) {
+            WidgetKey(text: String(localized: "STREAK AT RISK"), color: WidgetPalette.red)
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Image(systemName: "flame.fill").font(.system(size: 18)).foregroundStyle(WidgetPalette.yellow)
+                Text("\(entry.streak)").font(.system(size: 40, weight: .medium)).tracking(-1.5).foregroundStyle(WidgetPalette.ink)
+                WidgetKey(text: String(localized: "DAYS"), color: WidgetPalette.ink)
+            }
+            .padding(.top, 4)
+            Spacer(minLength: 4)
+            WeekStrip(today: today, streak: entry.streak)
+            Spacer(minLength: 4)
+            HStack(alignment: .firstTextBaseline) {
+                Text(timerInterval: entry.date...midnight, countsDown: true)
+                    .font(.system(size: 17, weight: .bold, design: .monospaced))
                     .foregroundStyle(WidgetPalette.ink)
-                    .minimumScaleFactor(0.7)
-                    .lineLimit(1)
+                Spacer(minLength: 2)
+                WidgetKey(text: String(localized: "LEFT"))
             }
         }
     }
 
-    private var streakText: String { String(localized: "\(entry.streak) DAYS") }
-
-    private var streakBadge: some View {
-        Label(String(entry.streak), systemImage: "flame.fill")
-            .font(.system(size: 13, weight: .bold, design: .monospaced))
-            .foregroundStyle(entry.streak > 0 ? WidgetPalette.yellow : WidgetPalette.sub)
-    }
-
-    private var streakBlock: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Label(streakText, systemImage: "flame.fill")
-                .font(.system(size: 20, weight: .bold, design: .monospaced))
-                .foregroundStyle(entry.streak > 0 ? WidgetPalette.yellow : WidgetPalette.sub)
-            Text(entry.atRisk ? "CATCH ONE TODAY" : entry.streak > 0 ? "STREAK" : "NO STREAK")
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                .foregroundStyle(entry.atRisk ? WidgetPalette.red : WidgetPalette.sub)
+    private var medium: some View {
+        HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                WidgetKey(text: String(localized: "LAST STICKER"))
+                sticker.frame(maxWidth: .infinity, maxHeight: .infinity)
+                if let last = s.lastCatch {
+                    WidgetKey(text: [last.formatted(.dateTime.day().month(.abbreviated)).uppercased(), latestLine]
+                        .compactMap { $0 }.joined(separator: " · "))
+                }
+            }
+            .frame(width: 136)
+            VStack(spacing: 0) {
+                row(String(localized: "CAUGHT"), caughtText, size: 15)
+                row(String(localized: "FLEET"), Text(sharePercent(share)).foregroundStyle(WidgetPalette.yellow), size: 15)
+                row(String(localized: "MODELS"), modelsText, size: 15)
+                row(String(localized: "STREAK"), streakText, size: 15, last: true)
+            }
         }
     }
 
-    private var caughtBlock: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(progress)
-                .font(.system(size: 17, weight: .bold, design: .monospaced))
-                .foregroundStyle(WidgetPalette.ink)
-                .minimumScaleFactor(0.7)
-                .lineLimit(1)
-            Text(s.latestNumber.map { String(localized: "LAST: \(String($0)) · \((s.latestModel ?? "").uppercased())") }
-                 ?? String(localized: "OF THE FLEET CAUGHT"))
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                .foregroundStyle(WidgetPalette.sub)
-                .lineLimit(1)
+    private var caughtText: Text {
+        Text(s.caught.formatted()).foregroundStyle(WidgetPalette.ink) + Text("/\(s.fleet.formatted())").foregroundStyle(WidgetPalette.sub)
+    }
+
+    private var modelsText: Text {
+        Text("\(s.models ?? 0)").foregroundStyle(WidgetPalette.ink) + Text("/\(s.modelsTotal ?? 0)").foregroundStyle(WidgetPalette.sub)
+    }
+
+    private var streakText: Text {
+        if entry.atRisk {
+            return Text("\(entry.streak) · ").foregroundStyle(WidgetPalette.ink) + Text("TODAY!").foregroundStyle(WidgetPalette.red)
+        }
+        let best = s.bestStreak ?? 0
+        return Text("\(entry.streak)").foregroundStyle(entry.streak > 0 ? WidgetPalette.yellow : WidgetPalette.sub)
+            + Text(best > entry.streak ? " · BEST \(best)" : "").foregroundStyle(WidgetPalette.sub)
+    }
+
+    /// The latest catch's line, when the newest card is that catch.
+    private var latestLine: String? {
+        guard let card = s.recent?.first, card.number == s.latestNumber, let line = card.line else { return nil }
+        return String(localized: "LINE \(line)")
+    }
+
+    private func row(_ label: String, _ value: Text, size: CGFloat = 11.5, last: Bool = false) -> some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                WidgetKey(text: label)
+                Spacer(minLength: 4)
+                value.font(.system(size: size, weight: .bold, design: .monospaced)).lineLimit(1).minimumScaleFactor(0.7)
+            }
+            .padding(.vertical, size > 12 ? 7 : 4)
+            if !last { Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1) }
         }
     }
 
@@ -240,7 +288,55 @@ struct ProgressWidgetView: View {
 
     @ViewBuilder private var numberTag: some View {
         if let number = s.latestNumber {
-            WidgetNumberTag(number: number, tier: s.latestTier)
+            WidgetNumberTag(number: number, tier: s.latestTier, size: 10)
+        }
+    }
+}
+
+/// A thin progress track, with a sliver for anything caught at all.
+struct WidgetMeter: View {
+    let share: Double
+    var color: Color = WidgetPalette.yellow
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(WidgetPalette.track)
+                Capsule().fill(color).frame(width: share > 0 ? max(4, geo.size.width * min(share, 1)) : 0)
+            }
+        }
+        .frame(height: 4)
+    }
+}
+
+/// The last seven days: the streak's in yellow, today a dashed red box waiting for a catch.
+private struct WeekStrip: View {
+    let today: Date
+    let streak: Int
+
+    var body: some View {
+        var cal = Calendar.current
+        cal.locale = Locale(identifier: Bundle.main.preferredLocalizations.first ?? "en")
+        let symbols = cal.veryShortStandaloneWeekdaySymbols
+        return HStack(spacing: 4) {
+            ForEach(0..<7, id: \.self) { i in
+                let back = 6 - i
+                let day = cal.date(byAdding: .day, value: -back, to: today) ?? today
+                VStack(spacing: 3) {
+                    Group {
+                        if back == 0 {
+                            RoundedRectangle(cornerRadius: 4)
+                                .strokeBorder(WidgetPalette.red, style: StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
+                        } else {
+                            RoundedRectangle(cornerRadius: 4).fill(back <= streak ? WidgetPalette.yellow : WidgetPalette.track)
+                        }
+                    }
+                    .frame(height: 14)
+                    Text(symbols[cal.component(.weekday, from: day) - 1].uppercased())
+                        .font(.system(size: 8, weight: .medium, design: .monospaced))
+                        .foregroundStyle(WidgetPalette.sub)
+                }
+            }
         }
     }
 }
@@ -255,31 +351,30 @@ struct RecentWidgetView: View {
     private var large: Bool { family == .systemLarge }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: large ? 12 : 9) {
+        VStack(alignment: .leading, spacing: large ? 6 : 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text("LATEST CATCHES").font(mono(10)).foregroundStyle(WidgetPalette.sub)
+                WidgetKey(text: String(localized: "LATEST CATCHES"))
                 Spacer()
                 Text("\(snapshot.caught.formatted()) / \(snapshot.fleet.formatted())")
-                    .font(mono(10, .bold)).foregroundStyle(WidgetPalette.ink)
+                    .font(.system(size: 10, weight: .bold, design: .monospaced)).foregroundStyle(WidgetPalette.ink)
             }
             if cards.isEmpty {
                 WidgetEmptySlot(text: String(localized: "Your catches land here"))
             } else if large {
-                Grid(horizontalSpacing: 12, verticalSpacing: 12) {
-                    ForEach(0..<3, id: \.self) { row in
-                        GridRow {
-                            ForEach(0..<2, id: \.self) { col in
-                                let i = row * 2 + col
-                                if i < cards.count { captioned(cards[i]) } else { Color.clear }
-                            }
-                        }
+                // Rows share the height, so a short log doesn't leave a hole at the bottom.
+                VStack(spacing: 0) {
+                    ForEach(Array(cards.prefix(5).enumerated()), id: \.offset) { i, card in
+                        Link(destination: card.url) { logRow(card).frame(maxHeight: .infinity) }
+                        if i < min(cards.count, 5) - 1 { Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1) }
                     }
                 }
+                .frame(maxHeight: cards.count >= 4 ? .infinity : nil)
+                if cards.count < 4 { Spacer(minLength: 0) }
             } else {
                 HStack(spacing: 10) {
                     ForEach(0..<3, id: \.self) { i in
                         if i < cards.count {
-                            Link(destination: cards[i].url) { CardPicture(card: cards[i], tag: 9) }
+                            Link(destination: cards[i].url) { column(cards[i]) }
                         } else {
                             Color.clear
                         }
@@ -289,17 +384,40 @@ struct RecentWidgetView: View {
         }
     }
 
-    private func captioned(_ card: WidgetSnapshot.Card) -> some View {
-        Link(destination: card.url) {
-            VStack(alignment: .leading, spacing: 5) {
-                CardPicture(card: card, tag: 10)
-                HStack(spacing: 5) {
-                    Circle().fill(WidgetPalette.tier(card.tier)).frame(width: 5, height: 5)
-                    Text(card.model).font(.system(size: 11, weight: .semibold)).foregroundStyle(WidgetPalette.ink)
-                        .lineLimit(1)
+    private func column(_ card: WidgetSnapshot.Card) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            CardPicture(card: card, tag: 9)
+            Text(card.model).font(.system(size: 11, weight: .medium)).foregroundStyle(WidgetPalette.ink).lineLimit(1)
+            WidgetKey(text: when(card), size: 8.5)
+        }
+    }
+
+    private func logRow(_ card: WidgetSnapshot.Card) -> some View {
+        HStack(spacing: 12) {
+            CardPicture(card: card, tag: 0).frame(width: 72, height: 46)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    WidgetNumberTag(number: card.number, tier: card.tier, size: 10)
+                    Text(card.model).font(.system(size: 13, weight: .medium)).foregroundStyle(WidgetPalette.ink).lineLimit(1)
+                }
+                WidgetKey(text: [card.place?.uppercased(), card.line.map { String(localized: "LINE \($0)") }]
+                    .compactMap { $0 }.joined(separator: " · "))
+            }
+            Spacer(minLength: 4)
+            if let seen = card.lastSeen {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(seen.formatted(.dateTime.hour().minute())).font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundStyle(WidgetPalette.ink)
+                    WidgetKey(text: seen.formatted(.dateTime.day().month(.abbreviated)).uppercased())
                 }
             }
         }
+        .padding(.vertical, 5)
+    }
+
+    private func when(_ card: WidgetSnapshot.Card) -> String {
+        guard let seen = card.lastSeen else { return "" }
+        return "\(seen.formatted(.dateTime.day().month(.abbreviated)).uppercased()) · \(seen.formatted(.dateTime.hour().minute()))"
     }
 }
 
@@ -313,67 +431,67 @@ struct RarityWidgetView: View {
 
     var body: some View {
         if family == .systemMedium {
-            HStack(spacing: 18) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("SETS").font(mono(10)).foregroundStyle(WidgetPalette.sub)
-                    Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline) {
+                    WidgetKey(text: String(localized: "RARITY SETS"))
+                    Spacer()
                     Text(fleetPercent(snapshot.caught, of: snapshot.fleet))
-                        .font(mono(30, .bold)).foregroundStyle(WidgetPalette.yellow)
-                        .minimumScaleFactor(0.6).lineLimit(1)
-                    Text("OF THE FLEET").font(mono(9.5)).foregroundStyle(WidgetPalette.sub)
-                    Text("\(snapshot.caught.formatted()) / \(snapshot.fleet.formatted())")
-                        .font(mono(11, .bold)).foregroundStyle(WidgetPalette.ink)
-                        .minimumScaleFactor(0.7).lineLimit(1)
-                        .padding(.top, 4)
+                        .font(mono(10, .bold)).foregroundStyle(WidgetPalette.yellow)
                 }
-                .frame(width: 104, alignment: .leading)
-                rows
+                HStack(spacing: 10) {
+                    ForEach(tiers, id: \.tier) { column($0) }
+                }
             }
         } else {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("SETS").font(mono(10)).foregroundStyle(WidgetPalette.sub)
+                    WidgetKey(text: String(localized: "SETS"))
                     Spacer()
                     Text(fleetPercent(snapshot.caught, of: snapshot.fleet))
                         .font(mono(10, .bold)).foregroundStyle(WidgetPalette.yellow)
                 }
                 Spacer(minLength: 8)
-                rows
-            }
-        }
-    }
-
-    private var rows: some View {
-        VStack(alignment: .leading, spacing: family == .systemMedium ? 11 : 8) {
-            ForEach(tiers, id: \.tier) { t in
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(WidgetPalette.tierName(t.tier)).font(mono(9.5, .bold))
-                            .foregroundStyle(WidgetPalette.tier(t.tier))
-                            .lineLimit(1).minimumScaleFactor(0.8)
-                        Spacer(minLength: 4)
-                        Text("\(t.caught.formatted())/\(t.fleet.formatted())").font(mono(9.5, .semibold))
-                            .foregroundStyle(t.caught > 0 ? WidgetPalette.ink : WidgetPalette.dim)
-                            .lineLimit(1)
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(tiers, id: \.tier) { t in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(alignment: .firstTextBaseline) {
+                                Text(WidgetPalette.tierName(t.tier)).font(mono(9.5, .bold))
+                                    .foregroundStyle(WidgetPalette.tier(t.tier))
+                                    .lineLimit(1).minimumScaleFactor(0.8)
+                                Spacer(minLength: 4)
+                                Text("\(t.caught.formatted())/\(t.fleet.formatted())").font(mono(9.5, .semibold))
+                                    .foregroundStyle(t.caught > 0 ? WidgetPalette.ink : WidgetPalette.dim)
+                                    .lineLimit(1)
+                            }
+                            WidgetMeter(share: t.fleet > 0 ? Double(t.caught) / Double(t.fleet) : 0, color: WidgetPalette.tier(t.tier))
+                        }
                     }
-                    bar(t)
                 }
             }
         }
-        .frame(maxWidth: .infinity)
     }
 
-    private func bar(_ t: WidgetSnapshot.TierCount) -> some View {
-        GeometryReader { geo in
-            let share = t.fleet > 0 ? Double(t.caught) / Double(t.fleet) : 0
-            ZStack(alignment: .leading) {
-                Capsule().fill(WidgetPalette.track)
-                // A sliver for anything caught at all, so one bus out of 1,500 still shows.
-                Capsule().fill(WidgetPalette.tier(t.tier))
-                    .frame(width: t.caught > 0 ? max(4, geo.size.width * min(share, 1)) : 0)
+    /// One tier as a scoreboard: caught, out of what, and a gauge filling from the bottom.
+    private func column(_ t: WidgetSnapshot.TierCount) -> some View {
+        let share = t.fleet > 0 ? Double(t.caught) / Double(t.fleet) : 0
+        return VStack(alignment: .leading, spacing: 3) {
+            Text(WidgetPalette.tierName(t.tier)).font(mono(9, .bold)).foregroundStyle(WidgetPalette.tier(t.tier))
+                .lineLimit(1).minimumScaleFactor(0.6)
+            Text(t.caught.formatted()).font(mono(21, .bold)).foregroundStyle(t.caught > 0 ? WidgetPalette.ink : WidgetPalette.dim)
+                .lineLimit(1).minimumScaleFactor(0.6)
+            WidgetKey(text: String(localized: "OF \(t.fleet.formatted())"), size: 8.5)
+            GeometryReader { geo in
+                ZStack(alignment: .bottom) {
+                    RoundedRectangle(cornerRadius: 6).fill(WidgetPalette.thumb)
+                    // A sliver for anything caught at all, so one bus out of 1,500 still shows.
+                    Rectangle().fill(WidgetPalette.tier(t.tier))
+                        .frame(height: t.caught > 0 ? max(4, geo.size.height * min(share, 1)) : 0)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 6))
             }
+            WidgetKey(text: sharePercent(share), size: 8.5)
         }
-        .frame(height: 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -393,26 +511,27 @@ struct ShuffleWidgetView: View {
         if let card = entry.card {
             if family == .systemMedium {
                 HStack(spacing: 14) {
-                    CardPicture(card: card, tag: 11)
-                    VStack(alignment: .leading, spacing: 3) {
+                    CardPicture(card: card, tag: 11).frame(width: 146)
+                    VStack(alignment: .leading, spacing: 0) {
                         tierLabel(card)
-                        Text("#\(String(card.number))").font(mono(24, .bold)).foregroundStyle(WidgetPalette.ink)
-                        Text(card.model).font(.system(size: 13, weight: .semibold)).foregroundStyle(WidgetPalette.ink)
-                            .lineLimit(2).minimumScaleFactor(0.85)
+                        Text(card.model).font(.system(size: 16, weight: .medium)).foregroundStyle(WidgetPalette.ink)
+                            .lineLimit(2).minimumScaleFactor(0.85).padding(.top, 3)
                         Spacer(minLength: 4)
-                        Text("FIRST CAUGHT \(card.firstSeen.formatted(.dateTime.day().month(.abbreviated)).uppercased())")
-                            .font(mono(9)).foregroundStyle(WidgetPalette.sub).lineLimit(1).minimumScaleFactor(0.8)
-                        Text(card.times == 1 ? String(localized: "SEEN ONCE") : String(localized: "SEEN \(card.times) TIMES"))
-                            .font(mono(9)).foregroundStyle(WidgetPalette.sub)
+                        row(String(localized: "FIRST"), card.firstSeen.formatted(.dateTime.day().month(.abbreviated)).uppercased())
+                        row(String(localized: "SEEN"), "\(card.times)×")
+                        if let line = card.line { row(String(localized: "LINE"), line) }
+                        if let owned = card.owned, let fleet = card.fleet { row(String(localized: "MODEL"), "\(owned) / \(fleet)", last: true) }
                     }
-                    .frame(width: 124, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else {
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 4) {
                     tierLabel(card)
                     CardPicture(card: card, tag: 10)
-                    Text(card.model).font(.system(size: 12, weight: .semibold)).foregroundStyle(WidgetPalette.ink)
+                    Text(card.model).font(.system(size: 12.5, weight: .medium)).foregroundStyle(WidgetPalette.ink)
                         .lineLimit(1).minimumScaleFactor(0.8)
+                    WidgetKey(text: [card.times == 1 ? String(localized: "SEEN ONCE") : String(localized: "SEEN \(card.times)×"),
+                                     card.line.map { String(localized: "LINE \($0)") }].compactMap { $0 }.joined(separator: " · "))
                 }
             }
         } else {
@@ -420,8 +539,25 @@ struct ShuffleWidgetView: View {
         }
     }
 
+    /// "GOLD · 1/34": its rarity and how many of its model you have.
     private func tierLabel(_ card: WidgetSnapshot.Card) -> some View {
-        Text(WidgetPalette.tierName(card.tier)).font(mono(9.5, .bold)).foregroundStyle(WidgetPalette.tier(card.tier))
+        HStack(alignment: .firstTextBaseline) {
+            Text(WidgetPalette.tierName(card.tier)).font(mono(9.5, .bold)).foregroundStyle(WidgetPalette.tier(card.tier))
+            Spacer(minLength: 4)
+            if let owned = card.owned, let fleet = card.fleet { WidgetKey(text: "\(owned)/\(fleet)") }
+        }
+    }
+
+    private func row(_ label: String, _ value: String, last: Bool = false) -> some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                WidgetKey(text: label)
+                Spacer(minLength: 4)
+                Text(value).font(mono(11, .bold)).foregroundStyle(WidgetPalette.ink).lineLimit(1)
+            }
+            .padding(.vertical, 4)
+            if !last { Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1) }
+        }
     }
 }
 

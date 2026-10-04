@@ -7421,6 +7421,1194 @@
           }
         }
       }
+    },
+    " · BEST %lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · REKORD %lld"
+          }
+        }
+      }
+    },
+    "%@ · %lld OF %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ · %2$lld OF %3$lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$lld Z %3$lld"
+          }
+        }
+      }
+    },
+    "%@ yrs": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ roku"
+          }
+        }
+      }
+    },
+    "%lld · ": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld · "
+          }
+        }
+      }
+    },
+    "%lld buses and trams caught, %@ of Warsaw's fleet 🚌 — TABOR": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld buses and trams caught, %2$@ of Warsaw's fleet 🚌 — TABOR"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złapane autobusy i tramwaje: %1$lld, czyli %2$@ taboru Warszawy 🚌 — TABOR"
+          }
+        }
+      }
+    },
+    "%lld CATCHES · %lld DAYS": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld CATCHES · %2$lld DAYS"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZŁAPANIA: %1$lld · DNI: %2$lld"
+          }
+        }
+      }
+    },
+    "%lld CATCHES · 1 DAY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZŁAPANIA: %lld · DNI: 1"
+          }
+        }
+      }
+    },
+    "%lld CAUGHT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZŁAPANE: %lld"
+          }
+        }
+      }
+    },
+    "%lld caught · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld caught · %2$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Złapane: %1$lld · %2$@"
+          }
+        }
+      }
+    },
+    "%lld EACH": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PO %lld"
+          }
+        }
+      }
+    },
+    "%lld IN %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld IN %2$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld · %2$@"
+          }
+        }
+      }
+    },
+    "%lld new · %lld models": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld new · %2$lld models"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nowe: %1$lld · modele: %2$lld"
+          }
+        }
+      }
+    },
+    "%lld OF %lld OPERATORS · %lld OF %lld DEPOTS": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld OF %2$lld OPERATORS · %3$lld OF %4$lld DEPOTS"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PRZEWOŹNICY: %1$lld Z %2$lld · ZAJEZDNIE: %3$lld Z %4$lld"
+          }
+        }
+      }
+    },
+    "%lld TRAMS ●": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TRAMWAJE: %lld ●"
+          }
+        }
+      }
+    },
+    "%lld-DAY BEST STREAK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NAJLEPSZA SERIA: %lld"
+          }
+        }
+      }
+    },
+    "%lldd": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld d"
+          }
+        }
+      }
+    },
+    "● %lld BUSES": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "● AUTOBUSY: %lld"
+          }
+        }
+      }
+    },
+    "1 day": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 dzień"
+          }
+        }
+      }
+    },
+    "A MONTH AGO": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MIESIĄC TEMU"
+          }
+        }
+      }
+    },
+    "A WEEK AGO": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TYDZIEŃ TEMU"
+          }
+        }
+      }
+    },
+    "A YEAR AGO": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ROK TEMU"
+          }
+        }
+      }
+    },
+    "ACTIVITY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AKTYWNOŚĆ"
+          }
+        }
+      }
+    },
+    "ALL STATS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WSZYSTKIE STATYSTYKI"
+          }
+        }
+      }
+    },
+    "ALL TIME": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OD POCZĄTKU"
+          }
+        }
+      }
+    },
+    "AND AGAIN ON %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I ZNÓW %@"
+          }
+        }
+      }
+    },
+    "AVERAGE AGE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ŚREDNI WIEK"
+          }
+        }
+      }
+    },
+    "best day %lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "rekord dnia: %lld"
+          }
+        }
+      }
+    },
+    "BEST STREAK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NAJLEPSZA SERIA"
+          }
+        }
+      }
+    },
+    "BETA · %@ (%@) · DEBUG": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "BETA · %1$@ (%2$@) · DEBUG"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BETA · %1$@ (%2$@) · DEBUG"
+          }
+        }
+      }
+    },
+    "buses and trams caught": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "złapanych autobusów i tramwajów"
+          }
+        }
+      }
+    },
+    "BUSIEST DAY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NAJLEPSZY DZIEŃ"
+          }
+        }
+      }
+    },
+    "CATCH THAT DAY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZŁAPANIE TEGO DNIA"
+          }
+        }
+      }
+    },
+    "CATCHES": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZŁAPANIA"
+          }
+        }
+      }
+    },
+    "catches on %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "złapań w dniu %@"
+          }
+        }
+      }
+    },
+    "CATCHES THAT DAY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZŁAPAŃ TEGO DNIA"
+          }
+        }
+      }
+    },
+    "CLEAR": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BEZCHMURNIE"
+          }
+        }
+      }
+    },
+    "CLOUDY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "POCHMURNO"
+          }
+        }
+      }
+    },
+    "COLDEST": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NAJZIMNIEJ"
+          }
+        }
+      }
+    },
+    "DAYS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DNI"
+          }
+        }
+      }
+    },
+    "DAYS OUT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DNI W TRASIE"
+          }
+        }
+      }
+    },
+    "FIRST": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PIERWSZY"
+          }
+        }
+      }
+    },
+    "FIRST CATCH": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PIERWSZE ZŁAPANIE"
+          }
+        }
+      }
+    },
+    "FLEET": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TABOR"
+          }
+        }
+      }
+    },
+    "FOG": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MGŁA"
+          }
+        }
+      }
+    },
+    "FROM YOUR BOOK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Z TWOJEGO ALBUMU"
+          }
+        }
+      }
+    },
+    "LAST STICKER": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OSTATNIA NAKLEJKA"
+          }
+        }
+      }
+    },
+    "LEFT": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZOSTAŁO"
+          }
+        }
+      }
+    },
+    "LESS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MNIEJ"
+          }
+        }
+      }
+    },
+    "LINES": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LINIE"
+          }
+        }
+      }
+    },
+    "Memories": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wspomnienia"
+          }
+        }
+      }
+    },
+    "MORE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WIĘCEJ"
+          }
+        }
+      }
+    },
+    "MOST SEEN": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NAJCZĘŚCIEJ WIDZIANY"
+          }
+        }
+      }
+    },
+    "MY %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MÓJ %@"
+          }
+        }
+      }
+    },
+    "MY TABOR": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MÓJ TABOR"
+          }
+        }
+      }
+    },
+    "NEW VEHICLES": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWE POJAZDY"
+          }
+        }
+      }
+    },
+    "NEWEST": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NAJNOWSZY"
+          }
+        }
+      }
+    },
+    "NOW: %lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TERAZ: %lld"
+          }
+        }
+      }
+    },
+    "OF %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Z %@"
+          }
+        }
+      }
+    },
+    "OF WARSAW'S FLEET": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TABORU WARSZAWY"
+          }
+        }
+      }
+    },
+    "of what you've caught": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "złapanych pojazdów"
+          }
+        }
+      }
+    },
+    "OLDEST": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NAJSTARSZY"
+          }
+        }
+      }
+    },
+    "ONE MONTH AGO TODAY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DZIŚ MIESIĄC TEMU"
+          }
+        }
+      }
+    },
+    "ONE WEEK AGO TODAY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DZIŚ TYDZIEŃ TEMU"
+          }
+        }
+      }
+    },
+    "ONE YEAR AGO TODAY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DZIŚ ROK TEMU"
+          }
+        }
+      }
+    },
+    "PLACES": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MIEJSCA"
+          }
+        }
+      }
+    },
+    "RAIN": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DESZCZ"
+          }
+        }
+      }
+    },
+    "RAREST": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NAJRZADSZY"
+          }
+        }
+      }
+    },
+    "RAREST · %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NAJRZADSZY · %@"
+          }
+        }
+      }
+    },
+    "RAREST: %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NAJRZADSZY: %@"
+          }
+        }
+      }
+    },
+    "RARITY SETS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZESTAWY RZADKOŚCI"
+          }
+        }
+      }
+    },
+    "RECORDS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "REKORDY"
+          }
+        }
+      }
+    },
+    "SEEN": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WIDZIANY"
+          }
+        }
+      }
+    },
+    "SHARE YOUR %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UDOSTĘPNIJ: %@"
+          }
+        }
+      }
+    },
+    "SHARE YOUR STATS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UDOSTĘPNIJ STATYSTYKI"
+          }
+        }
+      }
+    },
+    "Show satellite": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż satelitę"
+          }
+        }
+      }
+    },
+    "Show the map": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż mapę"
+          }
+        }
+      }
+    },
+    "SINCE %@ · %lld DAYS OUT": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "SINCE %1$@ · %2$lld DAYS OUT"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OD %1$@ · DNI W TRASIE: %2$lld"
+          }
+        }
+      }
+    },
+    "SNOW": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ŚNIEG"
+          }
+        }
+      }
+    },
+    "Stats": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Statystyki"
+          }
+        }
+      }
+    },
+    "STATS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "STATYSTYKI"
+          }
+        }
+      }
+    },
+    "STORM": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BURZA"
+          }
+        }
+      }
+    },
+    "STREAK AT RISK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SERIA ZAGROŻONA"
+          }
+        }
+      }
+    },
+    "TIME": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GODZINA"
+          }
+        }
+      }
+    },
+    "TODAY!": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DZIŚ!"
+          }
+        }
+      }
+    },
+    "TOP LINE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ULUBIONA LINIA"
+          }
+        }
+      }
+    },
+    "TOP MODELS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NAJCZĘSTSZE MODELE"
+          }
+        }
+      }
+    },
+    "VEHICLES": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "POJAZDY"
+          }
+        }
+      }
+    },
+    "WARMEST": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NAJCIEPLEJ"
+          }
+        }
+      }
+    },
+    "WARSAW · %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WARSZAWA · %@"
+          }
+        }
+      }
+    },
+    "WARSAW · ALL TIME": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WARSZAWA · OD POCZĄTKU"
+          }
+        }
+      }
+    },
+    "WARSAW: %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WARSZAWA: %@"
+          }
+        }
+      }
+    },
+    "WEATHER": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "POGODA"
+          }
+        }
+      }
+    },
+    "WHEN YOU CATCH": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "KIEDY ŁAPIESZ"
+          }
+        }
+      }
+    },
+    "WHERE IT STARTED": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TU SIĘ ZACZĘŁO"
+          }
+        }
+      }
+    },
+    "WHO RUNS WHAT YOU CATCH": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "KTO JEŹDZI TYM, CO ŁAPIESZ"
+          }
+        }
+      }
+    },
+    "YOUR BEST DAY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TWÓJ NAJLEPSZY DZIEŃ"
+          }
+        }
+      }
+    },
+    "Your catches come back here": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu wracają twoje złapania"
+          }
+        }
+      }
+    },
+    "Your day: %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twój dzień: %@"
+          }
+        }
+      }
+    },
+    "Your days: %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twoje dni: %@"
+          }
+        }
+      }
+    },
+    "Your hour: %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twoja godzina: %@"
+          }
+        }
+      }
+    },
+    "Your stats": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twoje statystyki"
+          }
+        }
+      }
+    },
+    "Your stats, a catch from this day in the past, your newest stickers, your rarity sets, or a different sticker every hour. They update after every catch.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twoje statystyki, złapanie sprzed roku, miesiąca albo tygodnia, najnowsze naklejki, zestawy rzadkości albo co godzinę inna naklejka. Odświeżają się po każdym złapaniu."
+          }
+        }
+      }
+    },
+    "YOUR TOP": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TWOJA CZOŁÓWKA"
+          }
+        }
+      }
+    },
+    "%lld CATCHES": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld CATCH"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld CATCHES"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ZŁAPANIE"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ZŁAPANIA"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ZŁAPAŃ"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ZŁAPANIA"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld days": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld day"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld days"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld dzień"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld dni"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld dni"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld dnia"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "version": "1.0"

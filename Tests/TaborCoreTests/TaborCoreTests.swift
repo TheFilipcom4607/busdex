@@ -1665,3 +1665,88 @@ private func read(_ n: Int, _ score: Double, x: Double, y: Double = 0.5) -> Also
                                lat: here.lat, lon: here.lon)
     #expect(Set(pins.map(\.vehicle.number)) == [hrc.numbers[0], hrc.numbers[1]])
 }
+
+// MARK: - Stats
+
+private func at(_ s: String) -> Date {
+    let f = DateFormatter()
+    f.locale = Locale(identifier: "en_US_POSIX")
+    f.timeZone = TimeZone(identifier: "Europe/Warsaw")
+    f.dateFormat = "yyyy-MM-dd HH:mm"
+    return f.date(from: s)!
+}
+
+private var warsaw: Calendar {
+    var c = Calendar(identifier: .gregorian)
+    c.timeZone = TimeZone(identifier: "Europe/Warsaw")!
+    c.firstWeekday = 2
+    return c
+}
+
+@Test func periodStatsSplitNewFromSeenAgain() {
+    let yutong = catalog.model(id: "bus-yutong-u12-b")!
+    let urbino = catalog.model(id: "bus-solaris-urbino-18")!
+    let y = yutong.numbers[0], u = urbino.numbers[0]
+    let records = [
+        SightingRecord(number: y, modelId: yutong.id, date: at("2026-09-27 16:10"), line: "229", district: "Wilanów", temperature: 18),
+        SightingRecord(number: y, modelId: yutong.id, date: at("2026-10-01 08:05"), line: "229", district: "Wilanów", temperature: 9),
+        SightingRecord(number: u, modelId: urbino.id, date: at("2026-10-01 16:40"), line: "519", district: "Powsin", temperature: 14),
+    ]
+    let october = PeriodStats(records, period: .month(year: 2026, month: 10), catalog: catalog, now: at("2026-10-04 12:00"), calendar: warsaw)
+    #expect(october.catches == 2)
+    #expect(october.vehicles == 2)
+    #expect(october.newVehicles == 1) // the Yutong went in in September
+    #expect(october.newModels == 1)
+    #expect(october.daysOut == 1)
+    #expect(october.hours[8] == 1 && october.hours[16] == 1)
+    #expect(october.weekdays[4] == 2) // 1 Oct 2026 is a Thursday
+    #expect(october.fleetShare == 1 / Double(catalog.totalFleet))
+    #expect(october.records.coldest?.temperature == 9)
+    #expect(october.records.rarest?.modelId == yutong.id)
+
+    let all = PeriodStats(records, period: .all, catalog: catalog, now: at("2026-10-04 12:00"), calendar: warsaw)
+    #expect(all.catches == 3 && all.vehicles == 2 && all.newVehicles == 2)
+    #expect(all.topLines.first == RankedItem(name: "229", count: 2))
+    #expect(all.topPlaces.first?.name == "Wilanów")
+    #expect(all.records.mostSeen == VehicleCount(number: y, modelId: yutong.id, times: 2))
+    #expect(all.fleetShare == 2 / Double(catalog.totalFleet))
+}
+
+@Test func secondCarsAreVehiclesButNotCatches() {
+    let tram = catalog.models.first { $0.coupled }!
+    let records = [
+        SightingRecord(number: tram.numbers[0], modelId: tram.id, date: at("2026-09-28 12:00"), line: "16"),
+        SightingRecord(number: tram.numbers[1], modelId: tram.id, date: at("2026-09-28 11:59"), line: "16", pairedWith: tram.numbers[0]),
+    ]
+    let s = PeriodStats(records, period: .all, catalog: catalog, calendar: warsaw)
+    #expect(s.catches == 1)
+    #expect(s.vehicles == 2)
+    #expect(s.trams == 2)
+    #expect(s.topLines == [RankedItem(name: "16", count: 1)])
+}
+
+@Test func bestStreakFindsTheLongestRun() {
+    let dates = ["2026-09-23 08:00", "2026-09-25 09:00", "2026-09-26 10:00", "2026-09-26 18:00",
+                 "2026-09-27 07:00", "2026-09-29 12:00"].map(at)
+    let run = Streak.best(dates, calendar: warsaw)
+    #expect(run?.days == 3)
+    #expect(run?.start == warsaw.startOfDay(for: at("2026-09-25 12:00")))
+    #expect(run?.end == warsaw.startOfDay(for: at("2026-09-27 12:00")))
+    #expect(Streak.best([], calendar: warsaw) == nil)
+}
+
+@Test func periodsListNewestFirst() {
+    let dates = ["2025-12-30 10:00", "2026-09-23 08:00", "2026-10-01 09:00"].map(at)
+    #expect(StatsPeriod.available(dates, calendar: warsaw) == [
+        .all, .year(2026), .year(2025), .month(year: 2026, month: 10), .month(year: 2026, month: 9), .month(year: 2025, month: 12),
+    ])
+}
+
+@Test func memoryPrefersTheOldestAnniversary() {
+    let today = at("2026-10-04 09:00")
+    let caught: Set<Date> = [warsaw.startOfDay(for: at("2026-09-27 12:00")), warsaw.startOfDay(for: at("2026-09-04 12:00"))]
+    let pick = Memory.pick(for: today, hasCatches: { caught.contains($0) }, randomCount: 3, calendar: warsaw)
+    #expect(pick?.kind == .monthAgo)
+    let nothing = Memory.pick(for: today, hasCatches: { _ in false }, randomCount: 3, calendar: warsaw)
+    #expect(nothing?.kind == .first || nothing?.kind == .random)
+}

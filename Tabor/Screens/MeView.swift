@@ -8,6 +8,7 @@ struct MeView: View {
     @Environment(Router.self) private var router
     @State private var showSettings = false
     @State private var showMap = false
+    @State private var showStats = false
     @State private var showWidgetHowTo = false
     @AppStorage(WidgetTip.seenKey) private var widgetTipSeen = false
     private let catalog = Fleet.catalog
@@ -40,13 +41,31 @@ struct MeView: View {
                     .padding(.top, 20)
                     .padding(.horizontal, 22)
 
-                StatsStrip(items: [
-                    (stats.caught.grouped, String(localized: "CAUGHT"), Palette.ink),
-                    (percent(stats.fleetShare(catalog: catalog)), String(localized: "OF FLEET"), Palette.yellow),
-                    ("\(Streak.days(sightings.map(\.date)))", String(localized: "DAY STREAK"), Palette.ink),
-                    (depotsTouched(stats), String(localized: "DEPOTS"), Palette.ink),
-                ])
+                HStack(alignment: .firstTextBaseline) {
+                    SectionLabel(text: String(localized: "STATS"))
+                    Spacer()
+                    if !sightings.isEmpty {
+                        Button {
+                            showStats = true
+                        } label: { Mono("ALL STATS", size: 10.5, color: Palette.yellow) }
+                        .buttonStyle(.plain)
+                    }
+                }
                 .padding(.top, 18)
+                .padding(.bottom, 9)
+                .padding(.horizontal, 22)
+
+                Button {
+                    if !sightings.isEmpty { showStats = true }
+                } label: {
+                    StatsStrip(items: [
+                        (stats.caught.grouped, String(localized: "CAUGHT"), Palette.ink),
+                        (fleetShareText(stats.fleetShare(catalog: catalog)), String(localized: "OF FLEET"), Palette.yellow),
+                        ("\(Streak.days(sightings.map(\.date)))", String(localized: "DAY STREAK"), Palette.ink),
+                        (depotsTouched(stats), String(localized: "DEPOTS"), Palette.ink),
+                    ])
+                }
+                .buttonStyle(StickerPressStyle())
                 .padding(.horizontal, 22)
 
                 if !widgetTipSeen, sightings.count >= WidgetTip.afterCatches {
@@ -100,6 +119,15 @@ struct MeView: View {
         .taborScreen()
         .sheet(isPresented: $showSettings) { SettingsSheet() }
         .sheet(isPresented: $showWidgetHowTo) { WidgetHowTo() }
+        .sheet(isPresented: $showStats) {
+            StatsSheet(sightings: sightings) { route in
+                showStats = false
+                switch route {
+                case .model(let id): router.openModel(id)
+                case .vehicle(let modelId, let number): router.openVehicle(modelId: modelId, number: number)
+                }
+            }
+        }
         // Every time ME comes up, not once: the tab stays alive behind the others.
         .task(id: router.tab == .me) {
             guard router.tab == .me else { return }
@@ -139,15 +167,6 @@ struct MeView: View {
             Mono("\(geotagged.count) PINS", size: 9.5, color: Palette.faint)
         }
         .padding(.horizontal, 4)
-    }
-
-    /// One decimal under 10%, so the first few hundred catches visibly move it.
-    private func percent(_ v: Double) -> String {
-        let pct = FloatingPointFormatStyle<Double>.Percent().locale(.app)
-        if v <= 0 { return 0.0.formatted(pct.precision(.fractionLength(0))) }
-        if v < 0.001 { return "<" + 0.001.formatted(pct.precision(.fractionLength(1))) }
-        if v < 0.1 { return v.formatted(pct.precision(.fractionLength(1))) }
-        return v.formatted(pct.precision(.fractionLength(0)))
     }
 
     /// Depots whose vehicles you've caught, out of all depots in the snapshot.
