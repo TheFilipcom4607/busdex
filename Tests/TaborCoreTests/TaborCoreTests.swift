@@ -1798,3 +1798,28 @@ private var warsaw: Calendar {
     let moving = TrackPlan.make(match: m, lat: routeLat, lon: 21.025)
     #expect(moving?.at == "east20")
 }
+
+// MARK: - Correction sheet's line
+
+@Test func aTypedLineListsWhatRunsItNow() {
+    let urbino18 = catalog.match(number: 8592, kind: .bus).suggested!
+    let sibling = urbino18.numbers.first { $0 != 8592 }!
+    let snap = LiveSnapshot(vehicles: [
+        live(8592, line: "523", metres: 400), live(sibling, line: "523", metres: 100),
+        live(4235, .tram, line: "33"), live(1000, line: "L-8"),
+    ], fetched: fixtureNow)
+    let r = LineLookup.lookup(" 523", snapshot: snap, routes: nil, near: here, catalog: catalog)
+    #expect(r.running.map(\.vehicle.number) == [sibling, 8592])
+    #expect(r.models == [urbino18])
+    #expect(r.kind == .bus)
+    #expect(LineLookup.lookup("33", snapshot: snap, routes: nil, near: nil, catalog: catalog).kind == .tram)
+    // Typed the way people write it: "l8" is L-8.
+    #expect(LineLookup.lookup("l8", snapshot: snap, routes: nil, near: nil, catalog: catalog).running.count == 1)
+    #expect(LineLookup.lookup("", snapshot: snap, routes: nil, near: nil, catalog: catalog).running.isEmpty)
+
+    // Nothing on it now: the timetable still says what kind it is.
+    let book = RouteBook(shapes: [RouteBook.key(.bus, "166"): [shape("a", trips: 1, street(lat: 52.2, from: 21.0, to: 21.01))]])
+    let quiet = LineLookup.lookup("166", snapshot: snap, routes: book, near: here, catalog: catalog)
+    #expect(quiet.running.isEmpty && quiet.models.isEmpty && quiet.kind == .bus)
+    #expect(LineLookup.lookup("167", snapshot: snap, routes: book, near: here, catalog: catalog).kind == nil)
+}

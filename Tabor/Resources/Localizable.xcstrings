@@ -8783,6 +8783,46 @@
           }
         }
       }
+    },
+    "ON LINE %@ NOW": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TERAZ NA LINII %@"
+          }
+        }
+      }
+    },
+    "MODELS ON LINE %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MODELE NA LINII %@"
+          }
+        }
+      }
+    },
+    "LINE %@ ISN'T RUNNING NOW · SAVED WITH THE CATCH": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LINIA %@ TERAZ NIE JEŹDZI · ZAPISZE SIĘ PRZY OBSERWACJI"
+          }
+        }
+      }
+    },
+    "THE LINE IS SAVED WITH THE CATCH": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LINIA ZAPISZE SIĘ PRZY OBSERWACJI"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
