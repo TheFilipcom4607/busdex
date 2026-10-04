@@ -4,7 +4,9 @@ import Foundation
 /// the repo weekly; this downloads it when its `fetched` date beats what the app has, and
 /// `Fleet.catalog` picks it up on the next launch.
 enum FleetUpdater {
-    static let remoteURL = URL(string: "https://raw.githubusercontent.com/TheFilipcom4607/busdex/main/Tabor/Resources/fleet.json")!
+    // Builds 25 and older ask for the repo's old name, busdex, which GitHub still serves from
+    // here. That only holds while no other repo on the account is called busdex.
+    static let remoteURL = URL(string: "https://raw.githubusercontent.com/TheFilipcom4607/tabor/main/Tabor/Resources/fleet.json")!
     static let enabledKey = "fleetUpdates"
     private static let lastCheckKey = "fleetLastCheck"
 

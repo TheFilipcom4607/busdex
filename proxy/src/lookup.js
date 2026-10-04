@@ -10,7 +10,7 @@
 // data is the fleet.json the app downloads, fetched from GitHub through Cloudflare's cache at
 // most once a day per location: a fleet update reaches lookups by the next day, not at once.
 
-const FLEET = 'https://raw.githubusercontent.com/TheFilipcom4607/busdex/main/Tabor/Resources/fleet.json';
+const FLEET = 'https://raw.githubusercontent.com/TheFilipcom4607/tabor/main/Tabor/Resources/fleet.json';
 const TYPES = { 1: 'BUS', 2: 'TRAM', bus: 'BUS', tram: 'TRAM' };
 const MAX_NUMBERS = 100;
 const USAGE = 'Look a vehicle up by its fleet number: /v1/fleet/5221, or several at once: /v1/fleet/5221,1983 '
