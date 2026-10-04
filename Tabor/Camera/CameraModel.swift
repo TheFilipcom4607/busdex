@@ -292,6 +292,9 @@ final class CameraModel: NSObject, @unchecked Sendable {
         if let tele = stops.filter({ $0 > 1 }).min(), tele > 2.5 { stops.insert(2) } else if stops.count == 1 { stops.insert(2) }
         let maxUI = min(cam.maxAvailableVideoZoomFactor / scale, max(stops.max() ?? 1, 2) * 3)
         let minUI = cam.minAvailableVideoZoomFactor / scale
+        // A bus pulling away is gone before a pinch gets there (#47): one tap to twice the
+        // longest lens (10× on a 5× telephoto), where its number is big enough to read.
+        if let longest = stops.max() { stops.insert(min(longest * 2, maxUI)) }
 
         // Buses are big and far: continuous focus, and start on the main lens (1×).
         try? cam.lockForConfiguration()
