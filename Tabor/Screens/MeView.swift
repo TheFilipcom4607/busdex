@@ -281,6 +281,7 @@ struct SpotMap: View {
     var onOpen: ((Sighting) -> Void)?
     /// The catch whose card is open. Tapping empty map clears it.
     @State private var selectedId: UUID?
+    @Namespace private var mapScope
     private static let warsaw = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 52.2297, longitude: 21.0122),
         span: MKCoordinateSpan(latitudeDelta: 0.22, longitudeDelta: 0.22))
@@ -292,7 +293,7 @@ struct SpotMap: View {
         ZStack(alignment: .bottom) {
             Map(initialPosition: pins.isEmpty ? .region(Self.warsaw) : .automatic,
                 interactionModes: interactive ? .all : [],
-                selection: interactive ? $selectedId : .constant(nil)) {
+                selection: interactive ? $selectedId : .constant(nil), scope: mapScope) {
                 ForEach(pins) { s in
                     let color = (Fleet.catalog.model(id: s.modelId)?.tier ?? .common).mapColor
                     let picked = s.id == selectedId
@@ -310,6 +311,7 @@ struct SpotMap: View {
                 }
             }
             .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
+            .mapControls {}
             .environment(\.colorScheme, .dark)
             .ignoresSafeArea(edges: interactive ? .all : [])
 
@@ -321,6 +323,16 @@ struct SpotMap: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        // The map runs under the status bar, and so would its own compass (#39): this one keeps
+        // to the safe area, level with the close button. It shows only while the map is turned.
+        .overlay(alignment: .topTrailing) {
+            if interactive {
+                MapCompass(scope: mapScope)
+                    .padding(.trailing, 18)
+                    .padding(.top, 8)
+            }
+        }
+        .mapScope(mapScope)
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: selectedId)
         .onChange(of: selectedId) { _, id in if id != nil { Haptics.shared.tick() } }
     }
