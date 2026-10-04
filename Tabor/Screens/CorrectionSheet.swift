@@ -64,22 +64,18 @@ struct CorrectionSheet: View {
                         .scrollClipDisabled()
                     }
 
-                    HStack(spacing: 7) {
-                        kindChip(nil, String(localized: "ANY", comment: "Vehicle kind: bus or tram"))
-                        kindChip(.bus, VehicleKind.bus.name)
-                        kindChip(.tram, VehicleKind.tram.name)
-                        Spacer()
-                        HStack(spacing: 6) {
-                            Mono("LINE", size: 10.5)
-                            TextField("", text: $line, prompt: Text("—").foregroundStyle(Palette.ghost))
-                                .font(TaborFont.mono(15, 700))
-                                .keyboardType(.asciiCapable)
-                                .textInputAutocapitalization(.characters)
-                                .frame(width: 54)
+                    // Polish chips are wider and used to squeeze LINE's label out, leaving a
+                    // bare "—" circle nobody could place (#48); then it goes on a row of its own.
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 7) {
+                            kindChips
+                            Spacer(minLength: 0)
+                            lineField
                         }
-                        .padding(.vertical, 6)
-                        .padding(.horizontal, 10)
-                        .background(Palette.card, in: Capsule())
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 7) { kindChips }
+                            lineField
+                        }
                     }
                     .padding(.top, 18)
 
@@ -176,6 +172,28 @@ struct CorrectionSheet: View {
             .background(on ? Palette.yellow : Palette.card, in: Capsule())
         }
         .buttonStyle(.plain)
+    }
+
+    @ViewBuilder private var kindChips: some View {
+        kindChip(nil, String(localized: "ANY", comment: "Vehicle kind: bus or tram"))
+        kindChip(.bus, VehicleKind.bus.name)
+        kindChip(.tram, VehicleKind.tram.name)
+    }
+
+    private var lineField: some View {
+        HStack(spacing: 6) {
+            Mono("LINE", size: 10.5)
+                .fixedSize()
+            TextField("", text: $line, prompt: Text("—").foregroundStyle(Palette.ghost))
+                .font(TaborFont.mono(15, 700))
+                .keyboardType(.asciiCapable)
+                .textInputAutocapitalization(.characters)
+                .frame(width: 54)
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .background(Palette.card, in: Capsule())
+        .fixedSize()
     }
 
     private func kindChip(_ k: VehicleKind?, _ label: String) -> some View {
