@@ -7381,6 +7381,36 @@
           }
         }
       }
+    },
+    "NEW VEHICLE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWY POJAZD"
+          }
+        }
+      }
+    },
+    "Your first of that model, in its rarity's colour": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pierwszy z tego modelu, w kolorze jego rzadkości"
+          }
+        }
+      }
+    },
+    "A model you had, but a number you didn't": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model był już w albumie, ten numer jeszcze nie"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

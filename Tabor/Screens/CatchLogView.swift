@@ -58,6 +58,14 @@ struct CatchLogSheet: View {
                 VStack(alignment: .leading, spacing: 4) {
                     ScreenTitle(text: String(localized: "Catch log"))
                     Mono("\(sightings.count) IN ALL", size: 11, color: Palette.sub)
+                    // What the two tags mean: "NEW" alone read as "new in Warsaw" (#40).
+                    VStack(alignment: .leading, spacing: 5) {
+                        key(String(localized: "NEW MODEL"), color: Palette.ink,
+                            String(localized: "Your first of that model, in its rarity's colour"))
+                        key(String(localized: "NEW VEHICLE"), color: Palette.sub,
+                            String(localized: "A model you had, but a number you didn't"))
+                    }
+                    .padding(.top, 10)
                 }
                 .padding(.top, 16)
                 .padding(.horizontal, 22)
@@ -85,6 +93,15 @@ struct CatchLogSheet: View {
         .foregroundStyle(Palette.ink)
         .presentationDetents([.large])
         .presentationBackground(Palette.bg)
+    }
+
+    private func key(_ tag: String, color: Color, _ meaning: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Mono(tag, size: 9.5, weight: 700, spacing: 0.1, color: color)
+            Text(meaning)
+                .font(TaborFont.grotesk(12.5))
+                .foregroundStyle(Palette.dim)
+        }
     }
 
     static func dayName(_ day: Date) -> String {
@@ -133,11 +150,14 @@ private struct CatchLogRow: View {
                     HStack(spacing: 8) {
                         Mono(details(s), size: 10.5, spacing: 0.05, color: Palette.dim)
                             .lineLimit(1)
+                        // The tag stays whole; the place before it gives way.
                         switch mark {
                         case .newModel:
                             Mono("NEW MODEL", size: 9.5, weight: 700, spacing: 0.1, color: model?.tier.color ?? Palette.yellow)
+                                .fixedSize()
                         case .newVehicle:
-                            Mono("NEW", size: 9.5, weight: 700, spacing: 0.1, color: Palette.yellow)
+                            Mono("NEW VEHICLE", size: 9.5, weight: 700, spacing: 0.1, color: Palette.sub)
+                                .fixedSize()
                         case .again:
                             EmptyView()
                         }
