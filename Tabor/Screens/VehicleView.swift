@@ -226,14 +226,15 @@ struct VehicleView: View {
                 if moved { router.openVehicle(modelId: s.modelId, number: s.number) }
             }
         }
-        // Render the share card up front so SHARE opens instantly.
-        .task(id: mine.first?.id) {
-            guard let latest = mine.first else { return share = nil }
+        // Render the share card up front so SHARE opens instantly, again whenever another picture
+        // is picked: the card shows the picked catch, its day and place with its sticker.
+        .task(id: [mine.first?.id, mine.cover(number: number, modelId: modelId)?.id]) {
+            guard let shown = mine.cover(number: number, modelId: modelId) ?? mine.first else { return share = nil }
             // The second car added with it in the same catch, if any.
-            let partner = latest.pairedWith ?? sightings.first {
-                isSecondCar($0) && abs($0.date.timeIntervalSince(latest.date)) < 1
+            let partner = shown.pairedWith ?? sightings.first {
+                isSecondCar($0) && abs($0.date.timeIntervalSince(shown.date)) < 1
             }?.number
-            share = CatchShare.make(number: number, model: model, sighting: latest,
+            share = CatchShare.make(number: number, model: model, sighting: shown,
                                     sticker: sightings.sticker(number: number, modelId: modelId),
                                     photo: sightings.photo(number: number, modelId: modelId),
                                     owned: sightings.stats.ownedCount(modelId: modelId), partner: partner)

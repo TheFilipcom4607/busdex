@@ -6,7 +6,7 @@ struct CatchShare {
     let title: String
     let message: String
 
-    /// Renders the card for a vehicle's latest sighting. Main actor: ImageRenderer needs it.
+    /// Renders the card for the sighting a vehicle's page shows: the picked one, else the latest. Main actor: ImageRenderer needs it.
     /// `partner` is a coupled tram's other car, caught with it: "#1282+1281".
     @MainActor
     static func make(number: Int, model: VehicleModel?, sighting: Sighting, sticker: String?, photo: String?,
