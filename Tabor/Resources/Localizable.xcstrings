@@ -6056,16 +6056,6 @@
         }
       }
     },
-    "UNCAUGHT": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "NIEZŁAPANE"
-          }
-        }
-      }
-    },
     "UNCAUGHT BUSES NEARBY": {
       "localizations": {
         "pl": {
@@ -8736,6 +8726,60 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ty"
+          }
+        }
+      }
+    },
+    "hunt.filter.all": {
+      "comment": "HUNT header chip: keep it short",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "ALL"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WSZYSTKO"
+          }
+        }
+      }
+    },
+    "hunt.filter.newModels": {
+      "comment": "HUNT header chip: keep it short",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "NEW MODELS"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NOWE"
+          }
+        }
+      }
+    },
+    "hunt.filter.uncaught": {
+      "comment": "HUNT header chip: keep it short",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "UNCAUGHT"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BRAKI"
           }
         }
       }

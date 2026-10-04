@@ -12,9 +12,11 @@ enum HuntFilter: String, CaseIterable {
 
     var name: String {
         switch self {
-        case .uncaught: String(localized: "UNCAUGHT")
-        case .newModels: String(localized: "NEW MODELS")
-        case .everything: String(localized: "ALL")
+        // Keys of their own: the chips need shorter words than the book and stats (in Polish
+        // "NIEZŁAPANE · NOWE MODELE · WSZYSTKIE" doesn't fit next to FILTR).
+        case .uncaught: String(localized: "hunt.filter.uncaught", defaultValue: "UNCAUGHT")
+        case .newModels: String(localized: "hunt.filter.newModels", defaultValue: "NEW MODELS")
+        case .everything: String(localized: "hunt.filter.all", defaultValue: "ALL")
         }
     }
 }
@@ -1597,6 +1599,8 @@ private struct PinCard: View {
                         Image(systemName: AppTab.catchTab.symbol)
                             .font(.system(size: 13, weight: .bold))
                         Mono("CATCH IT", size: 12, weight: 700, spacing: 0.12, color: pin.model.tier.onMapColor)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                     .foregroundStyle(pin.model.tier.onMapColor)
                     .frame(maxWidth: .infinity)
@@ -1644,6 +1648,8 @@ private struct PinCard: View {
                 Image(systemName: on ? "bell.fill" : "bell")
                     .font(.system(size: 11, weight: .bold))
                 Mono(on ? "TRACKING" : "TRACK", size: 12, weight: 700, spacing: 0.12, color: ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .foregroundStyle(ink)
             .padding(.vertical, 13)
@@ -1653,6 +1659,8 @@ private struct PinCard: View {
                 .stroke(off != nil ? Color.white.opacity(0.08) : Palette.radar.opacity(0.4)))
         }
         .buttonStyle(StickerPressStyle())
+        // Ahead of CATCH IT, which stretches: "OBSERWUJESZ" wrapped in two otherwise.
+        .layoutPriority(1)
         .accessibilityLabel(on ? String(localized: "Stop tracking it on the Lock Screen")
                             : off ?? String(localized: "Track it on the Lock Screen until it reaches you"))
         .animation(.snappy, value: track.state)

@@ -19,7 +19,9 @@ struct WidgetKey: View {
     var size: CGFloat = 9
 
     var body: some View {
+        // Shrinks a touch rather than cut a long translation ("NAJLEPSZA SERIA").
         Text(text).font(mono(size, .medium)).tracking(size * 0.08).foregroundStyle(color).lineLimit(1)
+            .minimumScaleFactor(0.75)
     }
 }
 
