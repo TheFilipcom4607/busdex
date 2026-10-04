@@ -330,7 +330,7 @@ DISPLAY_NAMES = {
 # kmkm.waw.pl/wlt-2026 and live tracking (api.zbiorkom.live).
 VINTAGE = {
     "tram-falkenried-a", "tram-linke-hoffmann-lw", "tram-lilpop-c", "tram-warsztaty-glowne-w",
-    "tram-gdanska-fabryka-wagonow-wiwk-k", "tram-cred-d-wag-4egtw", "tram-konstal-n",
+    "tram-gdanska-fabryka-wagonow-wiwk-k", "tram-konstal-n",
     "tram-konstal-4n", "tram-konstal-13n", "tram-konstal-102n",
     "bus-ikarus-260", "bus-ikarus-280", "bus-solaris-urbino-15",
 }
@@ -484,6 +484,10 @@ RETIRED = {
     ("TRAM", "Gdańska Fabryka Wagonów / WIwK", "K", "Tramwaje Warszawskie"): {2405},
     ("TRAM", "Konstal", "N", "Tramwaje Warszawskie"): {775, 1724, 1727, 1770},
     ("TRAM", "Konstal", "13N", "Tramwaje Warszawskie"): {504, 534, 535},
+    # Heritage cars waiting for repair, so not on the street (issue #33, 2026-10-04). Put them
+    # back once they run again, and "tram-cred-d-wag-4egtw" back in VINTAGE.
+    ("TRAM", "Credé/Düwag", "4EGTw", "Tramwaje Warszawskie"): {205},
+    ("TRAM", "Konstal", "102N", "Tramwaje Warszawskie"): {42},
 }
 
 
