@@ -72,9 +72,6 @@ run your own proxy, change the domain in `proxy/wrangler.toml` and
 ```bash
 cd proxy && npx wrangler secret put DANE_TOKEN && npx wrangler deploy
 ```
-
-Lock Screen tracking is pushed by the proxy with TABOR's own APNs key, so in a
-build signed with another team it starts but doesn't update.
 ---
 
 ## CATCH
