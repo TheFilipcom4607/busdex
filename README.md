@@ -46,6 +46,8 @@ your stop on the Lock Screen. **ME** keeps the score.
 
 ## Install
 
+**Po polsku:** opis i instalacja na [thefilip.com/tabor](https://thefilip.com/tabor).
+
 **Try the beta on TestFlight:** [testflight.apple.com/join/rt5RfQJ1](https://testflight.apple.com/join/rt5RfQJ1)
 (iPhone, iOS 18 or later). Screenshots with TestFlight's feedback are the best
 bug reports, and issues here work too.
