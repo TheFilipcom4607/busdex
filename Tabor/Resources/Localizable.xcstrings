@@ -8649,6 +8649,46 @@
           }
         }
       }
+    },
+    "Live Activities are off for TABOR. Turn them on in Settings › TABOR to track it.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktywności na żywo są wyłączone dla TABOR. Włącz je w Ustawieniach › TABOR, żeby go obserwować."
+          }
+        }
+      }
+    },
+    "TRACK counts down to your stop, so it needs your location.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OBSERWUJ odlicza do twojego przystanku, więc potrzebuje twojej lokalizacji."
+          }
+        }
+      }
+    },
+    "Still watching which way it goes. TRACK works once it's coming your way.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jeszcze sprawdzam, dokąd jedzie. OBSERWUJ działa, gdy jedzie w twoją stronę."
+          }
+        }
+      }
+    },
+    "TRACK works once it's coming your way: it counts down to your stop.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OBSERWUJ działa, gdy jedzie w twoją stronę: odlicza do twojego przystanku."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

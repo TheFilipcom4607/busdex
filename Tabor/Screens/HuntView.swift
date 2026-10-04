@@ -1167,12 +1167,24 @@ struct HuntView: View {
         routeMatch(pin)?.advanced(by: date.timeIntervalSince(pin.vehicle.time), stopped: live.trails.isStopped(pin.id))
     }
 
-    /// TRACK on the card: offered while it's coming your way, and while it's tracked (to stop).
-    private func trackButton(_ pin: WantedPin) -> PinCard.Track? {
-        if track.isTracking(pin) { return PinCard.Track(on: true) { track.stop() } }
-        guard track.enabled, let here, motion(of: pin) == .approaching, let m = creeping(pin) ?? routeMatch(pin),
-              let plan = TrackPlan.make(match: m, lat: here.latitude, lon: here.longitude) else { return nil }
-        return PinCard.Track(on: false) { track.start(pin, plan: plan, sightings: sightings) }
+    /// TRACK on the card. It only works while the vehicle is coming your way (it counts down to
+    /// your stop); otherwise it's greyed out and says why, so the button never just goes missing.
+    private func trackButton(_ pin: WantedPin) -> PinCard.Track {
+        if track.isTracking(pin) { return PinCard.Track(state: .on) { track.stop() } }
+        guard track.enabled else {
+            return PinCard.Track(state: .off(String(localized: "Live Activities are off for TABOR. Turn them on in Settings › TABOR to track it.")))
+        }
+        guard let here else {
+            return PinCard.Track(state: .off(String(localized: "TRACK counts down to your stop, so it needs your location.")))
+        }
+        let motion = motion(of: pin)
+        guard motion == .approaching, let m = creeping(pin) ?? routeMatch(pin),
+              let plan = TrackPlan.make(match: m, lat: here.latitude, lon: here.longitude) else {
+            return PinCard.Track(state: .off(motion == nil
+                ? String(localized: "Still watching which way it goes. TRACK works once it's coming your way.")
+                : String(localized: "TRACK works once it's coming your way: it counts down to your stop.")))
+        }
+        return PinCard.Track(state: .ready) { track.start(pin, plan: plan, sightings: sightings) }
     }
 
     /// The selected vehicle, moved on to the last tick.
@@ -1366,14 +1378,23 @@ private struct PinCard: View {
     let nextStops: [String]
     /// Its route ends within those stops, or it's at the last one.
     let ending: (end: RouteEnd, arrived: Bool)?
-    /// Follow it on the Lock Screen (#42), when it's coming your way.
-    let track: Track?
+    /// Follow it on the Lock Screen (#42).
+    let track: Track
     let onOpen: () -> Void
+    /// Why TRACK is greyed out, shown for a few seconds after tapping it.
+    @State private var trackHint: String?
 
     struct Track {
-        /// Already followed: the button stops it.
-        let on: Bool
-        let action: () -> Void
+        enum State: Equatable {
+            case ready
+            /// Already followed: the button stops it.
+            case on
+            /// Can't be tracked now, and why.
+            case off(String)
+        }
+
+        let state: State
+        var action: () -> Void = {}
     }
     /// Off to the camera to catch it.
     let onCatch: () -> Void
@@ -1473,27 +1494,7 @@ private struct PinCard: View {
                 }
                 .buttonStyle(StickerPressStyle())
                 .accessibilityLabel("Open \(pin.model.name) in the book")
-                if let track {
-                    Button {
-                        Haptics.shared.tick()
-                        track.action()
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: track.on ? "bell.fill" : "bell")
-                                .font(.system(size: 11, weight: .bold))
-                            Mono(track.on ? "TRACKING" : "TRACK", size: 12, weight: 700, spacing: 0.12,
-                                 color: track.on ? Palette.bg : Palette.radar)
-                        }
-                        .foregroundStyle(track.on ? Palette.bg : Palette.radar)
-                        .padding(.vertical, 13)
-                        .padding(.horizontal, 14)
-                        .background(track.on ? Palette.radar : Palette.chip, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(Palette.radar.opacity(0.4)))
-                    }
-                    .buttonStyle(StickerPressStyle())
-                    .accessibilityLabel(track.on ? "Stop tracking it on the Lock Screen" : "Track it on the Lock Screen until it reaches you")
-                    .transition(.scale(scale: 0.8).combined(with: .opacity))
-                }
+                trackButton
                 Button(action: onCatch) {
                     HStack(spacing: 7) {
                         Image(systemName: AppTab.catchTab.symbol)
@@ -1509,9 +1510,55 @@ private struct PinCard: View {
                 .accessibilityLabel("Open the camera to catch it")
             }
             .padding(.top, 2)
+            if let trackHint {
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Image(systemName: "bell.slash").font(.system(size: 11, weight: .semibold))
+                    Text(trackHint).font(TaborFont.grotesk(12.5)).fixedSize(horizontal: false, vertical: true)
+                }
+                .foregroundStyle(Palette.sub)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
         .padding(16)
         .huntCard(radius: 20, stroke: pin.accent.opacity(0.35))
+        .task(id: trackHint) {
+            guard trackHint != nil else { return }
+            try? await Task.sleep(for: .seconds(4))
+            withAnimation(.snappy) { trackHint = nil }
+        }
+        // Coming your way now: whatever held it back no longer does.
+        .onChange(of: track.state) { if track.state == .ready { trackHint = nil } }
+    }
+
+    private var trackButton: some View {
+        let on = track.state == .on
+        let off: String? = if case .off(let why) = track.state { why } else { nil }
+        let ink = on ? Palette.bg : off != nil ? Palette.faint : Palette.radar
+        return Button {
+            if let off {
+                Haptics.shared.nope()
+                withAnimation(.snappy) { trackHint = off }
+            } else {
+                Haptics.shared.tick()
+                track.action()
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: on ? "bell.fill" : "bell")
+                    .font(.system(size: 11, weight: .bold))
+                Mono(on ? "TRACKING" : "TRACK", size: 12, weight: 700, spacing: 0.12, color: ink)
+            }
+            .foregroundStyle(ink)
+            .padding(.vertical, 13)
+            .padding(.horizontal, 14)
+            .background(on ? Palette.radar : Palette.chip, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .stroke(off != nil ? Color.white.opacity(0.08) : Palette.radar.opacity(0.4)))
+        }
+        .buttonStyle(StickerPressStyle())
+        .accessibilityLabel(on ? String(localized: "Stop tracking it on the Lock Screen")
+                            : off ?? String(localized: "Track it on the Lock Screen until it reaches you"))
+        .animation(.snappy, value: track.state)
     }
 }
 
