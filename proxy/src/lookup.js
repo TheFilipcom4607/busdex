@@ -119,6 +119,8 @@ function describe(m, b, number) {
     coupled: m.coupled === true,
     // The other car of a fixed pair (KMKM's 105Na 1000+1001, 13N 821+818).
     partner: m.sets?.find((pair) => pair.includes(number))?.find((n) => n !== number) ?? null,
+    // Museum and club stock, out on tourist lines and at events.
+    vintage: m.vintage === true,
     trial: m.onTest === true,
     // When it's on trial, until when, e.g. "ON TRIAL SEP–OCT 2026".
     trialLabel: m.onTest ? (m.trial ?? null) : null,
