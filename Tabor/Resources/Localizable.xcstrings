@@ -7411,6 +7411,16 @@
           }
         }
       }
+    },
+    "RUNNING NEARBY": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JEŹDZI W POBLIŻU"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

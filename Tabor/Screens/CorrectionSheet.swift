@@ -14,6 +14,8 @@ struct CorrectionSheet: View {
     @State private var pickedByHand = false
     @State private var search = ""
     @State private var kind: VehicleKind?
+    /// The line a RUNNING NEARBY chip filled in, so another chip may replace it.
+    @State private var lineFromChip: String?
     @FocusState private var numberFocused: Bool
 
     private let catalog = Fleet.catalog
@@ -46,6 +48,21 @@ struct CorrectionSheet: View {
 
                     Mono(status(match, number: number), size: 10.5, color: statusColor(match, number: number))
                         .padding(.top, 8)
+
+                    // Missed the number? What was running right there when you shot (#41).
+                    let running = nearbyChoices
+                    if !running.isEmpty {
+                        SectionLabel(text: String(localized: "RUNNING NEARBY"))
+                            .padding(.top, 18)
+                            .padding(.bottom, 8)
+                        ScrollView(.horizontal) {
+                            HStack(spacing: 7) {
+                                ForEach(running, id: \.self) { nearbyChip($0, on: $0.vehicle.number == number) }
+                            }
+                        }
+                        .scrollIndicators(.hidden)
+                        .scrollClipDisabled()
+                    }
 
                     HStack(spacing: 7) {
                         kindChip(nil, String(localized: "ANY", comment: "Vehicle kind: bus or tram"))
@@ -121,6 +138,44 @@ struct CorrectionSheet: View {
             pickedByHand = draft.modelPickedByHand
             if draft.number == nil { numberFocused = true }
         }
+    }
+
+    /// The live vehicles around you at the shutter, nearest first: camera shots only.
+    private var nearbyChoices: [NearbyVehicle] {
+        var seen = Set<String>()
+        return draft.nearby
+            .filter { seen.insert("\($0.vehicle.kind.rawValue)#\($0.vehicle.number)").inserted }
+            .prefix(6)
+            .map { $0 }
+    }
+
+    private func nearbyChip(_ n: NearbyVehicle, on: Bool) -> some View {
+        let v = n.vehicle
+        let detail = "\(v.line) · \(Int((n.distance / 10).rounded()) * 10) m"
+        return Button {
+            Haptics.shared.tick()
+            numberText = String(v.number)
+            kind = v.kind
+            // The line comes along unless you typed one yourself.
+            if line.isEmpty || line == draft.autoLine || line == lineFromChip {
+                line = v.line
+                lineFromChip = v.line
+            }
+            autoPick()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: v.kind == .bus ? "bus.fill" : "tram.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                Text(String(v.number))
+                    .font(TaborFont.mono(14, 700))
+                Mono(detail, size: 10, color: on ? Palette.bg.opacity(0.7) : Palette.dim)
+            }
+            .foregroundStyle(on ? Palette.bg : Palette.ink)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(on ? Palette.yellow : Palette.card, in: Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     private func kindChip(_ k: VehicleKind?, _ label: String) -> some View {
