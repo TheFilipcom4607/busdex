@@ -139,6 +139,9 @@ private struct TrackLockScreen: View {
                             .contentTransition(.numericText())
                         WidgetKey(text: TrackText.status(a, s), color: TrackText.color(s))
                     }
+                    // Its own width first: the model name has room to shrink, and was cut
+                    // instead when the distance ran long ("1,1 km").
+                    .fixedSize()
                 }
                 if s.phase == .here {
                     HStack {

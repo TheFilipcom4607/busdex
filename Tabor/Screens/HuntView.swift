@@ -1587,7 +1587,7 @@ private struct PinCard: View {
                     }
                     .foregroundStyle(Palette.ink)
                     .padding(.vertical, 13)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 12)
                     .background(Palette.chip, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(Color.white.opacity(0.1)))
                 }
@@ -1653,13 +1653,14 @@ private struct PinCard: View {
             }
             .foregroundStyle(ink)
             .padding(.vertical, 13)
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 11)
             .background(on ? Palette.radar : Palette.chip, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous)
                 .stroke(off != nil ? Color.white.opacity(0.08) : Palette.radar.opacity(0.4)))
         }
         .buttonStyle(StickerPressStyle())
-        // Ahead of CATCH IT, which stretches: "OBSERWUJESZ" wrapped in two otherwise.
+        // Ahead of CATCH IT, which stretches: "OBSERWUJESZ" wrapped in two otherwise. The
+        // buttons' padding is tight enough that "ZŁAP GO" still fits beside it.
         .layoutPriority(1)
         .accessibilityLabel(on ? String(localized: "Stop tracking it on the Lock Screen")
                             : off ?? String(localized: "Track it on the Lock Screen until it reaches you"))
