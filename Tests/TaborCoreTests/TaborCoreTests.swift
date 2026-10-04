@@ -939,6 +939,25 @@ private func nearby(_ vehicles: [LiveVehicle]) -> [NearbyVehicle] {
     #expect(HuntTargets(rawValue: "drive:steam,length:99,line:,floor:XF") == HuntTargets())
 }
 
+@Test func huntTargetsAddingAModelKeepsItInView() {
+    let lionG = catalog.model(id: "bus-man-a23")!
+    let swing = catalog.model(id: "tram-pesa-120n")!
+    // Other picks stay: the model adds to them.
+    let gold = HuntTargets(tiers: [.gold]).adding(swing)
+    #expect(gold.tiers == [.gold] && gold.models == [swing.id])
+    // A line or the other type would hide it, so they go; a matching type stays.
+    #expect(HuntTargets(line: "523").adding(swing) == HuntTargets(models: [swing.id]))
+    #expect(HuntTargets(kind: .bus).adding(swing).kind == nil)
+    #expect(HuntTargets(kind: .tram).adding(swing).kind == .tram)
+    // Specs go only when none of its vehicles have them: some Lion's City Gs are CNG.
+    #expect(HuntTargets(drives: [.cng]).adding(lionG).drives == [.cng])
+    #expect(HuntTargets(drives: [.cng]).adding(swing).drives.isEmpty)
+    let added = HuntTargets(tiers: [.gold], lengths: [.under10]).adding(lionG)
+    #expect(added.lengths.isEmpty && added.matches(lionG, number: 7200, line: "190"))
+    // Adding twice changes nothing.
+    #expect(gold.adding(swing) == gold)
+}
+
 @Test func huntSearchFindsLinesAndNumbers() {
     let snap = LiveSnapshot(vehicles: [live(4235, .tram, line: "33"), live(4236, .tram, line: "33"),
                                        live(8592, .bus, line: "523"), live(1000, .bus, line: "L-4"),

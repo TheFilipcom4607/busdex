@@ -58,6 +58,8 @@ final class Router {
     var bookPath: [BookRoute] = []
     /// Goes up when a photo shared from another app is waiting in `ShareInbox`: CATCH takes it.
     var sharedPhotos = 0
+    /// A model sent from its page in the book (#45): HUNT frames where it's running, then clears it.
+    var huntModel: String?
 
     /// A photo shared to TABOR: catch it on CATCH, like one picked from the library.
     func catchShared() {
@@ -71,6 +73,12 @@ final class Router {
     func openModel(_ id: String) {
         tab = .book
         bookPath = [.model(id)]
+    }
+
+    /// Its vehicles on HUNT's map. The filter is already set; the book keeps its place.
+    func showOnHunt(_ modelId: String) {
+        huntModel = modelId
+        tab = .hunt
     }
 
     func openVehicle(modelId: String, number: Int) {

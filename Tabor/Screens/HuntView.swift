@@ -169,6 +169,14 @@ struct HuntView: View {
         .onChange(of: selectedId) { if selectedId != focusId { focusId = nil } }
         // Caught vehicles are only fetched for the ALL view.
         .onChange(of: filter) { recompute(animated: false) }
+        // SHOW ON MAP in the book: go to where that model is running, not the 3 km around you.
+        .onChange(of: router.huntModel, initial: true) { _, id in
+            guard let id else { return }
+            router.huntModel = nil
+            centered = true
+            selectedId = nil
+            fit(cityWide().filter { $0.model.id == id && targets.matches($0) })
+        }
     }
 
     /// A city-wide (filtered) hunt only gets pins around where you're looking, with a screen's

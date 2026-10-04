@@ -440,6 +440,20 @@ public struct HuntTargets: Equatable, Sendable, RawRepresentable {
         matches(pin.model, number: pin.vehicle.number, line: pin.vehicle.line)
     }
 
+    /// With a model added from its page in the book (#45). Picks add up, but whatever narrows
+    /// them could hide it: the line goes, and so does a type or spec none of its vehicles have.
+    public func adding(_ model: VehicleModel) -> HuntTargets {
+        var t = self
+        t.models.insert(model.id)
+        t.line = nil
+        if let kind, kind != model.kind { t.kind = nil }
+        let specs = model.numbers.map { model.specs(of: $0) }
+        if !lengths.isEmpty, !specs.contains(where: { $0?.length.flatMap(LengthBand.of).map(lengths.contains) ?? false }) { t.lengths = [] }
+        if !drives.isEmpty, !specs.contains(where: { $0?.drive.map(drives.contains) ?? false }) { t.drives = [] }
+        if !floors.isEmpty, !specs.contains(where: { $0?.floor.map(floors.contains) ?? false }) { t.floors = [] }
+        return t
+    }
+
     /// Lengths in bands that sort buses and trams alike: minibuses and the oldest trams, the
     /// standard 12 m bus, articulated buses and short trams, long trams, the longest trams.
     public enum LengthBand: String, CaseIterable, Sendable, Comparable {

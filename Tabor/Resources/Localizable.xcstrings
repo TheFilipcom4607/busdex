@@ -8689,6 +8689,26 @@
           }
         }
       }
+    },
+    "SHOW ON MAP": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "POKAŻ NA MAPIE"
+          }
+        }
+      }
+    },
+    "Show on the HUNT map": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż na mapie w HUNT"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

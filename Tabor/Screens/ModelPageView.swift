@@ -17,6 +17,8 @@ struct ModelPageView: View {
     @Query private var sightings: [Sighting]
     @State private var sort: StickerSort = .number
     @AppStorage(DebugRecord.enabledKey) private var debugMode = false
+    @AppStorage("huntTargets") private var huntTargets = HuntTargets()
+    @AppStorage("huntFilter") private var huntFilter: HuntFilter = .uncaught
     /// Debug: the vehicle picked for deletion, waiting for confirmation.
     @State private var deleting: Int?
     @Environment(\.dismiss) private var dismiss
@@ -78,6 +80,10 @@ struct ModelPageView: View {
                 HStack(spacing: 7) {
                     KindTag(kind: model.kind)
                     TierPill(tier: model.tier, fleet: model.fleet)
+                    Spacer(minLength: 0)
+                    if owned.count < model.fleet {
+                        showOnMapButton(model, haveSome: !owned.isEmpty)
+                    }
                 }
                 // One line at full size, else one line a little smaller, else wrap on spaces.
                 ViewThatFits(in: .horizontal) {
@@ -286,6 +292,31 @@ struct ModelPageView: View {
     }
 
     /// Owned first (as the design shows), then the rest, by number or catch date.
+    /// Adds the model to HUNT's filter and goes to where it's running (#45).
+    private func showOnMapButton(_ model: VehicleModel, haveSome: Bool) -> some View {
+        Button {
+            Haptics.shared.tick()
+            huntTargets = huntTargets.adding(model)
+            // NEW MODELS hides a model you already have, so it would show nothing.
+            if haveSome, huntFilter == .newModels { huntFilter = .uncaught }
+            router.showOnHunt(model.id)
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                    .font(.system(size: 10, weight: .bold))
+                Mono("SHOW ON MAP", size: 10.5, weight: 600, spacing: 0.1, color: Palette.radar)
+                    .lineLimit(1)
+            }
+            .foregroundStyle(Palette.radar)
+            .padding(.vertical, 4)
+            .padding(.horizontal, 9)
+            .background(Palette.radar.opacity(0.12), in: Capsule())
+            .overlay(Capsule().stroke(Palette.radar.opacity(0.4)))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Show on the HUNT map")
+    }
+
     private func ordered(_ numbers: [Int], owned: [Int: OwnedVehicle]) -> [Int] {
         let have = numbers.filter { owned[$0] != nil }
         let rest = numbers.filter { owned[$0] == nil }
