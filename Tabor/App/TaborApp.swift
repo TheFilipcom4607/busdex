@@ -69,10 +69,14 @@ final class Router {
         sharedPhotos += 1
     }
 
-    /// After sticking a catch in: jump to its model page in the book.
-    func openModel(_ id: String) {
+    /// The number just stuck in: its model page scrolls to it, then clears it (#51).
+    var landing: Int?
+
+    /// A model's page in the book; after sticking a catch in, scrolled to where it went.
+    func openModel(_ id: String, landing: Int? = nil) {
         tab = .book
         bookPath = [.model(id)]
+        self.landing = landing
     }
 
     /// Its vehicles on HUNT's map. The filter is already set; the book keeps its place.

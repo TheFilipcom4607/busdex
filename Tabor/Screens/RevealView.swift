@@ -725,7 +725,7 @@ struct RevealView: View {
         let batchDone = cars.contains { model.batch(containing: $0)?.numbers.allSatisfy(owned.contains) ?? false }
         let firstTime = !ownedBefore.isSuperset(of: cars)
         try? await Task.sleep(for: .milliseconds(480))
-        router.openModel(model.id)
+        router.openModel(model.id, landing: number)
         dismiss()
         if firstTime, batchDone || model.numbers.allSatisfy(owned.contains) {
             try? await Task.sleep(for: .milliseconds(450))
