@@ -508,6 +508,8 @@ private func any(_ modelId: String? = nil, number: Int? = nil, date: Date = day(
     let collector = eval(caught)["collector"]!
     #expect(collector.level == 2 && collector.levels == 4 && collector.goal == 500 && collector.medal == .silver)
     #expect(collector.detail == "500 different vehicles")
+    #expect(collector.reached == "100 different vehicles")
+    #expect(eval(Array(caught.prefix(9)))["collector"]!.reached == "10 different vehicles")
     #expect(eval(Array(caught.prefix(9)))["collector"]!.level == 0)
     let share = eval(caught)["fleet-share"]!
     #expect(share.level == 1 && share.detail == "10% of Warsaw's fleet")

@@ -70,6 +70,9 @@ public struct Achievement: Identifiable, Hashable, Sendable {
     public var earned: Bool { level > 0 }
     public var maxed: Bool { level >= levels }
     public var tiered: Bool { levels > 1 }
+    /// What the level reached asks for: a tiered badge at level 1 of Collector is "10 different
+    /// vehicles", not the next level's "100". Not earned yet, it's the first goal.
+    public var reached: String { tiered && level > 0 && level <= steps.count ? steps[level - 1] : detail }
     public var fraction: Double { maxed ? 1 : goal > 0 ? min(Double(progress) / Double(goal), 1) : 0 }
     public var isDepot: Bool { id.hasPrefix("depot-") }
 
