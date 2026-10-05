@@ -68,12 +68,9 @@ struct HuntView: View {
     @State private var openGroup: [String]?
     /// What the map is showing: pins cover it, however far you zoom out.
     @State private var mapRegion: MKCoordinateRegion?
-    /// The map's rotation, so direction arrows keep pointing the right way on the ground.
-    @State private var mapHeading: Double = 0
-    /// The same, for your dot: MapKit draws the user annotation once, so it reads this itself.
+    /// The map's rotation, for your dot and the pins' arrows. Not state of this view: it changes
+    /// every frame of a turn, and redrawing the whole map that often made the compass lag (#52).
     @State private var turn = MapTurn()
-    /// How far the camera is up, so turning the map the way you face keeps the zoom.
-    @State private var mapDistance: CLLocationDistance?
     /// The map turned the way you're facing, centred on you (the second tap on 3 KM).
     /// Anything else that moves the map ends it.
     @State private var facing = false
@@ -124,7 +121,7 @@ struct HuntView: View {
                         followButton(selected)
                             .transition(.scale(scale: 0.8, anchor: .trailing).combined(with: .opacity))
                     }
-                    if here != nil, offDefaultView || facing || location.heading != nil {
+                    if here != nil, offDefaultView || facing || location.hasHeading {
                         locationButton
                             .transition(.scale(scale: 0.8, anchor: .trailing).combined(with: .opacity))
                     }
@@ -166,10 +163,14 @@ struct HuntView: View {
             if phase == .background { live.stop("hunt") }
         }
         .onChange(of: live.snapshot?.fetched, initial: true) { recompute(animated: true) }
-        .onChange(of: location.heading) { turnToFacing() }
+        // MapKit follows you on its own while facing; whatever ends facing leaves the map
+        // where it is rather than letting it keep turning.
+        .onChange(of: facing) { _, on in
+            guard !on, position.followsUserLocation, let camera = turn.camera else { return }
+            position = .camera(camera)
+        }
         .onChange(of: location.latest) {
             centerOnceOnYou()
-            turnToFacing()
             live.locationMoved()
             recompute(animated: false)
         }
@@ -265,7 +266,7 @@ struct HuntView: View {
                 if g.pins.count == 1 {
                     Annotation(g.lead.model.name, coordinate: mapCoordinate(g.lead, selected: now), anchor: .bottom) {
                         WantedPinView(pin: g.lead, selected: g.id == selectedId,
-                                      heading: live.trails.heading(g.lead.id).map { $0 - mapHeading })
+                                      travel: live.trails.heading(g.lead.id), turn: turn)
                     }
                     .tag(g.id)
                     .annotationTitles(.hidden)
@@ -284,18 +285,18 @@ struct HuntView: View {
                   : .standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
         .mapControls {}
         .environment(\.colorScheme, .dark)
-        .onMapCameraChange(frequency: .continuous) { ctx in
-            mapHeading = ctx.camera.heading
-            turn.heading = ctx.camera.heading
-            mapDistance = ctx.camera.distance
-        }
+        .onMapCameraChange(frequency: .continuous) { ctx in turn.update(ctx.camera) }
         .onMapCameraChange(frequency: .onEnd) { ctx in
-            mapRegion = ctx.region
-            // Moved by hand: leave the map where it was put. Moves made in code don't count.
+            // Moved by hand: leave the map where it was put. Moves made in code don't count, nor
+            // does zooming while facing (MapKit keeps following).
             if position.positionedByUser {
                 following = false
                 facing = false
             }
+            // Only turned, as the facing map does several times a second: nothing the pins
+            // depend on changed, and redoing them each time made it lag (#52).
+            guard turn.moved(ctx.camera) else { return }
+            mapRegion = ctx.region
             recompute(animated: false)
         }
         .onChange(of: selectedId) { _, id in
@@ -654,11 +655,12 @@ struct HuntView: View {
         position = .region(region)
     }
 
-    /// Facing: you in the middle, the map turned the way the phone points, at the same zoom.
+    /// Facing: you in the middle, the map turned the way the phone points. MapKit's own
+    /// following, which turns the map smoothly without redrawing HUNT; moving the camera
+    /// ourselves on each compass reading juddered and lagged (#52). It starts a few streets
+    /// across rather than at 3 km, but pinching keeps it following.
     private func turnToFacing() {
-        guard facing, let here, let heading = location.heading else { return }
-        let camera = MapCamera(centerCoordinate: here, distance: mapDistance ?? Wanted.radius * 4, heading: heading.degrees, pitch: 0)
-        withAnimation(.easeOut(duration: 0.25)) { position = .camera(camera) }
+        withAnimation(.easeInOut(duration: 0.5)) { position = .userLocation(followsHeading: true, fallback: position) }
     }
 
     private func resetView() {
@@ -1327,9 +1329,13 @@ enum HuntDistance {
 private struct WantedPinView: View {
     let pin: WantedPin
     let selected: Bool
-    /// Screen direction of travel (0 = up), once the vehicle has been seen moving.
-    var heading: Double? = nil
+    /// Direction of travel (degrees from north), once the vehicle has been seen moving.
+    var travel: Double? = nil
+    /// The map's rotation, read here so a turning map redraws only the pins.
+    let turn: MapTurn
     private var filled: Bool { pin.kind == .newModel }
+    /// On screen, 0 = up.
+    private var heading: Double? { travel.map { $0 - turn.coarse } }
 
     /// Screen angle (0 = up, clockwise) to the nearest of eight arrows.
     static func arrow(_ degrees: Double) -> String {
@@ -1377,7 +1383,30 @@ private struct WantedPinView: View {
 @Observable
 private final class MapTurn {
     /// Degrees clockwise from north.
-    var heading: Double = 0
+    private(set) var heading: Double = 0
+    /// The same in 5° steps, for the pins' arrows (eight of them, 45° apart): a smooth turn
+    /// would otherwise redraw every pin on every frame.
+    private(set) var coarse: Double = 0
+    /// Where the camera is now, to leave the map there when facing ends.
+    @ObservationIgnored private(set) var camera: MapCamera?
+    /// Where it last came to rest.
+    @ObservationIgnored private var settled: MapCamera?
+
+    func update(_ camera: MapCamera) {
+        self.camera = camera
+        if camera.heading != heading { heading = camera.heading }
+        let step = (camera.heading / 5).rounded() * 5
+        if step != coarse { coarse = step }
+    }
+
+    /// Whether the camera came to rest somewhere new, rather than only turning on the spot.
+    func moved(_ camera: MapCamera) -> Bool {
+        defer { settled = camera }
+        guard let settled else { return true }
+        let a = settled.centerCoordinate, b = camera.centerCoordinate
+        return Geo.km((a.latitude, a.longitude), (b.latitude, b.longitude)) > 0.01
+            || abs(camera.distance / settled.distance - 1) > 0.01
+    }
 }
 
 /// You on the map: Apple's blue dot, with a beam the way the phone points. Like Apple Maps,

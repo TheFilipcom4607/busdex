@@ -17,6 +17,9 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     private(set) var authorization: CLAuthorizationStatus = .notDetermined
     /// Which way the phone points, while someone asks for it: nil without a compass.
     private(set) var heading: Heading?
+    /// Whether there's a heading at all. Views that only need this read it instead of `heading`,
+    /// which changes every couple of degrees and would redraw them each time.
+    private(set) var hasHeading = false
 
     struct Heading: Equatable {
         /// Degrees clockwise from true north (magnetic north until there's a fix).
@@ -68,6 +71,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         guard headingWatchers.remove(client) != nil, headingWatchers.isEmpty else { return }
         manager.stopUpdatingHeading()
         heading = nil
+        hasHeading = false
     }
 
     /// `latest`, if it's recent enough to say what's around you.
@@ -123,6 +127,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         Task { @MainActor in
             guard !self.headingWatchers.isEmpty else { return }
             self.heading = reading
+            if self.hasHeading != (reading != nil) { self.hasHeading = reading != nil }
         }
     }
 
