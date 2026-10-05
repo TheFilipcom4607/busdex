@@ -225,10 +225,27 @@ def span(numbers):
     return ", ".join(f"{a}-{b}" if a != b else f"{a}" for a, b in runs)
 
 
+# Both of ZTM's lists number a few heritage cars with a suffix. "403-1" is K #403 itself, the
+# "Berlinek" (Warszawikia, kmkm.waw.pl; issue #33), not a trailer, and its fleet number is 403.
+RENUMBER = {("TRAM", "403-1"): "403"}
+
+
+def renumbered(rows):
+    return [{**r, "number": RENUMBER.get((r["kind"], r["number"]), r["number"])} for r in rows]
+
+
+def load_raw():
+    return renumbered(json.loads(RAW.read_text())["vehicles"])
+
+
+def load_city():
+    city = json.loads(CITY.read_text())
+    return {**city, "vehicles": renumbered(city["vehicles"])}
+
+
 def source_rows():
     """Every vehicle row fleet.json is built from, before the hand-kept lists."""
-    scraped = json.loads(RAW.read_text())["vehicles"]
-    return with_city(scraped, json.loads(CITY.read_text()), report=False) if CITY.exists() else scraped
+    return with_city(load_raw(), load_city(), report=False) if CITY.exists() else load_raw()
 
 
 # What the city calls each drive, for the model page.
@@ -554,7 +571,7 @@ def build(vehicles, city=None):
     groups = defaultdict(list)
     for v in with_vintage_extras(vehicles):
         if not v["number"].isdigit():
-            continue  # e.g. "403-1": trailer cars of a heritage set
+            continue  # a suffixed number RENUMBER doesn't know yet
         split = v["vintage"] and (v["kind"], v["make"], v["model"]) in VINTAGE_NUMBERS
         groups[(v["kind"], v["make"], v["model"], split)].append(v)
 
@@ -682,5 +699,7 @@ def build(vehicles, city=None):
 if __name__ == "__main__":
     if "--scrape" in sys.argv:
         scrape()
-    city = json.loads(CITY.read_text()) if "--offline" in sys.argv else fetch_city()
-    build(with_city(json.loads(RAW.read_text())["vehicles"], city), city)
+    if "--offline" not in sys.argv:
+        fetch_city()
+    city = load_city()
+    build(with_city(load_raw(), city), city)
