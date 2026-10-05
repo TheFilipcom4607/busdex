@@ -335,8 +335,10 @@ drops out. Every source is credited at the bottom of the book.
 
 ## Your book
 
-It lives on the phone and nowhere else: there's no account and no server, and
-no iCloud sync for now. Settings › Backup exports the whole book as a ZIP: every
+It lives on the phone and nowhere else: there's no account, nothing of yours
+goes to a server, and no iCloud sync for now. What the app does send (the live
+feed, the weather, Lock Screen tracking) is listed in the
+[privacy policy](https://thefilip.com/tabor/privacy). Settings › Backup exports the whole book as a ZIP: every
 sighting, photo, sticker and hand-picked model. Importing a backup only adds
 what's missing, so importing the same file twice changes nothing.
 
