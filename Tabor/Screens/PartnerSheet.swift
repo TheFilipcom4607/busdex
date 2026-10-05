@@ -61,6 +61,7 @@ struct PartnerSheet: View {
                     }
                 }
                 .padding(22)
+                .fitScrollWidth()
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Palette.bg)

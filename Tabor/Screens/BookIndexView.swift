@@ -86,6 +86,7 @@ struct BookIndexView: View {
                 }
                 .padding(.top, 10)
                 .padding(.horizontal, 22)
+                .fitScrollWidth()
             }
             .scrollIndicators(.hidden)
             .softTopEdge()

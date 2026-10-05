@@ -88,6 +88,7 @@ struct CatchLogSheet: View {
                 }
             }
             .padding(.bottom, 30)
+            .fitScrollWidth()
         }
         .scrollIndicators(.hidden)
         .foregroundStyle(Palette.ink)

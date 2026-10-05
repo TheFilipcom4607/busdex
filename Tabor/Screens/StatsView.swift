@@ -116,6 +116,7 @@ struct StatsSheet: View {
                 }
             }
             .padding(.bottom, 40)
+            .fitScrollWidth()
         }
         .scrollIndicators(.hidden)
         .foregroundStyle(Palette.ink)

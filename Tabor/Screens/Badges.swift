@@ -250,7 +250,7 @@ struct BadgeDetailSheet: View {
             // Tiered badges list their levels, and some their vehicles or what's left to find,
             // so they scroll inside the same half-height sheet.
             if badge.tiered || !badge.proof.isEmpty || !badge.missing.isEmpty {
-                ScrollView { details.padding(.bottom, 28) }
+                ScrollView { details.padding(.bottom, 28).fitScrollWidth() }
                     .scrollIndicators(.hidden)
                     // Soft edge instead of a hard cut where the list runs under the sheet's bottom.
                     .mask(LinearGradient(stops: [.init(color: .black, location: 0.85), .init(color: .clear, location: 1)],

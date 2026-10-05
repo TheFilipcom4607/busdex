@@ -186,6 +186,7 @@ struct ModelPageView: View {
                     }
                     .padding(.horizontal, 22)
                     .padding(.bottom, 24)
+                    .fitScrollWidth()
                 }
                 .scrollIndicators(.hidden)
                 .softTopEdge(Self.softEdge)
@@ -271,9 +272,10 @@ struct ModelPageView: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
-    /// "18", or "10.5—12" where the vehicles differ.
+    /// "18", or "10.5—12" where the vehicles differ. Word joiners keep a range on one line:
+    /// "siedzących: 25—29" otherwise broke before the dash on a 390 pt phone.
     private func span<T>(_ r: ClosedRange<T>, _ show: (T) -> String) -> String {
-        r.lowerBound == r.upperBound ? show(r.lowerBound) : "\(show(r.lowerBound))—\(show(r.upperBound))"
+        r.lowerBound == r.upperBound ? show(r.lowerBound) : "\(show(r.lowerBound))\u{2060}—\u{2060}\(show(r.upperBound))"
     }
 
     private func subtitle(_ m: VehicleModel) -> String {

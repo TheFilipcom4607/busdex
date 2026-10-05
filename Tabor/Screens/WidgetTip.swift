@@ -113,6 +113,7 @@ struct WidgetHowTo: View {
                 .padding(.horizontal, 22)
                 .padding(.top, 18)
                 .padding(.bottom, 28)
+                .fitScrollWidth()
             }
             .scrollIndicators(.hidden)
         }

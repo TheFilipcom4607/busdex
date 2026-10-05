@@ -114,9 +114,7 @@ struct MeView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 22)
             }
-            // Never wider than the screen: one row too wide for a phone let the whole page
-            // pan sideways under your finger (#42).
-            .containerRelativeFrame(.horizontal, alignment: .leading)
+            .fitScrollWidth()
         }
         .scrollIndicators(.hidden)
         .taborScreen()
