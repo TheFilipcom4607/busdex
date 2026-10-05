@@ -198,7 +198,7 @@ the app (so trails are ready when you open the map), and never in the background
   From outside Warsaw, a filter is the way in.
 - **Search.** A fleet number finds that vehicle, running or not. A line lists
   every vehicle on it right now.
-- **Three views.** UNCAUGHT shows everything not in your book, NEW MODELS only
+- **Three views.** UNCAUGHT shows everything not in your book, MISSING only
   models you don't have yet, and ALL shows everything running, caught or not. A
   vehicle you've caught gets the same marker as any other model you have, and its
   card says when it went into your book.

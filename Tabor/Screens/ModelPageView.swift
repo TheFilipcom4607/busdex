@@ -321,7 +321,7 @@ struct ModelPageView: View {
         Button {
             Haptics.shared.tick()
             huntTargets = huntTargets.adding(model)
-            // NEW MODELS hides a model you already have, so it would show nothing.
+            // MISSING hides a model you already have, so it would show nothing.
             if haveSome, huntFilter == .newModels { huntFilter = .uncaught }
             router.showOnHunt(model.id)
         } label: {

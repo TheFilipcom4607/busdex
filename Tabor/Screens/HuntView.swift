@@ -13,9 +13,10 @@ enum HuntFilter: String, CaseIterable {
     var name: String {
         switch self {
         // Keys of their own: the chips need shorter words than the book and stats (in Polish
-        // "NIEZŁAPANE · NOWE MODELE · WSZYSTKIE" doesn't fit next to FILTR).
+        // "NIEZŁAPANE · NOWE MODELE · WSZYSTKIE" doesn't fit next to FILTR). "Missing" (NIE MASZ),
+        // not "new": testers took NEW MODELS for models new to the city (#54).
         case .uncaught: String(localized: "hunt.filter.uncaught", defaultValue: "UNCAUGHT")
-        case .newModels: String(localized: "hunt.filter.newModels", defaultValue: "NEW MODELS")
+        case .newModels: String(localized: "hunt.filter.missing", defaultValue: "MISSING")
         case .everything: String(localized: "hunt.filter.all", defaultValue: "ALL")
         }
     }
@@ -24,7 +25,7 @@ enum HuntFilter: String, CaseIterable {
 /// HUNT: every bus and tram running near you that isn't in your book yet, live (or, in the
 /// ALL view, everything running).
 /// Two rules on the map: a vehicle on its own is a tag with its line, vehicles that would
-/// overlap become one bubble with their count; filled means a model new to you, outlined
+/// overlap become one bubble with their count; filled means a model you're missing, outlined
 /// a model you already have. Colour is always rarity.
 /// A filter (rarities, models) narrows it to what you're after, anywhere in the city.
 struct HuntView: View {
@@ -962,12 +963,12 @@ struct HuntView: View {
         return shown.sorted { $0.distance < $1.distance }
     }
 
-    /// "UNCAUGHT NEARBY", or "NEW TRAM MODELS NEARBY" with trams picked.
+    /// "UNCAUGHT NEARBY", or "MISSING TRAM MODELS NEARBY" with trams picked.
     private var nearbyTitle: String {
         switch (filter, targets.kind) {
-        case (.newModels, nil): String(localized: "NEW MODELS NEARBY")
-        case (.newModels, .bus): String(localized: "NEW BUS MODELS NEARBY")
-        case (.newModels, .tram): String(localized: "NEW TRAM MODELS NEARBY")
+        case (.newModels, nil): String(localized: "MISSING MODELS NEARBY")
+        case (.newModels, .bus): String(localized: "MISSING BUS MODELS NEARBY")
+        case (.newModels, .tram): String(localized: "MISSING TRAM MODELS NEARBY")
         case (.uncaught, nil): String(localized: "UNCAUGHT NEARBY")
         case (.uncaught, .bus): String(localized: "UNCAUGHT BUSES NEARBY")
         case (.uncaught, .tram): String(localized: "UNCAUGHT TRAMS NEARBY")
@@ -980,14 +981,17 @@ struct HuntView: View {
     private func wantedList(_ near: [WantedPin]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
+                // One line even with the count beside it on a 390 pt phone ("BRAKUJĄCE MODELE TRAMWAJÓW").
                 SectionLabel(text: targets.isCityWide ? String(localized: "MATCHING YOUR FILTER") : nearbyTitle)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                 Spacer()
                 Mono(targets.isCityWide ? "\(near.count) OUT NOW" : hasFix ? "\(near.count) WITHIN 3 KM" : "AROUND THE MAP CENTRE",
                      size: 9.5, color: Palette.faint)
             }
             if filter != .newModels {
                 HStack(spacing: 12) {
-                    LegendSwatch(filled: true, text: String(localized: "NEW MODEL"))
+                    LegendSwatch(filled: true, text: String(localized: "MODEL YOU DON'T HAVE"))
                     LegendSwatch(filled: false, text: String(localized: "MODEL YOU HAVE"))
                     Spacer()
                 }
@@ -1026,7 +1030,7 @@ struct HuntView: View {
             guard shown.isEmpty else { return nil }
             return MessageCard(icon: "line.3.horizontal.decrease.circle", title: String(localized: "Nothing out that matches"),
                                text: targets.line == nil && filter == .newModels
-                                   ? String(localized: "None of it is a new model for you. Switch to UNCAUGHT, or widen the filter.")
+                                   ? String(localized: "None of it is a model you're missing. Switch to UNCAUGHT, or widen the filter.")
                                    : targets.line != nil || filter == .everything
                                    ? String(localized: "Nothing on your filter is running right now. It shows up here the moment one is.")
                                    : String(localized: "Nothing on your filter that you haven't caught is running right now. It shows up here the moment one is."),
@@ -1060,9 +1064,9 @@ struct HuntView: View {
                 return MessageCard(icon: "location.magnifyingglass", title: title, text: String(localized: "Nothing running within 3 km right now."))
             }
             let title = switch (filter, targets.kind) {
-            case (.newModels, nil): String(localized: "No new models within 3 km")
-            case (.newModels, .bus): String(localized: "No new bus models within 3 km")
-            case (.newModels, .tram): String(localized: "No new tram models within 3 km")
+            case (.newModels, nil): String(localized: "No models you're missing within 3 km")
+            case (.newModels, .bus): String(localized: "No bus models you're missing within 3 km")
+            case (.newModels, .tram): String(localized: "No tram models you're missing within 3 km")
             case (.uncaught, nil): String(localized: "No uncaught vehicles within 3 km")
             case (.uncaught, .bus): String(localized: "No uncaught buses within 3 km")
             case (.uncaught, .tram): String(localized: "No uncaught trams within 3 km")

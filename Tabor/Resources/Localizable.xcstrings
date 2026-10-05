@@ -3818,6 +3818,16 @@
         }
       }
     },
+    "MODEL YOU DON'T HAVE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MODEL, KTÓREGO NIE MASZ"
+          }
+        }
+      }
+    },
     "MODELS": {
       "localizations": {
         "pl": {
@@ -3869,12 +3879,12 @@
         }
       }
     },
-    "NEW BUS MODELS NEARBY": {
+    "MISSING BUS MODELS NEARBY": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOWE MODELE AUTOBUSÓW W POBLIŻU"
+            "value": "BRAKUJĄCE MODELE AUTOBUSÓW"
           }
         }
       }
@@ -3909,12 +3919,12 @@
         }
       }
     },
-    "NEW MODELS NEARBY": {
+    "MISSING MODELS NEARBY": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOWE MODELE W POBLIŻU"
+            "value": "BRAKUJĄCE MODELE"
           }
         }
       }
@@ -3939,12 +3949,12 @@
         }
       }
     },
-    "NEW TRAM MODELS NEARBY": {
+    "MISSING TRAM MODELS NEARBY": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOWE MODELE TRAMWAJÓW W POBLIŻU"
+            "value": "BRAKUJĄCE MODELE TRAMWAJÓW"
           }
         }
       }
@@ -4180,32 +4190,32 @@
         }
       }
     },
-    "No new bus models within 3 km": {
+    "No bus models you're missing within 3 km": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Brak nowych modeli autobusów w promieniu 3 km"
+            "value": "W promieniu 3 km nie ma modeli autobusów, których ci brakuje"
           }
         }
       }
     },
-    "No new models within 3 km": {
+    "No models you're missing within 3 km": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Brak nowych modeli w promieniu 3 km"
+            "value": "W promieniu 3 km nie ma modeli, których ci brakuje"
           }
         }
       }
     },
-    "No new tram models within 3 km": {
+    "No tram models you're missing within 3 km": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Brak nowych modeli tramwajów w promieniu 3 km"
+            "value": "W promieniu 3 km nie ma modeli tramwajów, których ci brakuje"
           }
         }
       }
@@ -4261,12 +4271,12 @@
         }
       }
     },
-    "None of it is a new model for you. Switch to UNCAUGHT, or widen the filter.": {
+    "None of it is a model you're missing. Switch to UNCAUGHT, or widen the filter.": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Żaden z nich nie jest dla ciebie nowym modelem. Przełącz na NIEZŁAPANE albo poszerz filtr."
+            "value": "Żaden z nich nie jest modelem, którego ci brakuje. Przełącz na NIEZŁAPANE albo poszerz filtr."
           }
         }
       }
@@ -8748,20 +8758,20 @@
         }
       }
     },
-    "hunt.filter.newModels": {
-      "comment": "HUNT header chip: keep it short",
+    "hunt.filter.missing": {
+      "comment": "HUNT header chip: keep it short. Models you don't have yet (not models new to the city)",
       "extractionState": "extracted_with_value",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "new",
-            "value": "NEW MODELS"
+            "value": "MISSING"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "NOWE"
+            "value": "NIE MASZ"
           }
         }
       }
