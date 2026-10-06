@@ -206,6 +206,9 @@ private func sampleModel() -> VehicleModel {
     // A number tied by hand to a model it isn't in, with no split behind it, stays put.
     #expect(catalog.moved(modelId: "bus-solaris-urbino-18", number: 3105) == nil)
     #expect(catalog.moved(modelId: "tram-pesa-120n", number: 99_999) == nil)
+    // The 105Ni cars ZTM filed as plain 105Na follow to the 105N2k; a real 105Na stays.
+    #expect(catalog.moved(modelId: "tram-konstal-105n", number: 1363) == "tram-alstom-konstal-105n")
+    #expect(catalog.moved(modelId: "tram-konstal-105n", number: 1393) == nil)
 }
 
 @Test func trialBusIsOnTestAndOutsideTheFleet() {
@@ -226,6 +229,9 @@ private func sampleModel() -> VehicleModel {
     #expect(catalog.match(number: 1983, kind: .bus).suggested?.id == "bus-yutong-u12-b")
     // Club-owned 105Na sets are split from the regular 105Na.
     #expect(catalog.match(number: 1001, kind: .tram).suggested?.id == "tram-konstal-105n-vintage")
+    // MZA's Urbino 12 #1400, renumbered as heritage bus #6900.
+    let heritage = catalog.match(number: 6900, kind: .bus).suggested
+    #expect(heritage?.id == "bus-solaris-urbino-12-vintage" && heritage?.tier == .vintage)
 }
 
 @Test func voterNeedsAgreement() {
@@ -1386,10 +1392,10 @@ private let n13 = catalog.model(id: "tram-konstal-13n")!
         // Still offered, below the read.
         #expect(out.map(\.number) == [read, near])
     }
-    // 1390 is a 105Na, 1391 a 105N2k: not the same set, and both real, so 1390 stands.
-    let other = LiveHints.adjust([(1390, 1.2)], nearby: nearby([live(1391, .tram, metres: 60)]), catalog: catalog)
+    // 1393 is a 105Na, 1392 a 105N2k: not the same set, and both real, so 1393 stands.
+    let other = LiveHints.adjust([(1393, 1.2)], nearby: nearby([live(1392, .tram, metres: 60)]), catalog: catalog)
     #expect(other.adjustment.rescued.isEmpty && other.adjustment.partners.isEmpty)
-    #expect(other.candidates.max { $0.score < $1.score }?.number == 1390)
+    #expect(other.candidates.max { $0.score < $1.score }?.number == 1393)
     // A number no tram has is still rescued: 4729 by the 4229 right there.
     let stranger = LiveHints.adjust([(4729, 1.0)], nearby: nearby([live(4229, .tram, metres: 28)]), catalog: catalog)
     #expect(stranger.adjustment.rescued == [LiveHints.Rescue(from: 4729, to: 4229)])
@@ -1436,10 +1442,10 @@ private let n13 = catalog.model(id: "tram-konstal-13n")!
 }
 
 @Test func partnerSuggestionsStayInTheModel() {
-    // 1390 is a 105Na: never offered for a 105N2k.
-    let s = CoupledSet.suggestions(for: 1391, model: n2k, photoNumbers: [1390], nearby: nearby([live(1390, .tram)]), catalog: catalog)
-    #expect(!s.map(\.number).contains(1390))
-    #expect(s.map(\.number) == [1392])
+    // 1393 is a 105Na: never offered for a 105N2k.
+    let s = CoupledSet.suggestions(for: 1392, model: n2k, photoNumbers: [1393], nearby: nearby([live(1393, .tram)]), catalog: catalog)
+    #expect(!s.map(\.number).contains(1393))
+    #expect(s.map(\.number) == [1391])
     #expect(CoupledSet.suggestions(for: 821, model: n13, photoNumbers: [], nearby: [], catalog: catalog).map(\.number) == [818])
     #expect(CoupledSet.suggestions(for: 795, model: n13, photoNumbers: [796], nearby: [], catalog: catalog).isEmpty)
     let swing = catalog.model(id: "tram-pesa-120n")!
@@ -1448,7 +1454,10 @@ private let n13 = catalog.model(id: "tram-konstal-13n")!
 
 @Test func coupledFleetData() throws {
     let coupled = Set(catalog.models.filter(\.coupled).map(\.id))
-    #expect(coupled == ["tram-konstal-105n", "tram-alstom-konstal-105n", "tram-hcp-123n", "tram-konstal-105n-vintage"])
+    #expect(coupled == ["tram-konstal-105n", "tram-alstom-konstal-105n", "tram-hcp-123n"])
+    // The KMKM's vintage sets stay coupled through `sets`; #1006, the promotional car, runs alone.
+    #expect(n105Vintage.isCoupled(1000) && n105Vintage.fixedPartner(of: 1000) == 1001)
+    #expect(n105Vintage.has(1006) && !n105Vintage.isCoupled(1006) && !n105.has(1006))
     #expect(!n13.coupled && n13.isCoupled(821) && n13.isCoupled(818) && !n13.isCoupled(795))
     #expect(n13.fixedPartner(of: 821) == 818)
     #expect(n105Vintage.fixedPartner(of: 1252) == 1251)
@@ -1473,7 +1482,7 @@ private let kModel = catalog.model(id: "tram-gdanska-fabryka-wagonow-wiwk-k")!
     #expect(nModel.pullsTrailers(607) && n4.pullsTrailers(838) && kModel.pullsTrailers(445))
     #expect(nModel.takesSecondCar(1620) && !n13.takesSecondCar(795) && n13.takesSecondCar(821))
     // Works cars ZTM still lists are left out.
-    #expect(!kModel.has(2405) && !nModel.has(1770) && !n13.has(534))
+    #expect(!kModel.has(2405) && !kModel.has(2400) && !nModel.has(1770) && !n13.has(534) && !n105.has(1315))
 }
 
 @Test func trailerPairsAcrossModels() {
