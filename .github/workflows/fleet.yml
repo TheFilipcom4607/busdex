@@ -1,20 +1,21 @@
 name: Refresh fleet data
 
-# Rebuilds fleet.json from the city's vehicle list every night and, when the fleet changed,
-# opens a pull request with it (branch fleet-refresh) for a human to read and merge. The app
-# downloads the committed file from main, so a merge reaches phones without an App Store
-# release.
+# Rebuilds fleet.json from the city's vehicle list every night and keeps main up to date with
+# it, so new deliveries reach phones (they download the committed file) with nobody lifting a
+# finger. The hand-kept corrections live in fetch_fleet.py, not in fleet.json, so a rebuild
+# keeps them; fleet-reproducible.yml makes sure it stays that way.
 #
-# The hand-kept corrections live in fetch_fleet.py (RENUMBER, RETIRED, RETYPE, STILL_RUNNING
-# ...), not in fleet.json, so a rebuild keeps them; fleet-reproducible.yml makes sure it stays
-# that way. There's only ever one fleet PR: each night's run rebuilds the branch from main and
-# force-pushes it, so it holds everything since the last merge, and leaving it for a few days
-# is fine. Don't push your own commits to fleet-refresh: the next run replaces them. A night
-# that brings nothing new leaves the PR alone, and if the fleet is back to what main has, the
-# PR is closed.
-#
-# The tests run here before the PR is opened: a PR opened with the workflow's own token
-# doesn't start tests.yml. Merging it does.
+# What happens to a changed fleet, after the Core tests pass on it:
+# - Routine (new vehicles, a few leaving): committed straight to main.
+# - More than REVIEW_ABOVE vehicles leaving in one go: held back as a pull request on
+#   fleet-refresh for a human to merge, since a half-wrong city list looks just like that.
+#   Only one such PR ever exists: each run rebuilds the branch from main and force-pushes it.
+#   A run that brings nothing new leaves it alone; one where the fleet is back to main's
+#   closes it.
+# - Vehicles of a type no model has yet are left out of the book, and listed in one issue
+#   ("Fleet: vehicles waiting for a model") that closes itself once they're placed.
+# The tests run here because a push or PR made with the workflow's own token starts no
+# other workflow.
 #
 # Needs the TABOR_DANE_TOKEN repo secret, and "Allow GitHub Actions to create and approve pull
 # requests" on in the repo's Settings → Actions → General. The ZTM scrape (--scrape) can't run
@@ -30,6 +31,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 
 concurrency:
   group: fleet-refresh
@@ -43,6 +45,8 @@ defaults:
 env:
   BRANCH: fleet-refresh
   FILES: Tabor/Resources/fleet.json data/ztm-pojazdy.json data/fleet-models.csv
+  REVIEW_ABOVE: 20
+  ISSUE_TITLE: "Fleet: vehicles waiting for a model"
 
 jobs:
   build:
@@ -50,10 +54,18 @@ jobs:
     timeout-minutes: 30
     outputs:
       action: ${{ steps.check.outputs.action }}
+      base: ${{ steps.base.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
+
+      # The later jobs check out this same commit, so a push to main while the tests run
+      # makes the bot's push fail (and the next run redo it) instead of laying this build's
+      # files over someone's newer script.
+      - name: Note the commit this build starts from
+        id: base
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-python@v5
         with:
@@ -69,9 +81,9 @@ jobs:
           python3 scripts/fetch_fleet.py | tee "$RUNNER_TEMP/build.log"
           python3 scripts/export_models_csv.py
 
-      # update: the PR needs this build. close: the fleet is what main has again, so an open
-      # PR is out of date. none: nothing to do.
-      - name: Compare with main and with the open PR
+      # apply: commit to main. review: open or update the PR. close: the fleet is main's again,
+      # so an open PR is out of date. none: nothing to do.
+      - name: Decide what to do with it
         id: check
         run: |
           # Against main, a broken-looking build (exit 2) fails the run; against the PR branch
@@ -81,78 +93,93 @@ jobs:
           status=$?
           set -e
           [ "$status" -le 1 ] || exit "$status"
+          has_branch=false
+          git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null && has_branch=true
           if [ "$status" = 1 ]; then
-            if git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null; then
-              echo "action=close" >> "$GITHUB_OUTPUT"
-            else
-              echo "action=none" >> "$GITHUB_OUTPUT"
-            fi
-          elif git fetch --depth=1 origin "$BRANCH" 2>/dev/null \
-              && { python3 scripts/fleet_changed.py FETCH_HEAD > /dev/null 2>&1; [ $? = 1 ]; }; then
-            echo "The open PR already has this fleet."
-            echo "action=none" >> "$GITHUB_OUTPUT"
+            action=none
+            [ "$has_branch" = true ] && action=close
           else
-            echo "action=update" >> "$GITHUB_OUTPUT"
+            leaving=$(python3 - <<'PY'
+          import json, subprocess
+          path = "Tabor/Resources/fleet.json"
+          new = json.load(open(path))
+          old = json.loads(subprocess.run(["git", "show", f"HEAD:{path}"], check=True,
+                                          capture_output=True, text=True).stdout)
+          numbers = lambda d: {(m["kind"], n) for m in d["models"] for b in m["batches"] for n in b["numbers"]}
+          print(len(numbers(old) - numbers(new)))
+          PY
+            )
+            echo "$leaving vehicles leaving"
+            if [ "$leaving" -le "$REVIEW_ABOVE" ]; then
+              action=apply
+            elif [ "$has_branch" = true ] && git fetch --depth=1 origin "$BRANCH" \
+                && { python3 scripts/fleet_changed.py FETCH_HEAD > /dev/null 2>&1; [ $? = 1 ]; }; then
+              echo "The open PR already has this fleet."
+              action=none
+            else
+              action=review
+            fi
           fi
+          echo "action=$action" | tee -a "$GITHUB_OUTPUT"
 
-      - name: Write the PR description
-        if: steps.check.outputs.action == 'update'
+      - name: Write the description
         run: |
           lines() { grep -E '^  [+?-] ' "$1" | sed 's/^  //' | sort || true; }
           block() { echo '```'; if [ -n "$1" ]; then echo "$1"; else echo "(nothing)"; fi; echo '```'; }
           lines "$RUNNER_TEMP/main.log" > "$RUNNER_TEMP/main.txt"
           lines "$RUNNER_TEMP/build.log" > "$RUNNER_TEMP/build.txt"
           {
-            echo "Tonight's rebuild of \`fleet.json\` from the city's vehicle list."
+            echo "$(cat "$RUNNER_TEMP/summary.txt") (against main)."
             echo
-            echo "**$(cat "$RUNNER_TEMP/summary.txt")** (against \`main\`)"
-            echo
-            if grep -q '^?' "$RUNNER_TEMP/build.txt"; then
-              echo "### Needs a model"
-              echo
-              echo "The city lists these under a type no model has yet, so they're left out until"
-              echo "\`fetch_fleet.py\` places them:"
-              echo
-              echo '```'
-              grep '^?' "$RUNNER_TEMP/build.txt"
-              echo '```'
-              echo
-            fi
-            echo "### What changed in the build's report"
-            echo
-            echo "\`+\` lines are vehicles only the city lists, placed in the model most of their"
-            echo "type belongs to; \`-\` lines are vehicles the city has dropped, left out. Each line"
-            echo "is a running total, so a model that gained one shows its old and new line. A"
-            echo "wrong one is fixed with a rule in \`fetch_fleet.py\`, not in this PR."
+            echo "Lines from the build's report that changed. \`+\`: vehicles only the city lists,"
+            echo "put in the model most of their type belongs to. \`-\`: vehicles the city dropped."
             echo
             echo "Now:"
-            block "$(comm -13 "$RUNNER_TEMP/main.txt" "$RUNNER_TEMP/build.txt")"
-            echo "Was, on \`main\`:"
-            block "$(comm -23 "$RUNNER_TEMP/main.txt" "$RUNNER_TEMP/build.txt")"
+            block "$(comm -13 "$RUNNER_TEMP/main.txt" "$RUNNER_TEMP/build.txt" | grep -v '^?' || true)"
+            echo "Was:"
+            block "$(comm -23 "$RUNNER_TEMP/main.txt" "$RUNNER_TEMP/build.txt" | grep -v '^?' || true)"
+          } > changes.md
+          {
+            echo "More than $REVIEW_ABOVE vehicles would leave the book in one go, so this waits for"
+            echo "a look instead of going in by itself. If they really are gone, merge. If the city's"
+            echo "list is wrong, close this; it stays closed until the list changes again."
             echo
-            echo "The Core tests passed on this build. The next nightly run replaces this branch,"
-            echo "so don't push to it: merge it, or close it to skip this change."
+            cat changes.md
           } > pr-body.md
+          {
+            echo "The city lists these under a type no model has yet, so they're left out of the"
+            echo "book. Nothing is broken: the rest of the fleet keeps updating. To place a bus, add"
+            echo "one of its numbers to \`EXTRA_BUSES\` in \`scripts/fetch_fleet.py\` under its make"
+            echo "and model, and the rest of its type follows. This issue closes itself once none"
+            echo "are left."
+            echo
+            echo '```'
+            grep '^?' "$RUNNER_TEMP/build.txt" | sed 's/^? //'
+            echo '```'
+          } > waiting.md
+          grep -q '^?' "$RUNNER_TEMP/build.txt" || rm waiting.md
 
       - uses: actions/upload-artifact@v4
-        if: steps.check.outputs.action == 'update'
         with:
           name: fleet
           path: |
             Tabor/Resources/fleet.json
             data/ztm-pojazdy.json
             data/fleet-models.csv
+            changes.md
             pr-body.md
+            waiting.md
+          if-no-files-found: ignore
 
   test:
     needs: build
-    if: needs.build.outputs.action == 'update'
+    if: contains(fromJSON('["apply", "review"]'), needs.build.outputs.action)
     runs-on: macos-26
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ needs.build.outputs.base }}
       - uses: actions/download-artifact@v4
         with:
           name: fleet
@@ -165,15 +192,49 @@ jobs:
       - name: swift test
         run: swift test
 
-  pull-request:
+  apply:
     needs: [build, test]
-    if: needs.build.outputs.action == 'update'
+    if: needs.build.outputs.action == 'apply'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ needs.build.outputs.base }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: fleet
+      - name: Commit to main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add $FILES
+          git commit -q -F - <<EOF
+          Refresh fleet data from the city's list ($(date -u +%F))
+
+          $(cat changes.md)
+          EOF
+          # Someone pushed to main meanwhile: tomorrow's run builds on top of it.
+          if ! git push origin HEAD:main; then
+            echo "::notice::main moved during the run; the next run picks this up."
+            exit 0
+          fi
+          # A held-back PR is out of date now that main has moved on.
+          if [ "$(gh pr view "$BRANCH" --json state --jq .state 2>/dev/null)" = "OPEN" ]; then
+            gh pr close "$BRANCH" --delete-branch --comment "Superseded by tonight's update on main."
+          fi
+
+  review:
+    needs: [build, test]
+    if: needs.build.outputs.action == 'review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.build.outputs.base }}
       - uses: actions/download-artifact@v4
         with:
           name: fleet
@@ -187,7 +248,7 @@ jobs:
           git add $FILES
           git commit -m "Refresh fleet data from the city's list ($(date -u +%F))"
           git push --force origin "$BRANCH"
-          title="Refresh fleet data ($(date -u +%F))"
+          title="Fleet: many vehicles leaving ($(date -u +%F))"
           if [ "$(gh pr view "$BRANCH" --json state --jq .state 2>/dev/null)" = "OPEN" ]; then
             gh pr edit "$BRANCH" --title "$title" --body-file pr-body.md
           else
@@ -210,4 +271,31 @@ jobs:
               --comment "The city's list matches \`main\` again, so this change isn't needed any more."
           else
             git push "https://x-access-token:$GH_TOKEN@github.com/$GH_REPO" --delete "$BRANCH" || true
+          fi
+
+  # Editing an issue's text sends no notification, so the list stays current without pinging
+  # anyone every night: only opening it does.
+  waiting:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: fleet
+      - name: Open, update or close the waiting-vehicles issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          number=$(gh issue list --state open --search "in:title \"$ISSUE_TITLE\"" --json number,title \
+            --jq "map(select(.title == \"$ISSUE_TITLE\")) | .[0].number // empty")
+          if [ -f waiting.md ]; then
+            if [ -n "$number" ]; then
+              gh issue edit "$number" --body-file waiting.md
+            else
+              gh issue create --title "$ISSUE_TITLE" --body-file waiting.md
+            fi
+          elif [ -n "$number" ]; then
+            gh issue close "$number" --reason completed --comment "All placed now."
           fi

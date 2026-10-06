@@ -313,11 +313,12 @@ Rebuilds from the saved files in `data/` in seconds. Leave out `--offline` to
 fetch the city's list again, and add `--scrape` to scrape ZTM too, which takes a
 while. ZTM blocks GitHub's runners, so the scrape runs from a home connection, not in CI.
 
-Every night a GitHub Action fetches the city's list, rebuilds, and, if the fleet
-changed, opens (or updates) a single pull request saying what's new, after the
-tests pass. Corrections go into the script's lists, never into `fleet.json` by
-hand: a check fails any commit whose `fleet.json` isn't what the script builds,
-so the nightly rebuild can't undo a fix.
+Every night a GitHub Action fetches the city's list, rebuilds, runs the tests and
+commits the result to `main` by itself. It asks for a human only when more than 20
+vehicles would leave at once (a pull request) or the city lists a type no model has
+yet (an issue). Corrections go into the script's lists, never into `fleet.json` by
+hand: a check fails any commit whose `fleet.json` isn't what the script builds, so
+the nightly rebuild can't undo a fix.
 
 **New buses don't need an app update.** The app checks this repo's `main` for a
 newer `fleet.json` once a day and uses it from the next launch. A downloaded
