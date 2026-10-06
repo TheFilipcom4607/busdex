@@ -1,28 +1,55 @@
 name: Refresh fleet data
 
-# Rebuilds fleet.json from the city's vehicle list and commits it when the fleet changed.
-# The app downloads the committed file from raw.githubusercontent.com, so new deliveries
-# reach phones without an App Store release.
+# Rebuilds fleet.json from the city's vehicle list every night and, when the fleet changed,
+# opens a pull request with it (branch fleet-refresh) for a human to read and merge. The app
+# downloads the committed file from main, so a merge reaches phones without an App Store
+# release.
 #
-# Manual only, and it needs the TABOR_DANE_TOKEN repo secret: fetch_fleet.py now builds from
-# the city's open-data vehicle list (dane.um.warszawa.pl) on top of the last ZTM scrape. The
-# scrape itself (--scrape) can't run here: ztm.waw.pl answers GitHub's runners with an AWS
-# WAF bot challenge (seen 2026-09-25). Running `python3 scripts/fetch_fleet.py` from a home
-# connection and committing is the usual way.
+# The hand-kept corrections live in fetch_fleet.py (RENUMBER, RETIRED, RETYPE, STILL_RUNNING
+# ...), not in fleet.json, so a rebuild keeps them; fleet-reproducible.yml makes sure it stays
+# that way. There's only ever one fleet PR: each night's run rebuilds the branch from main and
+# force-pushes it, so it holds everything since the last merge, and leaving it for a few days
+# is fine. Don't push your own commits to fleet-refresh: the next run replaces them. A night
+# that brings nothing new leaves the PR alone, and if the fleet is back to what main has, the
+# PR is closed.
+#
+# The tests run here before the PR is opened: a PR opened with the workflow's own token
+# doesn't start tests.yml. Merging it does.
+#
+# Needs the TABOR_DANE_TOKEN repo secret, and "Allow GitHub Actions to create and approve pull
+# requests" on in the repo's Settings → Actions → General. The ZTM scrape (--scrape) can't run
+# here: ztm.waw.pl answers GitHub's runners with an AWS WAF bot challenge (seen 2026-09-25), so
+# it's run from a home connection.
 on:
+  schedule:
+    # 03:07 in Warsaw in summer, 02:07 in winter (cron is UTC). Off the hour: GitHub delays
+    # runs scheduled for :00.
+    - cron: "7 1 * * *"
   workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: fleet-refresh
   cancel-in-progress: false
 
+# pipefail, so a failed fetch piped through tee still fails the step.
+defaults:
+  run:
+    shell: bash
+
+env:
+  BRANCH: fleet-refresh
+  FILES: Tabor/Resources/fleet.json data/ztm-pojazdy.json data/fleet-models.csv
+
 jobs:
-  refresh:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
+    outputs:
+      action: ${{ steps.check.outputs.action }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,22 +62,152 @@ jobs:
       - name: Fetch the city's vehicle list and rebuild fleet.json
         env:
           TABOR_DANE_TOKEN: ${{ secrets.TABOR_DANE_TOKEN }}
-        run: python3 scripts/fetch_fleet.py
-
-      - name: Commit if the fleet changed
+        # main's own build first (offline, so it's main's fleet.json again), to show in the PR
+        # only what tonight's build reports differently.
         run: |
+          python3 scripts/fetch_fleet.py --offline > "$RUNNER_TEMP/main.log"
+          python3 scripts/fetch_fleet.py | tee "$RUNNER_TEMP/build.log"
+          python3 scripts/export_models_csv.py
+
+      # update: the PR needs this build. close: the fleet is what main has again, so an open
+      # PR is out of date. none: nothing to do.
+      - name: Compare with main and with the open PR
+        id: check
+        run: |
+          # Against main, a broken-looking build (exit 2) fails the run; against the PR branch
+          # only "same fleet or not" matters.
           set +e
-          python3 scripts/fleet_changed.py
+          python3 scripts/fleet_changed.py HEAD > "$RUNNER_TEMP/summary.txt"
           status=$?
           set -e
+          [ "$status" -le 1 ] || exit "$status"
           if [ "$status" = 1 ]; then
-            echo "Only the snapshot date moved; nothing to commit."
-            exit 0
-          elif [ "$status" != 0 ]; then
-            exit "$status"
+            if git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null; then
+              echo "action=close" >> "$GITHUB_OUTPUT"
+            else
+              echo "action=none" >> "$GITHUB_OUTPUT"
+            fi
+          elif git fetch --depth=1 origin "$BRANCH" 2>/dev/null \
+              && { python3 scripts/fleet_changed.py FETCH_HEAD > /dev/null 2>&1; [ $? = 1 ]; }; then
+            echo "The open PR already has this fleet."
+            echo "action=none" >> "$GITHUB_OUTPUT"
+          else
+            echo "action=update" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Write the PR description
+        if: steps.check.outputs.action == 'update'
+        run: |
+          lines() { grep -E '^  [+?-] ' "$1" | sed 's/^  //' | sort || true; }
+          block() { echo '```'; if [ -n "$1" ]; then echo "$1"; else echo "(nothing)"; fi; echo '```'; }
+          lines "$RUNNER_TEMP/main.log" > "$RUNNER_TEMP/main.txt"
+          lines "$RUNNER_TEMP/build.log" > "$RUNNER_TEMP/build.txt"
+          {
+            echo "Tonight's rebuild of \`fleet.json\` from the city's vehicle list."
+            echo
+            echo "**$(cat "$RUNNER_TEMP/summary.txt")** (against \`main\`)"
+            echo
+            if grep -q '^?' "$RUNNER_TEMP/build.txt"; then
+              echo "### Needs a model"
+              echo
+              echo "The city lists these under a type no model has yet, so they're left out until"
+              echo "\`fetch_fleet.py\` places them:"
+              echo
+              echo '```'
+              grep '^?' "$RUNNER_TEMP/build.txt"
+              echo '```'
+              echo
+            fi
+            echo "### What changed in the build's report"
+            echo
+            echo "\`+\` lines are vehicles only the city lists, placed in the model most of their"
+            echo "type belongs to; \`-\` lines are vehicles the city has dropped, left out. Each line"
+            echo "is a running total, so a model that gained one shows its old and new line. A"
+            echo "wrong one is fixed with a rule in \`fetch_fleet.py\`, not in this PR."
+            echo
+            echo "Now:"
+            block "$(comm -13 "$RUNNER_TEMP/main.txt" "$RUNNER_TEMP/build.txt")"
+            echo "Was, on \`main\`:"
+            block "$(comm -23 "$RUNNER_TEMP/main.txt" "$RUNNER_TEMP/build.txt")"
+            echo
+            echo "The Core tests passed on this build. The next nightly run replaces this branch,"
+            echo "so don't push to it: merge it, or close it to skip this change."
+          } > pr-body.md
+
+      - uses: actions/upload-artifact@v4
+        if: steps.check.outputs.action == 'update'
+        with:
+          name: fleet
+          path: |
+            Tabor/Resources/fleet.json
+            data/ztm-pojazdy.json
+            data/fleet-models.csv
+            pr-body.md
+
+  test:
+    needs: build
+    if: needs.build.outputs.action == 'update'
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/download-artifact@v4
+        with:
+          name: fleet
+      # The runner's default Xcode lags behind the one the app is built with: take the newest.
+      - name: Pick the newest Xcode
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          swift --version
+      - name: swift test
+        run: swift test
+
+  pull-request:
+    needs: [build, test]
+    if: needs.build.outputs.action == 'update'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/download-artifact@v4
+        with:
+          name: fleet
+      - name: Push the branch and open or update the PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Tabor/Resources/fleet.json data/ztm-pojazdy.json
-          git commit -m "Refresh fleet data from ZTM ($(date -u +%F))"
-          git push origin HEAD:main
+          git checkout -B "$BRANCH"
+          git add $FILES
+          git commit -m "Refresh fleet data from the city's list ($(date -u +%F))"
+          git push --force origin "$BRANCH"
+          title="Refresh fleet data ($(date -u +%F))"
+          if [ "$(gh pr view "$BRANCH" --json state --jq .state 2>/dev/null)" = "OPEN" ]; then
+            gh pr edit "$BRANCH" --title "$title" --body-file pr-body.md
+          else
+            gh pr create --base main --head "$BRANCH" --title "$title" --body-file pr-body.md
+          fi
+
+  close:
+    needs: build
+    if: needs.build.outputs.action == 'close'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Close the out-of-date PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if [ "$(gh pr view "$BRANCH" --json state --jq .state 2>/dev/null)" = "OPEN" ]; then
+            gh pr close "$BRANCH" --delete-branch \
+              --comment "The city's list matches \`main\` again, so this change isn't needed any more."
+          else
+            git push "https://x-access-token:$GH_TOKEN@github.com/$GH_REPO" --delete "$BRANCH" || true
+          fi

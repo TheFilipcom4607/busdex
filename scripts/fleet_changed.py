@@ -2,7 +2,8 @@
 """Exit 0 if a freshly built fleet.json differs from the committed one in anything but its
 date, 1 if only the date moved, 2 if the new snapshot looks broken (so CI never commits it).
 
-Usage:  python3 scripts/fleet_changed.py   # compares the working copy with HEAD
+Usage:  python3 scripts/fleet_changed.py         # compares the working copy with HEAD
+        python3 scripts/fleet_changed.py <ref>   # ... or with another commit or branch
 """
 import json
 import subprocess
@@ -11,6 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PATH = "Tabor/Resources/fleet.json"
+REF = sys.argv[1] if len(sys.argv) > 1 else "HEAD"
 
 
 def content(d):
@@ -18,7 +20,7 @@ def content(d):
 
 
 new = json.loads((ROOT / PATH).read_text())
-old = json.loads(subprocess.run(["git", "show", f"HEAD:{PATH}"], cwd=ROOT, check=True,
+old = json.loads(subprocess.run(["git", "show", f"{REF}:{PATH}"], cwd=ROOT, check=True,
                                 capture_output=True, text=True).stdout)
 
 total = lambda d: sum(m["fleet"] for m in d["models"] if not m.get("vintage"))
