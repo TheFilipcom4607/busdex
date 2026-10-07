@@ -458,6 +458,7 @@ struct SettingsSheet: View {
                 } footer: {
                     Text("Weather comes from Open-Meteo: TABOR sends each geotagged catch's time and rough location (to about 1 km). Nothing else leaves your phone.")
                 }
+                AppIconSection()
                 if showsDebug {
                     Section {
                         Toggle("Debug mode", isOn: $debugMode)

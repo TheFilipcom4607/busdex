@@ -2,8 +2,8 @@
 // die-cut sticker on the app's dark background — ram-horn mirrors, big round-shouldered
 // windscreen, the chrome bar with upturned ends, LED-ringed pill headlights, a green
 // electric plate. Tagged 1971.
-// Usage: swift scripts/make_icon.swift   (writes the icon, and the onboarding sticker, into
-// Tabor/Resources/Assets.xcassets)
+// Usage: swift scripts/make_icon.swift   (writes the icon, its alternate backgrounds for
+// Settings › App icon (#62), and the onboarding sticker into Tabor/Resources/Assets.xcassets)
 import AppKit
 import CoreText
 
@@ -17,6 +17,32 @@ func rgb(_ hex: UInt32, _ a: CGFloat = 1) -> CGColor {
 }
 
 enum Variant { case normal, dark, tinted }
+
+/// What the sticker sits on. Only the light icon changes: the dark one is transparent (iOS
+/// gives it its own backdrop) and the tinted one is greyscale anyway.
+enum Backdrop {
+    case black, white, blue
+
+    var fill: CGColor {
+        switch self {
+        case .black: rgb(0x0B0C0E)
+        case .white: rgb(0xF3F1EC)
+        case .blue: rgb(0x0B2E6B)
+        }
+    }
+
+    /// The warm light behind the sticker; on white it would only muddy it, so it's faint there.
+    var glow: CGFloat {
+        switch self {
+        case .black: 0.30
+        case .white: 0.22
+        case .blue: 0.26
+        }
+    }
+
+    /// A softer shadow on white, where a black one turns into a smudge.
+    var shadow: CGFloat { self == .white ? 0.28 : 0.65 }
+}
 
 struct Palette {
     let yellow, red, glass, trim, led, lamp, chrome: CGColor
@@ -82,7 +108,7 @@ func shape() -> Shape {
                  arms: [arm, mirrored(arm)], heads: [head, mirrored(head)])
 }
 
-func render(_ variant: Variant) -> CGImage {
+func render(_ variant: Variant, on backdrop: Backdrop = .black) -> CGImage {
     let ctx = CGContext(data: nil, width: Int(S), height: Int(S), bitsPerComponent: 8, bytesPerRow: 0,
                         space: CGColorSpace(name: CGColorSpace.sRGB)!,
                         bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
@@ -91,8 +117,10 @@ func render(_ variant: Variant) -> CGImage {
 
     // Background: near-black with a warm glow behind the sticker.
     if variant != .dark {
-        ctx.setFillColor(rgb(0x0B0C0E)); ctx.fill(CGRect(x: 0, y: 0, width: S, height: S))
-        let glow = CGGradient(colorsSpace: nil, colors: [rgb(0xFFCE00, 0.30), rgb(0xFFCE00, 0)] as CFArray, locations: [0, 1])!
+        let backdrop = variant == .tinted ? .black : backdrop
+        ctx.setFillColor(backdrop.fill); ctx.fill(CGRect(x: 0, y: 0, width: S, height: S))
+        let glow = CGGradient(colorsSpace: nil, colors: [rgb(0xFFCE00, backdrop.glow), rgb(0xFFCE00, 0)] as CFArray,
+                              locations: [0, 1])!
         ctx.drawRadialGradient(glow, startCenter: CGPoint(x: 512, y: 470), startRadius: 0,
                                endCenter: CGPoint(x: 512, y: 470), endRadius: 520, options: [])
     }
@@ -112,7 +140,8 @@ func render(_ variant: Variant) -> CGImage {
     // 1. Die-cut white border + shadow: every shape, fattened.
     let border: CGFloat = 60
     ctx.saveGState()
-    ctx.setShadow(offset: CGSize(width: 0, height: 26), blur: 44, color: rgb(0x000000, 0.65))
+    let shadow = variant == .normal ? backdrop.shadow : 0.65
+    ctx.setShadow(offset: CGSize(width: 0, height: 26), blur: 44, color: rgb(0x000000, shadow))
     ctx.beginTransparencyLayer(auxiliaryInfo: nil)
     ctx.setFillColor(rgb(0xFFFFFF)); ctx.setStrokeColor(rgb(0xFFFFFF))
     ctx.setLineJoin(.round); ctx.setLineCap(.round)
@@ -260,25 +289,48 @@ func write(_ img: CGImage, _ path: URL, size: Int? = nil, opaque: Bool = false) 
     try! NSBitmapImageRep(cgImage: img).representation(using: .png, properties: [:])!.write(to: path)
 }
 
-func iconSet(_ name: String) {
+func iconSet(_ name: String, on backdrop: Backdrop = .black) {
     let dir = assets.appendingPathComponent("\(name).appiconset")
-    write(render(.normal), dir.appendingPathComponent("\(name).png"), opaque: true)
+    try! FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    let light = render(.normal, on: backdrop)
+    write(light, dir.appendingPathComponent("\(name).png"), opaque: true)
     // The dark icon is meant to be transparent: iOS puts it on its own dark backdrop.
     write(render(.dark), dir.appendingPathComponent("\(name)-Dark.png"))
     write(render(.tinted), dir.appendingPathComponent("\(name)-Tinted.png"), opaque: true)
+    try! iconContents(name).write(to: dir.appendingPathComponent("Contents.json"), atomically: true, encoding: .utf8)
+    // Alternate icons can't be loaded as images, so Settings shows a small copy of each.
+    imageSet("\(name)-Preview", light, size: 180)
+}
+
+func iconContents(_ name: String) -> String {
+    """
+    {
+      "images" : [
+        { "filename" : "\(name).png", "idiom" : "universal", "platform" : "ios", "size" : "1024x1024" },
+        { "appearances" : [ { "appearance" : "luminosity", "value" : "dark" } ],
+          "filename" : "\(name)-Dark.png", "idiom" : "universal", "platform" : "ios", "size" : "1024x1024" },
+        { "appearances" : [ { "appearance" : "luminosity", "value" : "tinted" } ],
+          "filename" : "\(name)-Tinted.png", "idiom" : "universal", "platform" : "ios", "size" : "1024x1024" }
+      ],
+      "info" : { "author" : "xcode", "version" : 1 }
+    }
+
+    """
 }
 
 CTFontManagerRegisterFontsForURL(root.appendingPathComponent("Tabor/Resources/Fonts/IBMPlexMono-Bold.ttf") as CFURL, .process, nil)
 
 /// The same sticker on a transparent background, for the first onboarding page.
-func imageSet(_ name: String, _ img: CGImage) {
+func imageSet(_ name: String, _ img: CGImage, size: Int? = nil) {
     let dir = assets.appendingPathComponent("\(name).imageset")
     try! FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-    write(img, dir.appendingPathComponent("\(name).png"))
+    write(img, dir.appendingPathComponent("\(name).png"), size: size)
     let contents = #"{"images":[{"filename":"\#(name).png","idiom":"universal"}],"info":{"author":"xcode","version":1}}"#
     try! contents.write(to: dir.appendingPathComponent("Contents.json"), atomically: true, encoding: .utf8)
 }
 
 iconSet("AppIcon")
+iconSet("AppIcon-White", on: .white)
+iconSet("AppIcon-Blue", on: .blue)
 imageSet("WelcomeSticker", render(.dark))
 print("wrote icons to \(assets.path)")

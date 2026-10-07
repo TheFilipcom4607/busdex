@@ -1493,6 +1493,36 @@
         }
       }
     },
+    "App icon": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ikona aplikacji"
+          }
+        }
+      }
+    },
+    "Black": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czarna"
+          }
+        }
+      }
+    },
+    "Blue": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niebieska"
+          }
+        }
+      }
+    },
     "CATCH LOG": {
       "localizations": {
         "pl": {
@@ -6383,6 +6413,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Jaki to model?"
+          }
+        }
+      }
+    },
+    "White": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biała"
           }
         }
       }
