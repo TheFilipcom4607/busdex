@@ -50,16 +50,6 @@ struct AppIconSection: View {
     @State private var current = AppIconChoice.current
     private let jar = TipJar.shared
 
-    /// Debug builds get the supporters' icons without a tip: the sandbox can't sell one until
-    /// the paid-apps agreement is active. TestFlight and the App Store still need a real tip.
-    private var unlocked: Bool {
-        #if DEBUG
-        true
-        #else
-        jar.isSupporter
-        #endif
-    }
-
     var body: some View {
         Section {
             row(AppIconChoice.allCases.filter { !$0.forSupporters })
@@ -72,11 +62,11 @@ struct AppIconSection: View {
         } header: {
             Text("App icon")
         } footer: {
-            if !unlocked { Text("Any tip in Support TABOR unlocks these.") }
+            if !jar.isSupporter { Text("Any tip in Support TABOR unlocks these.") }
         }
         // A refunded tip takes its icons back with it.
-        .task(id: unlocked) {
-            guard current.forSupporters, !unlocked else { return }
+        .task(id: jar.isSupporter) {
+            guard current.forSupporters, !jar.isSupporter else { return }
             select(.black)
         }
     }
@@ -99,7 +89,7 @@ struct AppIconSection: View {
 
     private func button(_ choice: AppIconChoice) -> some View {
         let on = current == choice
-        let locked = choice.forSupporters && !unlocked
+        let locked = choice.forSupporters && !jar.isSupporter
         return Button {
             guard !on else { return }
             guard !locked else { return Haptics.shared.nope() }

@@ -22,8 +22,19 @@ final class TipJar {
     private(set) var loadFailed = false
     /// The product being bought right now.
     private(set) var buying: String?
-    private(set) var isSupporter = UserDefaults.standard.bool(forKey: supporterKey) {
-        didSet { UserDefaults.standard.set(isSupporter, forKey: Self.supporterKey) }
+    /// Any tip on this account that wasn't refunded.
+    private(set) var tipped = UserDefaults.standard.bool(forKey: supporterKey) {
+        didSet { UserDefaults.standard.set(tipped, forKey: Self.supporterKey) }
+    }
+
+    /// Debug builds count as a supporter (heart and icons): the sandbox can't sell a tip until
+    /// the paid-apps agreement is active. TestFlight and the App Store need a real tip.
+    var isSupporter: Bool {
+        #if DEBUG
+        true
+        #else
+        tipped
+        #endif
     }
     /// The one-off unlock, which can't be bought twice.
     private(set) var ownsSupporter = false
@@ -89,7 +100,7 @@ final class TipJar {
             any = true
             if t.productID == Self.supporterID { unlock = true }
         }
-        if any || refunded { isSupporter = any }
+        if any || refunded { tipped = any }
         ownsSupporter = unlock
     }
 }
