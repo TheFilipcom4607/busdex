@@ -17,10 +17,12 @@ name: Refresh fleet data
 # The tests run here because a push or PR made with the workflow's own token starts no
 # other workflow.
 #
-# Needs the TABOR_DANE_TOKEN repo secret, and "Allow GitHub Actions to create and approve pull
-# requests" on in the repo's Settings → Actions → General. The ZTM scrape (--scrape) can't run
-# here: ztm.waw.pl answers GitHub's runners with an AWS WAF bot challenge (seen 2026-09-25), so
-# it's run from a home connection.
+# Needs the ROUTES_UPLOAD_TOKEN repo secret, and "Allow GitHub Actions to create and approve
+# pull requests" on in the repo's Settings → Actions → General. The city's list comes through
+# the tabor-live Worker (/v1/pojazdy, gated by that token): dane.um.warszawa.pl lets calls from
+# GitHub's US runners time out (6–7 Oct 2026) but answers from Warsaw, as with the GTFS in
+# routes.yml. The ZTM scrape (--scrape) can't run here either: ztm.waw.pl answers GitHub's
+# runners with an AWS WAF bot challenge (seen 2026-09-25), so it's run from a home connection.
 on:
   schedule:
     # 03:07 in Warsaw in summer, 02:07 in winter (cron is UTC). Off the hour: GitHub delays
@@ -73,7 +75,8 @@ jobs:
 
       - name: Fetch the city's vehicle list and rebuild fleet.json
         env:
-          TABOR_DANE_TOKEN: ${{ secrets.TABOR_DANE_TOKEN }}
+          DANE_URL: https://taborapi.thefilip.com/v1/pojazdy
+          ROUTES_UPLOAD_TOKEN: ${{ secrets.ROUTES_UPLOAD_TOKEN }}
         # main's own build first (offline, so it's main's fleet.json again), to show in the PR
         # only what tonight's build reports differently.
         run: |

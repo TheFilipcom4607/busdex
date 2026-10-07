@@ -7,6 +7,7 @@
 //   GET /v1/routes            every line's street shapes and stops (routes.js)
 //   PUT /v1/routes            the daily upload of those, from the GitHub Action
 //   GET /v1/gtfs              ZTM's GTFS zip, passed through for that Action
+//   GET /v1/pojazdy           the city's vehicle list, passed through for the fleet Action
 //   GET /v1/fleet/5221        what a vehicle is (model, year, specs), for other projects (lookup.js)
 //   POST/DELETE /v1/track     a phone following a vehicle on its Lock Screen (track.js)
 //
@@ -15,7 +16,7 @@
 
 import { fetchDane, fetchOld } from './city.js';
 import { lookup } from './lookup.js';
-import { getGtfs, getRoutes, putRoutes } from './routes.js';
+import { getGtfs, getPojazdy, getRoutes, putRoutes } from './routes.js';
 import { handleTrack } from './track.js';
 
 export { Tracker } from './track.js';
@@ -57,7 +58,7 @@ export default {
 };
 
 async function handle(request, env, ctx, url) {
-  if (!['/v1/vehicles', '/v1/routes', '/v1/gtfs', '/v1/track'].includes(url.pathname)) return json({ result: 'Not found' }, 404);
+  if (!['/v1/vehicles', '/v1/routes', '/v1/gtfs', '/v1/pojazdy', '/v1/track'].includes(url.pathname)) return json({ result: 'Not found' }, 404);
 
   // A phone polls twice (buses, trams) every 10 s, 12 calls a minute. The limit leaves room
   // for several phones behind one carrier NAT, and stops a script hammering the key.
@@ -67,6 +68,7 @@ async function handle(request, env, ctx, url) {
 
   if (url.pathname === '/v1/track') return handleTrack(request, env);
   if (url.pathname === '/v1/gtfs') return request.method === 'GET' ? getGtfs(request, env) : json({ result: 'GET only' }, 405);
+  if (url.pathname === '/v1/pojazdy') return request.method === 'GET' ? getPojazdy(request, env) : json({ result: 'GET only' }, 405);
   if (url.pathname === '/v1/routes') {
     if (request.method === 'GET') return getRoutes(request, env);
     if (request.method === 'PUT') return putRoutes(request, env);

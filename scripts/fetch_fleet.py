@@ -144,9 +144,16 @@ def dane_token():
 
 def fetch_city():
     """The city's vehicle list, trimmed to what the build uses, saved to data/ztm-pojazdy.json."""
-    req = urllib.request.Request(DANE, data=b"{}", method="POST", headers={
-        **HEADERS, "Accept": "application/json", "Content-Type": "application/json",
-        "Authorization": dane_token()})
+    # The city times out on GitHub's runners, so the Action goes through the tabor-live Worker
+    # (DANE_URL, with the upload token), as build_routes.py does for the GTFS.
+    if os.environ.get("DANE_URL"):
+        req = urllib.request.Request(os.environ["DANE_URL"], headers={
+            **HEADERS, "Accept": "application/json",
+            "Authorization": f"Bearer {os.environ['ROUTES_UPLOAD_TOKEN']}"})
+    else:
+        req = urllib.request.Request(DANE, data=b"{}", method="POST", headers={
+            **HEADERS, "Accept": "application/json", "Content-Type": "application/json",
+            "Authorization": dane_token()})
     for attempt in range(4):
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
