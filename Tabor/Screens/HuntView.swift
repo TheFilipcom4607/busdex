@@ -42,6 +42,8 @@ struct HuntView: View {
     @FocusState private var queryFocused: Bool
     /// A vehicle picked from the search: on the map and selected whatever the filters say.
     @State private var focusId: String?
+    /// A vehicle to open once the feed has it: a Live Activity tap can land before the first poll.
+    @State private var pendingFocus: String?
     /// Satellite photos (with street names) instead of the plain dark map.
     @AppStorage("huntSatellite") private var satellite = false
 
@@ -117,6 +119,10 @@ struct HuntView: View {
                 }
                 Spacer()
                 HStack(spacing: 8) {
+                    if let tracked = track.trackedId, tracked != selectedId {
+                        trackedButton(tracked)
+                            .transition(.scale(scale: 0.8, anchor: .leading).combined(with: .opacity))
+                    }
                     Spacer()
                     if let selected, !following {
                         followButton(selected)
@@ -184,7 +190,7 @@ struct HuntView: View {
             recompute(animated: false)
         }
         // A searched vehicle stays on the map only while it's the one selected.
-        .onChange(of: selectedId) { if selectedId != focusId { focusId = nil } }
+        .onChange(of: selectedId) { if selectedId != focusId, pendingFocus == nil { focusId = nil } }
         // Caught vehicles are only fetched for the ALL view.
         .onChange(of: filter) { recompute(animated: false) }
         // SHOW ON MAP in the book: go to where that model is running, not the 3 km around you.
@@ -194,6 +200,12 @@ struct HuntView: View {
             centered = true
             selectedId = nil
             fit(cityWide().filter { $0.model.id == id && targets.matches($0) })
+        }
+        // A tracked vehicle's Live Activity: straight to it on the map (#61).
+        .onChange(of: router.huntVehicle, initial: true) { _, id in
+            guard let id else { return }
+            router.huntVehicle = nil
+            focus(on: id)
         }
     }
 
@@ -615,6 +627,29 @@ struct HuntView: View {
         .accessibilityLabel("Follow #\(pin.vehicle.number) on the map")
     }
 
+    /// Back to the vehicle on the Lock Screen, once you've wandered off it (#61).
+    private func trackedButton(_ id: String) -> some View {
+        let number = id.split(separator: "#").last.map(String.init) ?? id
+        return Button {
+            Haptics.shared.tick()
+            focus(on: id)
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                    .font(.system(size: 10.5, weight: .bold))
+                Mono("TRACKING #\(number)", size: 11, weight: 600, spacing: 0.1, color: Palette.radar)
+                    .lineLimit(1)
+            }
+            .foregroundStyle(Palette.radar)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .glass(Capsule())
+            .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Show tracked #\(number) on the map")
+    }
+
     /// Flips between the plain map and satellite; shows the one you'd switch to.
     private var mapStyleButton: some View {
         Button {
@@ -856,10 +891,17 @@ struct HuntView: View {
         guard let live = v.live else {
             return router.openVehicle(modelId: v.model.id, number: v.number)
         }
-        let id = "\(live.kind.rawValue)#\(live.number)"
+        focus(on: "\(live.kind.rawValue)#\(live.number)")
+    }
+
+    /// Fly to a running vehicle and open its card, past the filters. If the feed hasn't come
+    /// in yet, it opens as soon as it does.
+    private func focus(on id: String) {
+        // Opened cold from a Live Activity: don't let the first fix pull the map back to you.
+        centered = true
         focusId = id
+        pendingFocus = id
         recompute(animated: false)
-        if let pin = pins.first(where: { $0.id == id }) { select(pin) }
     }
 
     private func endSearch() {
@@ -1191,6 +1233,11 @@ struct HuntView: View {
             nowCoordinates = coordinates
         }
         if let selectedId, !next.contains(where: { $0.id == selectedId }) { self.selectedId = nil }
+        // The feed is in: open the vehicle waiting for it, or give up if it's not running.
+        if let pendingFocus {
+            self.pendingFocus = nil
+            if let pin = next.first(where: { $0.id == pendingFocus }) { return select(pin) }
+        }
         // Following the selected vehicle and it's leaving the open part above the card: catch up,
         // keeping the zoom. Not after you've moved the map yourself.
         if following, let selectedId, let pin = next.first(where: { $0.id == selectedId }), let region = mapRegion,

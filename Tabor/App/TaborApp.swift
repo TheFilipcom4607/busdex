@@ -60,6 +60,8 @@ final class Router {
     var sharedPhotos = 0
     /// A model sent from its page in the book (#45): HUNT frames where it's running, then clears it.
     var huntModel: String?
+    /// A running vehicle ("BUS#1998") HUNT centres on and opens, from a Live Activity tap (#61).
+    var huntVehicle: String?
 
     /// A photo shared to TABOR: catch it on CATCH, like one picked from the library.
     func catchShared() {
@@ -82,6 +84,11 @@ final class Router {
     /// Its vehicles on HUNT's map. The filter is already set; the book keeps its place.
     func showOnHunt(_ modelId: String) {
         huntModel = modelId
+        tab = .hunt
+    }
+
+    func showOnHunt(vehicle id: String) {
+        huntVehicle = id
         tab = .hunt
     }
 
@@ -169,6 +176,9 @@ struct RootView: View {
                 router.bookPath.removeAll()
             case .vehicle(let modelId, let number):
                 router.openVehicle(modelId: modelId, number: number)
+            case .hunt(let id):
+                // A Live Activity, not a widget: nothing to say about the widget tip.
+                return router.showOnHunt(vehicle: id)
             case nil:
                 return
             }

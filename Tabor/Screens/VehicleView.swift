@@ -8,7 +8,10 @@ struct VehicleView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(Router.self) private var router
-    @State private var share: CatchShare?
+    @State private var shares: [ShareCard.Style: CatchShare] = [:]
+    /// Both a sticker and a photo to share: the switch shows with SHARE, not once both cards are drawn.
+    @State private var canPickStyle = false
+    @AppStorage("shareStyle") private var shareStyle: ShareCard.Style = .sticker
     @State private var editing: Sighting?
     @Environment(SightingUndo.self) private var undo
 
@@ -28,7 +31,8 @@ struct VehicleView: View {
                     }
                     .buttonStyle(.plain)
                 } trailing: {
-                    if let share {
+                    if let share = shares[shareStyle] ?? shares.values.first {
+                        if canPickStyle { shareStylePicker }
                         ShareLink(item: Image(uiImage: share.image), subject: Text(share.title), message: Text(share.message),
                                   preview: SharePreview(share.title, image: Image(uiImage: share.image))) {
                             Mono("SHARE", size: 12)
@@ -229,16 +233,53 @@ struct VehicleView: View {
         // Render the share card up front so SHARE opens instantly, again whenever another picture
         // is picked: the card shows the picked catch, its day and place with its sticker.
         .task(id: [mine.first?.id, mine.cover(number: number, modelId: modelId)?.id]) {
-            guard let shown = mine.cover(number: number, modelId: modelId) ?? mine.first else { return share = nil }
+            guard let shown = mine.cover(number: number, modelId: modelId) ?? mine.first else { return shares = [:] }
             // The second car added with it in the same catch, if any.
             let partner = shown.pairedWith ?? sightings.first {
                 isSecondCar($0) && abs($0.date.timeIntervalSince(shown.date)) < 1
             }?.number
-            share = CatchShare.make(number: number, model: model, sighting: shown,
-                                    sticker: sightings.sticker(number: number, modelId: modelId),
-                                    photo: sightings.photo(number: number, modelId: modelId),
-                                    owned: sightings.stats.ownedCount(modelId: modelId), partner: partner)
+            let sticker = sightings.sticker(number: number, modelId: modelId)
+            let photo = sightings.photo(number: number, modelId: modelId)
+            // Both up front, so flipping sticker / photo is instant; the one you share with goes
+            // first, so SHARE shows as soon as it did. Without a sticker the sticker card already
+            // shows the photo: no choice to offer.
+            let styles: [ShareCard.Style] = sticker != nil && photo != nil
+                ? [shareStyle] + ShareCard.Style.allCases.filter { $0 != shareStyle } : [.sticker]
+            canPickStyle = styles.count > 1
+            var made: [ShareCard.Style: CatchShare] = [:]
+            for style in styles {
+                made[style] = CatchShare.make(number: number, model: model, sighting: shown, sticker: sticker, photo: photo,
+                                              owned: sightings.stats.ownedCount(modelId: modelId), partner: partner,
+                                              style: style)
+                shares = made
+                await Task.yield()
+            }
         }
+    }
+
+    /// What the share card shows: the sticker or the whole photo (#63). Icons, not words: the
+    /// header is already tight on a narrow phone in Polish.
+    private var shareStylePicker: some View {
+        HStack(spacing: 2) {
+            ForEach(ShareCard.Style.allCases, id: \.self) { style in
+                let on = shareStyle == style
+                Button {
+                    Haptics.shared.tick()
+                    shareStyle = style
+                } label: {
+                    Image(systemName: style == .sticker ? "scissors" : "photo")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(on ? Palette.ink : Palette.faint)
+                        // No taller than the header's text, so the page doesn't jump when it appears.
+                        .frame(width: 28, height: 18)
+                        .background(on ? Palette.track : .clear, in: RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(style == .sticker ? Text("Share the sticker") : Text("Share the photo"))
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .padding(.trailing, 8)
     }
 
     /// The car this one was last caught coupled to: the car it was added with, or the second

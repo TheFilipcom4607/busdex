@@ -39,7 +39,8 @@ struct TrackAttributes: ActivityAttributes {
     var caught: Bool
     var started: Date
 
-    var url: URL { WidgetLink.vehicle(modelId: modelId, number: number) }
+    /// HUNT on the vehicle, not its page: it's usually not in the book yet (#61).
+    var url: URL { WidgetLink.hunt(vehicle: "\(tram ? "TRAM" : "BUS")#\(number)") }
 }
 
 extension TrackAttributes.ContentState {

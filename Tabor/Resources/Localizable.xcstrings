@@ -1563,6 +1563,26 @@
         }
       }
     },
+    "Share the sticker": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Udostępnij naklejkę"
+          }
+        }
+      }
+    },
+    "Share the photo": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Udostępnij zdjęcie"
+          }
+        }
+      }
+    },
     "Show in book": {
       "localizations": {
         "pl": {
@@ -1599,6 +1619,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "BRAKUJE"
+          }
+        }
+      }
+    },
+    "Show tracked #%@ on the map": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż obserwowany #%@ na mapie"
           }
         }
       }
@@ -5654,6 +5684,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "LINIE TURYSTYCZNE T I 36 · LETNIE WEEKENDY"
+          }
+        }
+      }
+    },
+    "TRACKING #%@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OBSERWUJESZ #%@"
           }
         }
       }
