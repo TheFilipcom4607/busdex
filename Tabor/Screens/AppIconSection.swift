@@ -5,7 +5,7 @@ import UIKit
 /// sets come from `scripts/make_icon.swift`; each needs its name in the target's
 /// ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES.
 enum AppIconChoice: String, CaseIterable, Identifiable {
-    case black, white, blue, urbino, rotem
+    case black, white, blue, urbino, rotem, konstal
 
     var id: Self { self }
 
@@ -17,6 +17,7 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
         case .blue: "AppIcon-Blue"
         case .urbino: "AppIcon-Urbino"
         case .rotem: "AppIcon-Rotem"
+        case .konstal: "AppIcon-Konstal"
         }
     }
 
@@ -30,11 +31,12 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
         // Model names: the same in every language.
         case .urbino: "Urbino"
         case .rotem: "Rotem"
+        case .konstal: "105Na"
         }
     }
 
     /// Unlocked by any tip. Only extra icons, never anything you need.
-    var forSupporters: Bool { self == .urbino || self == .rotem }
+    var forSupporters: Bool { [.urbino, .rotem, .konstal].contains(self) }
 
     @MainActor
     static var current: AppIconChoice {

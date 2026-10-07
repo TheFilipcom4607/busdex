@@ -94,7 +94,7 @@ struct Shape {
 /// Which vehicle the sticker shows. The Yutong is the main icon; the others are the tip
 /// jar's thank-you icons.
 enum Vehicle {
-    case yutong, urbino, rotem
+    case yutong, urbino, rotem, konstal
 
     /// A real fleet number of that model.
     var tag: String {
@@ -102,6 +102,7 @@ enum Vehicle {
         case .yutong: "1971"
         case .urbino: "5900"
         case .rotem: "4267"
+        case .konstal: "1282"
         }
     }
 
@@ -112,6 +113,7 @@ enum Vehicle {
         case .yutong: yutongShape()
         case .urbino: urbinoShape()
         case .rotem: rotemShape()
+        case .konstal: konstalShape()
         }
     }
 
@@ -120,6 +122,7 @@ enum Vehicle {
         case .yutong: yutongFace(ctx, r, c)
         case .urbino: urbinoFace(ctx, r, c)
         case .rotem: rotemFace(ctx, r, c)
+        case .konstal: konstalFace(ctx, r, c)
         }
     }
 }
@@ -460,6 +463,66 @@ func rotemFace(_ ctx: CGContext, _ r: CGRect, _ c: Palette) {
     }
 }
 
+/// The Konstal 105Na ("akwarium"), proportions from Tramwaje Warszawskie's head-on drawing,
+/// simplified for the icon: a grey roof edge with the route box on top, one dark glass band
+/// across the front (a big windscreen with a sun strip, a narrow pane each side), two square
+/// headlights close together in the middle, red corners round a big black bumper.
+func konstalShape() -> Shape {
+    let r = CGRect(x: 312, y: 290, width: 400, height: 500)
+    func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: r.minX + x, y: r.minY + y) }
+    // The body and the route box on its roof, as one silhouette.
+    let p = CGMutablePath()
+    p.addPath(body(r, top: 40, bottom: 20))
+    p.addPath(rounded(CGRect(x: r.minX + 110, y: r.minY - 40, width: 180, height: 52), 12))
+    // Mirror stalks off the top corners, like the others.
+    let arm = CGMutablePath()
+    arm.move(to: pt(24, 50))
+    arm.addCurve(to: pt(-40, 76), control1: pt(0, 34), control2: pt(-40, 44))
+    let head = rounded(CGRect(x: r.minX - 62, y: r.minY + 68, width: 44, height: 104), 16)
+    var shape = Shape(bodyRect: r, bodyPath: p, wheels: [], arms: [arm, mirrored(arm)], heads: [head, mirrored(head)])
+    shape.armWidth = 18
+    return shape
+}
+
+func konstalFace(_ ctx: CGContext, _ r: CGRect, _ c: Palette) {
+    func rect(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> CGRect {
+        CGRect(x: r.minX + x, y: r.minY + y, width: w, height: h)
+    }
+    let w = r.width
+    ctx.setFillColor(c.yellow); ctx.fill(rect(-20, -60, w + 40, 600))
+    // The route box's display, and the grey roof edge.
+    ctx.setFillColor(c.trim); ctx.addPath(rounded(rect(126, -28, 148, 30), 7)); ctx.fillPath()
+    ctx.setFillColor(c.led)
+    for (x, bw) in [(140.0, 28.0), (178.0, 52.0), (240.0, 22.0)] as [(CGFloat, CGFloat)] {
+        ctx.addPath(rounded(rect(x, -20, bw, 14), 5)); ctx.fillPath()
+    }
+    ctx.setFillColor(rgb(0xC9CDD3)); ctx.fill(rect(-20, 12, w + 40, 20))
+    // One dark band of glass across the front: a narrow pane each side, the big windscreen
+    // in the middle with its sun strip.
+    ctx.setFillColor(c.trim); ctx.fill(rect(0, 32, w, 250))
+    for pane in [rect(16, 44, 64, 226), rect(96, 44, 208, 226), rect(320, 44, 64, 226)] {
+        let path = rounded(pane, 8)
+        ctx.setFillColor(c.glass); ctx.addPath(path); ctx.fillPath()
+    }
+    ctx.setFillColor(rgb(0x050607)); ctx.addPath(rounded(rect(96, 44, 208, 40), 8)); ctx.fillPath()
+    ctx.saveGState(); ctx.addPath(rounded(rect(96, 84, 208, 186), 8)); ctx.clip()
+    let sheen = CGMutablePath()
+    sheen.addLines(between: [CGPoint(x: r.minX + 214, y: r.minY + 84), CGPoint(x: r.minX + 260, y: r.minY + 84),
+                             CGPoint(x: r.minX + 176, y: r.minY + 270), CGPoint(x: r.minX + 130, y: r.minY + 270)])
+    sheen.closeSubpath()
+    ctx.setFillColor(rgb(0xFFFFFF, 0.12)); ctx.addPath(sheen); ctx.fillPath()
+    ctx.restoreGState()
+    // Two square headlights close together in the middle, an orange indicator over each.
+    for x in [w / 2 - 70, w / 2 + 70] {
+        ctx.setFillColor(c.trim); ctx.addPath(rounded(rect(x - 26, 340, 52, 46), 12)); ctx.fillPath()
+        ctx.setFillColor(c.lamp); ctx.fillEllipse(in: rect(x - 15, 348, 30, 30))
+        ctx.setFillColor(c.led); ctx.addPath(rounded(rect(x - 18, 314, 36, 12), 5)); ctx.fillPath()
+    }
+    // Red corners at the base, the big black bumper between them.
+    ctx.setFillColor(c.red); ctx.fill(rect(0, 428, w, 72))
+    ctx.setFillColor(c.trim); ctx.addPath(rounded(rect(64, 406, w - 128, 94), 14)); ctx.fillPath()
+}
+
 func numberTag(_ ctx: CGContext, _ text: String) {
     ctx.saveGState()
     ctx.translateBy(x: 700, y: 822)
@@ -545,7 +608,7 @@ func imageSet(_ name: String, _ img: CGImage, size: Int? = nil) {
 // --preview <dir>: draws every vehicle there, leaving the asset catalog alone.
 if let i = CommandLine.arguments.firstIndex(of: "--preview"), i + 1 < CommandLine.arguments.count {
     let dir = URL(fileURLWithPath: CommandLine.arguments[i + 1])
-    for (name, v) in [("yutong", Vehicle.yutong), ("urbino", .urbino), ("rotem", .rotem)] {
+    for (name, v) in [("yutong", Vehicle.yutong), ("urbino", .urbino), ("rotem", .rotem), ("konstal", .konstal)] {
         write(render(.normal, vehicle: v), dir.appendingPathComponent("\(name).png"), size: 512)
         write(render(.dark, vehicle: v), dir.appendingPathComponent("\(name)-dark.png"), size: 512)
         write(render(.tinted, vehicle: v), dir.appendingPathComponent("\(name)-tinted.png"), size: 512)
@@ -560,5 +623,6 @@ iconSet("AppIcon-Blue", on: .blue)
 // The tip jar's thank-you icons.
 iconSet("AppIcon-Urbino", vehicle: .urbino)
 iconSet("AppIcon-Rotem", vehicle: .rotem)
+iconSet("AppIcon-Konstal", vehicle: .konstal)
 imageSet("WelcomeSticker", render(.dark))
 print("wrote icons to \(assets.path)")
