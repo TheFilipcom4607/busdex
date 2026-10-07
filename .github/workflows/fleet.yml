@@ -157,7 +157,8 @@ jobs:
             echo "are left."
             echo
             echo '```'
-            grep '^?' "$RUNNER_TEMP/build.txt" | sed 's/^? //'
+            # Most nights there are none, and grep finding nothing would fail the step.
+            { grep '^?' "$RUNNER_TEMP/build.txt" || true; } | sed 's/^? //'
             echo '```'
           } > waiting.md
           grep -q '^?' "$RUNNER_TEMP/build.txt" || rm waiting.md
