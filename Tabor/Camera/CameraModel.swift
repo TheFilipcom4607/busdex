@@ -25,6 +25,12 @@ final class CameraModel: NSObject, @unchecked Sendable {
     private(set) var zoomRange: ClosedRange<CGFloat> = 1...1
     /// Device zoom factor that the UI calls 1× (the main lens on a virtual device).
     @ObservationIgnored private var zoomScale: CGFloat = 1
+    /// Camera Control's zoom slider is showing its full overlay; the on-screen zoom
+    /// buttons step aside, as in the Camera app.
+    private(set) var controlsFullscreen = false
+    @ObservationIgnored private var zoomSlider: AVCaptureSlider?
+    /// The values Camera Control's zoom slider clicks through.
+    @ObservationIgnored private var zoomDetents: [Float] = []
 
     /// Read from the vision queue; guarded by `lock`.
     var mode: CatchMode {
@@ -164,7 +170,10 @@ final class CameraModel: NSObject, @unchecked Sendable {
         session.beginConfiguration()
         session.inputs.forEach(session.removeInput)
         session.outputs.forEach(session.removeOutput)
+        session.controls.forEach(session.removeControl)
         session.commitConfiguration()
+        zoomSlider = nil
+        zoomDetents = []
         rotationObservation = nil
         rotation = nil
         pressureObservation = nil
@@ -283,6 +292,9 @@ final class CameraModel: NSObject, @unchecked Sendable {
         if let tele = stops.filter({ $0 > 1 }).min(), tele > 2.5 { stops.insert(2) } else if stops.count == 1 { stops.insert(2) }
         let maxUI = min(cam.maxAvailableVideoZoomFactor / scale, max(stops.max() ?? 1, 2) * 3)
         let minUI = cam.minAvailableVideoZoomFactor / scale
+        // A bus pulling away is gone before a pinch gets there (#47): one tap to twice the
+        // longest lens (10× on a 5× telephoto), where its number is big enough to read.
+        if let longest = stops.max() { stops.insert(min(longest * 2, maxUI)) }
 
         // Buses are big and far: continuous focus, and start on the main lens (1×).
         try? cam.lockForConfiguration()
@@ -297,6 +309,7 @@ final class CameraModel: NSObject, @unchecked Sendable {
             self.zoomRange = minUI...max(minUI, maxUI)
             self.zoom = 1
         }
+        addZoomControl(range: minUI...max(minUI, maxUI), stops: sortedStops)
 
         let coordinator = AVCaptureDevice.RotationCoordinator(device: cam, previewLayer: nil)
         rotationObservation = coordinator.observe(\.videoRotationAngleForHorizonLevelCapture, options: [.initial, .new]) {
@@ -356,16 +369,48 @@ final class CameraModel: NSObject, @unchecked Sendable {
 
     /// Sets the zoom in Camera-app terms (0.5, 1, 2, 5…). Buttons ramp smoothly; pinch
     /// sets it directly so it tracks the fingers.
-    func setZoom(_ value: CGFloat, smooth: Bool) {
+    func setZoom(_ value: CGFloat, smooth: Bool, fromControl: Bool = false) {
         guard let d = device else { return }
         let ui = min(max(value, zoomRange.lowerBound), zoomRange.upperBound)
         zoom = ui
+        // The slider only takes its own steps: show the nearest.
+        if !fromControl, let near = zoomDetents.min(by: { abs($0 - Float(ui)) < abs($1 - Float(ui)) }) {
+            zoomSlider?.value = near
+        }
         let factor = min(max(ui * zoomScale, d.minAvailableVideoZoomFactor), d.maxAvailableVideoZoomFactor)
         sessionQueue.async {
             guard (try? d.lockForConfiguration()) != nil else { return }
             if smooth { d.ramp(toVideoZoomFactor: factor, withRate: 12) } else { d.videoZoomFactor = factor }
             d.unlockForConfiguration()
         }
+    }
+
+    /// Called on sessionQueue. Camera Control (iPhone 16 and later): a light press and a
+    /// swipe zooms, as in the Camera app. Our own slider rather than the system one, so it
+    /// stops where the zoom buttons and pinch do instead of running into blurry digital zoom.
+    /// It moves in 0.1× steps, because a continuous slider only clicks at the lenses.
+    private func addZoomControl(range: ClosedRange<CGFloat>, stops: [CGFloat]) {
+        guard session.supportsControls else { return }
+        var values = Set(stops.map { Float($0) })
+        var v = Float(range.lowerBound)
+        while v <= Float(range.upperBound) + 0.001 {
+            values.insert((v * 10).rounded() / 10)
+            v += 0.1
+        }
+        let detents = values.sorted()
+        let slider = AVCaptureSlider(String(localized: "Zoom"), symbolName: "plus.magnifyingglass", values: detents)
+        slider.prominentValues = stops.map { Float($0) }
+        slider.localizedValueFormat = "%.1f×"
+        slider.value = 1
+        slider.setActionQueue(.main) { [weak self] value in
+            self?.setZoom(CGFloat(value), smooth: true, fromControl: true)
+        }
+        zoomDetents = detents
+        session.beginConfiguration()
+        if session.canAddControl(slider) { session.addControl(slider) }
+        session.commitConfiguration()
+        session.setControlsDelegate(self, queue: sessionQueue)
+        zoomSlider = slider
     }
 
     func focus(at devicePoint: CGPoint) {
@@ -494,7 +539,7 @@ enum TextReader {
     /// Everything a still read saw, for debug mode.
     struct Report: Sendable {
         var number: Int?
-        /// "full", "tiles", "none", or "decode-failed".
+        /// "full", "tiles", "full+tiles" (only short numbers on the first read), "none", or "decode-failed".
         var pass: String
         var full: [TextObservation] = []
         var tiles: [TextObservation] = []
@@ -505,9 +550,17 @@ enum TextReader {
 
         /// Where `number` is written: the tallest text that reads as it. A number the live
         /// feed rescued was printed as the one it was rescued from.
-        func box(of number: Int) -> CGRect? {
+        func box(of number: Int) -> CGRect? { boxes(of: number).max { $0.height < $1.height } }
+
+        /// Everywhere `number` is written; none for a feed neighbour offered for a misread.
+        func boxes(of number: Int) -> [CGRect] {
             let written = live.rescued.first { $0.to == number }?.from ?? number
-            return NumberExtractor.boxes(of: written, in: full + tiles).max { $0.height < $1.height }
+            return NumberExtractor.boxes(of: written, in: full + tiles)
+        }
+
+        /// The numbers read, with where each is written, for `AlsoInShot`.
+        var reads: [AlsoInShot.Read] {
+            candidates.map { AlsoInShot.Read(number: $0.number, score: $0.score, boxes: boxes(of: $0.number)) }
         }
 
         var numberBox: CGRect? { number.flatMap(box(of:)) }
@@ -518,8 +571,9 @@ enum TextReader {
         await read(data, mode: mode, nearby: []).number
     }
 
-    /// Full frame first; if nothing is found, re-read overlapping 3×3 tiles so small
-    /// numbers on a whole-vehicle shot get enough pixels (e.g. yellow-on-black "4425").
+    /// Full frame first; if that finds nothing, or only short numbers that may be a display's
+    /// line, re-read overlapping 3×3 tiles so small numbers on a whole-vehicle shot get enough
+    /// pixels (e.g. yellow-on-black "4425"), and weigh both reads together.
     /// `nearby` (live vehicles around you) boosts and rescues candidates, see `LiveHints`.
     /// Without `tiles` it's the full pass only: quick, for when only the number's box is wanted.
     static func read(_ data: Data, mode: CatchMode, nearby: [NearbyVehicle], tiles: Bool = true) async -> Report {
@@ -530,14 +584,14 @@ enum TextReader {
             var report = Report(pass: "full")
             report.full = read(cg, orientation: orientation, roi: nil)
             report.candidates = NumberExtractor.candidates(in: report.full, mode: mode, catalog: Fleet.catalog)
-            if report.candidates.isEmpty, tiles {
-                report.pass = "tiles"
+            if tiles, NumberExtractor.wantsCloserLook(report.candidates) {
+                report.pass = report.candidates.isEmpty ? "tiles" : "full+tiles"
                 for y in [0.0, 0.3, 0.6] {
                     for x in [0.0, 0.3, 0.6] {
                         report.tiles += read(cg, orientation: orientation, roi: CGRect(x: x, y: y, width: 0.4, height: 0.4))
                     }
                 }
-                report.candidates = NumberExtractor.candidates(in: report.tiles, mode: mode, catalog: Fleet.catalog)
+                report.candidates = NumberExtractor.candidates(in: report.full + report.tiles, mode: mode, catalog: Fleet.catalog)
             }
             (report.candidates, report.live) = LiveHints.adjust(report.candidates, nearby: nearby, catalog: Fleet.catalog)
             report.number = report.candidates.max { $0.score < $1.score }?.number
@@ -621,5 +675,21 @@ struct CameraPreview: UIViewRepresentable {
 
     func updateUIView(_ v: PreviewView, context: Context) {
         v.onTap = onTap
+    }
+}
+
+extension CameraModel: AVCaptureSessionControlsDelegate {
+    func sessionControlsDidBecomeActive(_ session: AVCaptureSession) {}
+
+    func sessionControlsWillEnterFullscreenAppearance(_ session: AVCaptureSession) {
+        Task { @MainActor in self.controlsFullscreen = true }
+    }
+
+    func sessionControlsWillExitFullscreenAppearance(_ session: AVCaptureSession) {
+        Task { @MainActor in self.controlsFullscreen = false }
+    }
+
+    func sessionControlsDidBecomeInactive(_ session: AVCaptureSession) {
+        Task { @MainActor in self.controlsFullscreen = false }
     }
 }

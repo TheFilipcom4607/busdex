@@ -15,10 +15,23 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     /// Latest fix from continuous updates (or a one-shot request).
     private(set) var latest: CLLocation?
     private(set) var authorization: CLAuthorizationStatus = .notDetermined
+    /// Which way the phone points, while someone asks for it: nil without a compass.
+    private(set) var heading: Heading?
+    /// Whether there's a heading at all. Views that only need this read it instead of `heading`,
+    /// which changes every couple of degrees and would redraw them each time.
+    private(set) var hasHeading = false
+
+    struct Heading: Equatable {
+        /// Degrees clockwise from true north (magnetic north until there's a fix).
+        let degrees: Double
+        /// How far off it may be, in degrees.
+        let accuracy: Double
+    }
 
     @ObservationIgnored private let manager = CLLocationManager()
     @ObservationIgnored private var pending: [CheckedContinuation<CLLocation?, Never>] = []
     @ObservationIgnored private var watchers: Set<String> = []
+    @ObservationIgnored private var headingWatchers: Set<String> = []
 
     override init() {
         super.init()
@@ -26,6 +39,8 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
         manager.distanceFilter = 20
+        // Enough to turn the map smoothly without redrawing it for every tremble.
+        manager.headingFilter = 2
     }
 
     var isDenied: Bool { authorization == .denied || authorization == .restricted }
@@ -42,6 +57,21 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     func stopUpdating(_ client: String) {
         guard watchers.remove(client) != nil, watchers.isEmpty else { return }
         manager.stopUpdatingLocation()
+    }
+
+    /// The compass, while any `client` wants it (HUNT's cone and its facing map).
+    func startHeading(_ client: String) {
+        guard CLLocationManager.headingAvailable() else { return }
+        let first = headingWatchers.isEmpty
+        headingWatchers.insert(client)
+        if first { manager.startUpdatingHeading() }
+    }
+
+    func stopHeading(_ client: String) {
+        guard headingWatchers.remove(client) != nil, headingWatchers.isEmpty else { return }
+        manager.stopUpdatingHeading()
+        heading = nil
+        hasHeading = false
     }
 
     /// `latest`, if it's recent enough to say what's around you.
@@ -88,6 +118,17 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         let loc = locations.last
         Task { @MainActor in self.finish(loc) }
+    }
+
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateHeading new: CLHeading) {
+        // A negative accuracy means the reading is no good (the compass needs calibrating).
+        let reading = new.headingAccuracy < 0 ? nil
+            : Heading(degrees: new.trueHeading >= 0 ? new.trueHeading : new.magneticHeading, accuracy: new.headingAccuracy)
+        Task { @MainActor in
+            guard !self.headingWatchers.isEmpty else { return }
+            self.heading = reading
+            if self.hasHeading != (reading != nil) { self.hasHeading = reading != nil }
+        }
     }
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {

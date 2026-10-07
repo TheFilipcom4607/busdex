@@ -11,6 +11,9 @@ struct TaborControlsBundle: WidgetBundle {
         RecentWidget()
         RarityWidget()
         ShuffleWidget()
+        StatsWidget()
+        MemoryWidget()
+        TrackLiveActivity()
     }
 }
 

@@ -1,0 +1,56 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Done": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gotowe"
+          }
+        }
+      }
+    },
+    "It's waiting in TABOR. Open the app to catch it.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czeka w TABORZE. Otwórz aplikację, żeby go złapać."
+          }
+        }
+      }
+    },
+    "Sending to TABOR…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wysyłam do TABORU…"
+          }
+        }
+      }
+    },
+    "TABOR": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TABOR"
+          }
+        }
+      }
+    },
+    "This photo couldn't be opened. Try saving it to Photos first.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się otworzyć tego zdjęcia. Spróbuj najpierw zapisać je w Zdjęciach."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

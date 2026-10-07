@@ -52,21 +52,14 @@ struct BookIndexView: View {
             ScreenTitle(text: String(localized: "Warsaw rolling stock"))
                 .padding(.top, 14)
                 .padding(.horizontal, 22)
-            HStack(spacing: 7) {
-                ForEach(DexFilter.allCases, id: \.self) { f in
-                    Button {
-                        guard f != filter else { return }
-                        Haptics.shared.tick()
-                        withAnimation(.snappy) { filter = f }
-                    } label: {
-                        Mono(f.name, size: 11.5, weight: 600, spacing: 0.1,
-                             color: f == filter ? Palette.bg : Palette.sub)
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 12)
-                            .background(f == filter ? Palette.ink : Palette.chip, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                }
+            // "WSZYSTKIE" and "AUTOBUSY" broke in two mid-word on a 6.3" phone (#49): chips
+            // never wrap, they tighten up first and scroll sideways only if that's not enough.
+            ViewThatFits(in: .horizontal) {
+                filterChips(padding: 12)
+                filterChips(padding: 9)
+                ScrollView(.horizontal) { filterChips(padding: 9) }
+                    .scrollIndicators(.hidden)
+                    .scrollClipDisabled()
             }
             .padding(.top, 14)
             .padding(.bottom, 2)
@@ -93,11 +86,33 @@ struct BookIndexView: View {
                 }
                 .padding(.top, 10)
                 .padding(.horizontal, 22)
+                .fitScrollWidth()
             }
             .scrollIndicators(.hidden)
             .softTopEdge()
         }
         .taborScreen()
+    }
+
+    private func filterChips(padding: CGFloat) -> some View {
+        HStack(spacing: 7) {
+            ForEach(DexFilter.allCases, id: \.self) { f in
+                Button {
+                    guard f != filter else { return }
+                    Haptics.shared.tick()
+                    withAnimation(.snappy) { filter = f }
+                } label: {
+                    Mono(f.name, size: 11.5, weight: 600, spacing: 0.1,
+                         color: f == filter ? Palette.bg : Palette.sub)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, padding)
+                        .background(f == filter ? Palette.ink : Palette.chip, in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 
     private func sectionHeader(_ tier: Tier, note: String) -> some View {

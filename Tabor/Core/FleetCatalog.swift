@@ -30,7 +30,7 @@ public struct FleetCatalog: Sendable {
     public let depots: [Depot]
     public let source: String
     public let sourcePl: String?
-    /// ISO date of the ZTM snapshot, e.g. "2026-09-22".
+    /// When the fleet data last changed: "2026-10-03 13:12 UTC" (older files: "2026-09-22").
     public let fetched: String?
     private let byId: [String: VehicleModel]
     private let byNumber: [Int: [VehicleModel]]
@@ -67,7 +67,8 @@ public struct FleetCatalog: Sendable {
         return c
     }
 
-    /// Whether this snapshot is strictly newer than `other` (ISO dates compare as strings).
+    /// Whether this snapshot is strictly newer than `other`. Both stamp formats compare as
+    /// strings, and a timed stamp beats the bare date of the same day.
     public func isNewer(than other: FleetCatalog?) -> Bool {
         guard let mine = fetched else { return false }
         guard let theirs = other?.fetched else { return true }
@@ -82,6 +83,37 @@ public struct FleetCatalog: Sendable {
     }
 
     public func model(id: String) -> VehicleModel? { byId[id] }
+
+    /// Where a catch or pick filed under `modelId` belongs since that model was split: the
+    /// model that has the number and lists `modelId` in `formerly`. Nil if it hasn't moved.
+    public func moved(modelId: String, number: Int) -> String? {
+        let here = byNumber[number] ?? []
+        guard !here.contains(where: { $0.id == modelId }) else { return nil }
+        return here.first { $0.formerly.contains(modelId) }?.id
+    }
+
+    /// The model `other` goes under as `number`'s second car, or nil if it can't be that car:
+    /// a coupled car of the same model, or across models a trailer and a car that pulls it.
+    /// Only trams pull trailers, so a trailer's number that's a bus's too still means the tram.
+    public func secondCarModel(_ other: Int, of number: Int, model: VehicleModel) -> VehicleModel? {
+        guard other != number else { return nil }
+        if model.isCoupled(number), model.isCoupled(other) { return model }
+        let trams = (byNumber[other] ?? []).filter { $0.kind == .tram }
+        if model.isTrailer(number) { return trams.first { $0.pullsTrailers(other) } }
+        if model.pullsTrailers(number) { return trams.first { $0.isTrailer(other) } }
+        return nil
+    }
+
+    /// The models `number`'s second car can be from.
+    public func secondCarModels(of number: Int, model: VehicleModel) -> [VehicleModel] {
+        models.filter { m in
+            (m.id == model.id && model.isCoupled(number))
+                || (model.isTrailer(number) && m.tows) || (model.pullsTrailers(number) && !m.trailers.isEmpty)
+        }
+    }
+
+    /// Every vintage trailer, by number.
+    public var trailers: [Int] { models.flatMap(\.trailers).sorted() }
 
     /// Vehicles on regular routes; vintage and test stock don't count toward the fleet.
     public var totalFleet: Int { models.filter { $0.regular }.reduce(0) { $0 + $1.fleet } }

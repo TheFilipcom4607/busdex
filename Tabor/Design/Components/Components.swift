@@ -157,9 +157,12 @@ struct StatTile: View {
                     .font(TaborFont.grotesk(11.5))
                     .foregroundStyle(Palette.sub)
                     .lineLimit(2)
+                    .minimumScaleFactor(0.85)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: stretch ? .infinity : nil, alignment: .topLeading)
+        // minWidth 0: a value or caption a hair too wide for its share ("siedzących: 25—29" on
+        // a 390 pt phone) would otherwise widen the tile and the row past the screen (#55).
+        .frame(minWidth: 0, maxWidth: .infinity, maxHeight: stretch ? .infinity : nil, alignment: .topLeading)
         .padding(.vertical, 12)
         .padding(.horizontal, 13)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -180,6 +183,15 @@ struct KindTag: View {
 
 /// Top row of every inner screen: grey mono label on the left, action on the right.
 extension View {
+    /// For a vertical ScrollView's content: never wider than the scroll view. Content even a third
+    /// of a point too wide (a spec tile on a 390 pt phone) lets the whole page pan sideways under
+    /// your finger (#42, #55); held to the width, a row that's too wide just runs off the edge.
+    /// Only for full-width screens and sheets: in HUNT's bottom card it took the screen's width
+    /// and pushed the card off both sides.
+    func fitScrollWidth() -> some View {
+        containerRelativeFrame(.horizontal)
+    }
+
     /// Rows slide out from under a pinned header instead of being cut off at a hard line.
     func softTopEdge(_ height: CGFloat = 16) -> some View {
         overlay(alignment: .top) {

@@ -6,12 +6,13 @@ struct CatchShare {
     let title: String
     let message: String
 
-    /// Renders the card for a vehicle's latest sighting. Main actor: ImageRenderer needs it.
+    /// Renders the card for the sighting a vehicle's page shows: the picked one, else the latest. Main actor: ImageRenderer needs it.
     /// `partner` is a coupled tram's other car, caught with it: "#1282+1281".
     @MainActor
     static func make(number: Int, model: VehicleModel?, sighting: Sighting, sticker: String?, photo: String?,
-                     owned: Int, partner: Int? = nil) -> CatchShare? {
-        let card = ShareCard(number: number, model: model, sighting: sighting, sticker: sticker, photo: photo, owned: owned)
+                     owned: Int, partner: Int? = nil, style: ShareCard.Style = .sticker) -> CatchShare? {
+        let card = ShareCard(number: number, model: model, sighting: sighting, sticker: sticker, photo: photo, owned: owned,
+                             style: style)
         let renderer = ImageRenderer(content: card)
         renderer.scale = 3 // 360×450 pt → 1080×1350 px, Instagram's portrait size.
         guard let image = renderer.uiImage else { return nil }
@@ -40,6 +41,13 @@ struct ShareCard: View {
     let sticker: String?
     let photo: String?
     let owned: Int
+    var style: Style = .sticker
+
+    /// The die-cut sticker, or the whole photo you took (#63), for when the cut went wrong
+    /// or the scene is the point.
+    enum Style: String, CaseIterable {
+        case sticker, photo
+    }
 
     var body: some View {
         let tier = model?.tier ?? .common
@@ -59,7 +67,7 @@ struct ShareCard: View {
             Spacer(minLength: 0)
 
             artwork
-                .rotationEffect(.degrees(stickerTilt(number, range: 4)))
+                .rotationEffect(.degrees(stickerTilt(number, range: style == .photo ? 2.5 : 4)))
                 .frame(maxWidth: .infinity)
 
             Spacer(minLength: 0)
@@ -135,7 +143,7 @@ struct ShareCard: View {
     /// The die-cut sticker when there is one; otherwise the photo on white card stock.
     @ViewBuilder private var artwork: some View {
         ZStack(alignment: .bottomLeading) {
-            if let sticker, let img = PhotoStore.thumbnail(sticker, maxPixel: 1400) {
+            if style == .sticker, let sticker, let img = PhotoStore.thumbnail(sticker, maxPixel: 1400) {
                 Image(uiImage: img)
                     .resizable()
                     .scaledToFit()
@@ -146,7 +154,8 @@ struct ShareCard: View {
                 Image(uiImage: img)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: 292, height: 184)
+                    // A photo of its own fills the width; standing in for a missing sticker, it stays smaller.
+                    .frame(width: style == .photo ? 298 : 292, height: style == .photo ? 224 : 184)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .padding(7)
                     .background(Palette.paper, in: RoundedRectangle(cornerRadius: 14, style: .continuous))

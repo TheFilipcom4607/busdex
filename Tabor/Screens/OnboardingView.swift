@@ -11,7 +11,7 @@ struct OnboardingView: View {
     @State private var askedLocation = false
     private let location = LocationService.shared
 
-    enum Page: Int, CaseIterable { case welcome, book, camera, hunt }
+    enum Page: Int, CaseIterable { case welcome, book, rarity, camera, buttons, hunt }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -31,7 +31,9 @@ struct OnboardingView: View {
             TabView(selection: $page) {
                 WelcomePage().tag(Page.welcome)
                 BookPage().tag(Page.book)
+                RarityPage().tag(Page.rarity)
                 CameraPage().tag(Page.camera)
+                ButtonsPage().tag(Page.buttons)
                 HuntPage().tag(Page.hunt)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
@@ -80,7 +82,7 @@ struct OnboardingView: View {
     /// The permission this page is about hasn't been asked for yet.
     private var needsPermission: Bool {
         switch page {
-        case .welcome, .book: false
+        case .welcome, .book, .rarity, .buttons: false
         case .camera: AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined
         case .hunt: location.authorization == .notDetermined
         }
@@ -89,7 +91,7 @@ struct OnboardingView: View {
     private var primaryLabel: String {
         switch page {
         case .welcome: String(localized: "LET'S GO")
-        case .book: String(localized: "NEXT")
+        case .book, .rarity, .buttons: String(localized: "NEXT")
         case .camera: needsPermission ? String(localized: "ALLOW CAMERA") : String(localized: "NEXT")
         case .hunt: needsPermission ? String(localized: "ALLOW LOCATION") : String(localized: "START CATCHING")
         }
@@ -97,7 +99,7 @@ struct OnboardingView: View {
 
     private func primary() {
         switch page {
-        case .welcome, .book:
+        case .welcome, .book, .rarity, .buttons:
             advance()
         case .camera:
             guard needsPermission else { return advance() }
@@ -206,7 +208,7 @@ private struct BookPage: View {
     var body: some View {
         PageLayout(kicker: String(localized: "BOOK"),
                    title: String(localized: "Fill the book, model by model."),
-                   text: String(localized: "Every model has a page and every vehicle a slot. Rarity goes by how many exist, so a legendary is one of a dozen or fewer. Badges come along the way.")) {
+                   text: String(localized: "Every model has a page and every vehicle a slot, and badges come along the way. The colours are rarity: more on that next.")) {
             VStack(spacing: 8) {
                 ForEach(Array(rows.enumerated()), id: \.offset) { i, row in
                     MiniRow(model: row.model, share: filled ? row.share : 0)
@@ -251,6 +253,68 @@ private struct BookPage: View {
             .padding(.horizontal, 14)
             .background(Palette.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.white.opacity(0.06)))
+        }
+    }
+}
+
+/// Why a model is the rarity it is, since it isn't obvious: it's how many of it there are,
+/// not how old or odd it looks. One dot per vehicle at each tier's ceiling, so the gap
+/// between a dozen and hundreds is something you see rather than read.
+private struct RarityPage: View {
+    @State private var shown = false
+    private static let perRow = 32
+    /// COMMON has no ceiling; three full rows trailing off say "and lots more".
+    private static let commonDots = perRow * 3
+    private static let ladder: [Tier] = [.legendary, .gold, .rare, .common]
+
+    var body: some View {
+        PageLayout(kicker: String(localized: "RARITY"),
+                   title: String(localized: "The fewer there are, the rarer."),
+                   text: String(localized: "Rarity is how many of a model run in Warsaw, not how old or unusual it is. A legendary has 12 or fewer, so each one is a find. Museum and trial vehicles are \(Tier.vintage.name) and \(Tier.onTest.name), out only now and then.")) {
+            VStack(alignment: .leading, spacing: 16) {
+                ForEach(Array(Self.ladder.enumerated()), id: \.offset) { i, tier in
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack {
+                            Mono(tier.name, size: 11, weight: 700, spacing: 0.12, color: tier.color)
+                            Spacer()
+                            Mono(range(i), size: 11, weight: 600, spacing: 0.08, color: Palette.sub)
+                        }
+                        dots(tier.maxFleet ?? Self.commonDots, color: tier.bar, fades: tier.maxFleet == nil)
+                            .opacity(shown ? 1 : 0)
+                            .offset(y: shown ? 0 : 6)
+                            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(Double(i) * 0.15), value: shown)
+                    }
+                }
+            }
+            .frame(width: 310)
+        }
+        .task {
+            try? await Task.sleep(for: .milliseconds(250))
+            shown = true
+        }
+    }
+
+    /// Each tier starts one above the ceiling of the tier before it.
+    private func range(_ i: Int) -> String {
+        let floor = (i > 0 ? Self.ladder[i - 1].maxFleet! : 0) + 1
+        guard let max = Self.ladder[i].maxFleet else { return String(localized: "\(floor) OR MORE") }
+        return i == 0 ? String(localized: "\(max) OR FEWER") : "\(floor)–\(max)"
+    }
+
+    private func dots(_ count: Int, color: Color, fades: Bool) -> some View {
+        let pitch = 310 / CGFloat(Self.perRow)
+        return LazyVGrid(columns: Array(repeating: GridItem(.fixed(pitch), spacing: 0), count: Self.perRow),
+                         alignment: .leading, spacing: 3) {
+            ForEach(0..<count, id: \.self) { _ in
+                Circle().fill(color).frame(width: pitch - 3, height: pitch - 3)
+            }
+        }
+        .mask {
+            if fades {
+                LinearGradient(colors: [.black, .black, .clear], startPoint: .top, endPoint: .bottom)
+            } else {
+                Color.black
+            }
         }
     }
 }
@@ -321,6 +385,118 @@ private struct CameraPage: View {
                 .background(color, in: RoundedRectangle(cornerRadius: 3, style: .continuous))
                 .position(x: box.midX, y: above ? box.minY - 10 : box.maxY + 10)
         }
+    }
+}
+
+/// The hardware shutter: the phone held sideways, as you'd hold it for a bus, its shutter
+/// buttons pressed one at a time (one lights up, the photo flashes) so it reads as either
+/// button, not both. Camera Control only on phones that have it (iPhone 16 and later, not
+/// the 16e), which the capture session knows without a list of models.
+private struct ButtonsPage: View {
+    private enum Press { case none, volumeUp, volumeDown, control }
+    private static let hasCameraControl = AVCaptureSession().supportsControls
+    @State private var press = Press.none
+
+    /// The phone in the art's points. Held with Camera Control on top, so the volume
+    /// buttons end up on the bottom edge and the Dynamic Island on the left.
+    private static let size = CGSize(width: 340, height: 230)
+    private static let phone = CGRect(x: 40, y: 52, width: 260, height: 126)
+
+    var body: some View {
+        PageLayout(kicker: String(localized: "SHUTTER"),
+                   title: String(localized: "Press a button, catch the bus."),
+                   text: Self.hasCameraControl
+                       ? String(localized: "Click Camera Control or either volume button to take the shot: quicker than finding the shutter as a bus pulls away. Slide along Camera Control to zoom.")
+                       : String(localized: "Press either volume button to take the shot: quicker than finding the shutter as a bus pulls away.")) {
+            let r = Self.phone
+            ZStack {
+                // Where they sit along an iPhone 16 Pro, from the Dynamic Island end. Bottom
+                // edge: Action button, volume up, volume down; top edge: the side button
+                // across from the volume buttons, then Camera Control.
+                key(x: r.minX + 0.22 * r.width, length: 12, top: false, shutter: false, pressed: false)
+                key(x: r.minX + 0.32 * r.width, length: 22, top: false, shutter: true, pressed: press == .volumeUp)
+                key(x: r.minX + 0.43 * r.width, length: 22, top: false, shutter: true, pressed: press == .volumeDown)
+                label(String(localized: "VOLUME"), x: r.minX + 0.375 * r.width, top: false,
+                      pressed: press == .volumeUp || press == .volumeDown)
+                key(x: r.minX + 0.375 * r.width, length: 32, top: true, shutter: false, pressed: false)
+                if Self.hasCameraControl {
+                    key(x: r.minX + 0.66 * r.width, length: 24, top: true, shutter: true, pressed: press == .control)
+                    label(String(localized: "CAMERA CONTROL"), x: r.minX + 0.66 * r.width, top: true, pressed: press == .control)
+                }
+                phone
+                    .frame(width: r.width, height: r.height)
+                    .position(x: r.midX, y: r.midY)
+            }
+            .frame(width: Self.size.width, height: Self.size.height)
+        }
+        .task {
+            // One button per shot, each in turn, slowly enough to read, for as long as the
+            // page is up.
+            while !Task.isCancelled {
+                for p in Self.hasCameraControl ? [Press.volumeUp, .control, .volumeDown] : [.volumeUp, .volumeDown] {
+                    try? await Task.sleep(for: .milliseconds(1200))
+                    withAnimation(.spring(response: 0.15, dampingFraction: 0.6)) { press = p }
+                    try? await Task.sleep(for: .milliseconds(450))
+                    withAnimation(.easeOut(duration: 0.35)) { press = .none }
+                }
+            }
+        }
+    }
+
+    /// The welcome sticker in the viewfinder; each shot flashes the screen and bumps the
+    /// sticker, like a catch landing.
+    private var phone: some View {
+        let body = RoundedRectangle(cornerRadius: 30, style: .continuous)
+        let screen = RoundedRectangle(cornerRadius: 24, style: .continuous)
+        let shot = press != .none
+        return ZStack {
+            body.fill(Palette.card)
+                .overlay(body.stroke(Color.white.opacity(0.14), lineWidth: 1.5))
+            ZStack {
+                RadialGradient(colors: [Palette.yellow.opacity(0.16), .clear], center: .center, startRadius: 4, endRadius: 120)
+                Image("WelcomeSticker")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 92, height: 92)
+                    .rotationEffect(.degrees(shot ? 4 : -6))
+                    .scaleEffect(shot ? 1.08 : 1)
+                Brackets()
+                    .stroke(Palette.yellow, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                    .frame(width: 128, height: 104)
+                // The Dynamic Island, on the left with the phone on its side.
+                Capsule().fill(Color.white.opacity(0.08))
+                    .frame(width: 9, height: 30)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, 10)
+                Color.white.opacity(shot ? 0.55 : 0)
+            }
+            .background(Palette.bg)
+            .clipShape(screen)
+            .padding(6)
+        }
+    }
+
+    /// A button on the phone's top or bottom edge. Only the one being pressed lights up and
+    /// sinks in, so it reads as "either of these", never "both".
+    private func key(x: CGFloat, length: CGFloat, top: Bool, shutter: Bool, pressed: Bool) -> some View {
+        let r = Self.phone
+        let edge = top ? r.minY - 1.5 : r.maxY + 1.5
+        return Capsule()
+            .fill(pressed ? Palette.yellow : shutter ? Palette.sub.opacity(0.7) : Palette.ghost)
+            .frame(width: length, height: 3)
+            .shadow(color: Palette.yellow.opacity(pressed ? 0.8 : 0), radius: 6)
+            .position(x: x, y: edge + (pressed ? (top ? 1.5 : -1.5) : 0))
+    }
+
+    /// The button's name, lit while it's the one being pressed.
+    private func label(_ text: String, x: CGFloat, top: Bool, pressed: Bool) -> some View {
+        let r = Self.phone
+        return Mono(text, size: 10, weight: 700, spacing: 0.12, color: pressed ? Palette.bg : Palette.dim)
+            .fixedSize()
+            .padding(.vertical, 4)
+            .padding(.horizontal, 8)
+            .background(pressed ? Palette.yellow : Color.clear, in: Capsule())
+            .position(x: x, y: top ? r.minY - 20 : r.maxY + 20)
     }
 }
 

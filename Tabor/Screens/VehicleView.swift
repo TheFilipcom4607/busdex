@@ -8,7 +8,10 @@ struct VehicleView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(Router.self) private var router
-    @State private var share: CatchShare?
+    @State private var shares: [ShareCard.Style: CatchShare] = [:]
+    /// Both a sticker and a photo to share: the switch shows with SHARE, not once both cards are drawn.
+    @State private var canPickStyle = false
+    @AppStorage("shareStyle") private var shareStyle: ShareCard.Style = .sticker
     @State private var editing: Sighting?
     @Environment(SightingUndo.self) private var undo
 
@@ -28,7 +31,8 @@ struct VehicleView: View {
                     }
                     .buttonStyle(.plain)
                 } trailing: {
-                    if let share {
+                    if let share = shares[shareStyle] ?? shares.values.first {
+                        if canPickStyle { shareStylePicker }
                         ShareLink(item: Image(uiImage: share.image), subject: Text(share.title), message: Text(share.message),
                                   preview: SharePreview(share.title, image: Image(uiImage: share.image))) {
                             Mono("SHARE", size: 12)
@@ -48,7 +52,7 @@ struct VehicleView: View {
                         Text(model?.name ?? String(localized: "Unknown model"))
                             .font(TaborFont.grotesk(14, 600))
                             .lineLimit(1)
-                        Mono(batch?.depotDisplay ?? model?.operators.first?.uppercased() ?? "", size: 11, color: Palette.sub)
+                        Mono(batch?.placeDisplay.nonEmpty ?? model?.operators.first?.uppercased() ?? "", size: 11, color: Palette.sub)
                             .lineLimit(1)
                         if let livery = model?.livery(of: number) {
                             HStack(spacing: 5) {
@@ -62,12 +66,12 @@ struct VehicleView: View {
                         }
                         if let coupled = coupledWith {
                             Button {
-                                router.openVehicle(modelId: modelId, number: coupled)
+                                router.openVehicle(modelId: coupled.modelId, number: coupled.number)
                             } label: {
                                 HStack(spacing: 5) {
                                     Image(systemName: "link")
                                         .font(.system(size: 9, weight: .bold))
-                                    Mono("COUPLED WITH #\(String(coupled))", size: 10, weight: 700, spacing: 0.1, color: Palette.ink)
+                                    Mono("COUPLED WITH #\(String(coupled.number))", size: 10, weight: 700, spacing: 0.1, color: Palette.ink)
                                 }
                                 .foregroundStyle(Palette.ink)
                                 .padding(.top, 5)
@@ -82,7 +86,7 @@ struct VehicleView: View {
                 .padding(.top, 16)
                 .padding(.horizontal, 22)
 
-                let photo = mine.first(where: { $0.photoFile != nil })?.photoFile
+                let photo = mine.photo(number: number, modelId: modelId)
                 CatchPhoto(file: photo, maxPixel: 1200, placeholder: String(localized: "NO PHOTO YET"))
                     // The photo's own shape, so a tall shot isn't cut to a strip (#27). Up to
                     // about half the screen for an upright one; panoramas no thinner than 150 pt.
@@ -153,20 +157,35 @@ struct VehicleView: View {
             }
             .plainRow()
 
+            // With more than one picture to choose from, each row shows its own, and the one the
+            // book uses is tagged; another can be picked by swiping right or holding the row.
+            let pictured = mine.filter(\.hasPicture)
+            let inBook = mine.cover(number: number, modelId: modelId) ?? pictured.first
             ForEach(Array(mine.enumerated()), id: \.element.id) { i, s in
+                let choosable = pictured.count > 1 && s.hasPicture
                 HStack(alignment: .top, spacing: 12) {
                     VStack(spacing: 3) {
                         Circle().fill(i == 0 ? Palette.yellow : Palette.dim).frame(width: 9, height: 9)
-                        Rectangle().fill(Color.white.opacity(0.12)).frame(width: 1, height: 26)
+                        Rectangle().fill(Color.white.opacity(0.12)).frame(width: 1, height: choosable ? 40 : 26)
                     }
                     .padding(.top, 4)
                     VStack(alignment: .leading, spacing: 0) {
                         Text(Self.stamp.string(from: s.date))
                             .font(TaborFont.grotesk(13.5, 600))
                         Mono(logLine(s, isFirst: i == mine.count - 1), size: 11, spacing: 0.05, color: Palette.sub)
+                        if choosable, s.id == inBook?.id {
+                            Mono("IN THE BOOK", size: 9.5, weight: 700, spacing: 0.1, color: Palette.yellow)
+                                .padding(.top, 5)
+                        }
                     }
                     .padding(.bottom, 10)
                     Spacer(minLength: 0)
+                    if choosable {
+                        SightingPicture(sighting: s)
+                            .frame(width: 64, height: 44)
+                            .opacity(s.id == inBook?.id ? 1 : 0.55)
+                            .accessibilityHidden(true)
+                    }
                 }
                 .padding(.horizontal, 22)
                 .contentShape(Rectangle())
@@ -176,7 +195,16 @@ struct VehicleView: View {
                     Button { editing = s } label: { Label("Edit", systemImage: "pencil") }
                         .tint(Palette.dim)
                 }
+                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                    if choosable, s.id != inBook?.id {
+                        Button { useInBook(s, of: mine) } label: { Label("Show in book", systemImage: "book") }
+                            .tint(Palette.yellow)
+                    }
+                }
                 .contextMenu {
+                    if choosable, s.id != inBook?.id {
+                        Button { useInBook(s, of: mine) } label: { Label("Show this picture in the book", systemImage: "book") }
+                    }
                     Button { editing = s } label: { Label("Fix number, model or line", systemImage: "pencil") }
                     Button(role: .destructive) { delete(s, wasLast: mine.count == 1) } label: { Label("Delete sighting", systemImage: "trash") }
                 }
@@ -202,27 +230,84 @@ struct VehicleView: View {
                 if moved { router.openVehicle(modelId: s.modelId, number: s.number) }
             }
         }
-        // Render the share card up front so SHARE opens instantly.
-        .task(id: mine.first?.id) {
-            guard let latest = mine.first else { return share = nil }
+        // Render the share card up front so SHARE opens instantly, again whenever another picture
+        // is picked: the card shows the picked catch, its day and place with its sticker.
+        .task(id: [mine.first?.id, mine.cover(number: number, modelId: modelId)?.id]) {
+            guard let shown = mine.cover(number: number, modelId: modelId) ?? mine.first else { return shares = [:] }
             // The second car added with it in the same catch, if any.
-            let partner = latest.pairedWith ?? sightings.first {
-                $0.modelId == modelId && $0.pairedWith == number && abs($0.date.timeIntervalSince(latest.date)) < 1
+            let partner = shown.pairedWith ?? sightings.first {
+                isSecondCar($0) && abs($0.date.timeIntervalSince(shown.date)) < 1
             }?.number
-            share = CatchShare.make(number: number, model: model, sighting: latest,
-                                    sticker: sightings.sticker(number: number, modelId: modelId),
-                                    photo: sightings.photo(number: number, modelId: modelId),
-                                    owned: sightings.stats.ownedCount(modelId: modelId), partner: partner)
+            let sticker = sightings.sticker(number: number, modelId: modelId)
+            let photo = sightings.photo(number: number, modelId: modelId)
+            // Both up front, so flipping sticker / photo is instant; the one you share with goes
+            // first, so SHARE shows as soon as it did. Without a sticker the sticker card already
+            // shows the photo: no choice to offer.
+            let styles: [ShareCard.Style] = sticker != nil && photo != nil
+                ? [shareStyle] + ShareCard.Style.allCases.filter { $0 != shareStyle } : [.sticker]
+            canPickStyle = styles.count > 1
+            var made: [ShareCard.Style: CatchShare] = [:]
+            for style in styles {
+                made[style] = CatchShare.make(number: number, model: model, sighting: shown, sticker: sticker, photo: photo,
+                                              owned: sightings.stats.ownedCount(modelId: modelId), partner: partner,
+                                              style: style)
+                shares = made
+                await Task.yield()
+            }
         }
     }
 
+    /// What the share card shows: the sticker or the whole photo (#63). Icons, not words: the
+    /// header is already tight on a narrow phone in Polish.
+    private var shareStylePicker: some View {
+        HStack(spacing: 2) {
+            ForEach(ShareCard.Style.allCases, id: \.self) { style in
+                let on = shareStyle == style
+                Button {
+                    Haptics.shared.tick()
+                    shareStyle = style
+                } label: {
+                    Image(systemName: style == .sticker ? "scissors" : "photo")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(on ? Palette.ink : Palette.faint)
+                        // No taller than the header's text, so the page doesn't jump when it appears.
+                        .frame(width: 28, height: 18)
+                        .background(on ? Palette.track : .clear, in: RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(style == .sticker ? Text("Share the sticker") : Text("Share the photo"))
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .padding(.trailing, 8)
+    }
+
     /// The car this one was last caught coupled to: the car it was added with, or the second
-    /// car added with it.
-    private var coupledWith: Int? {
-        sightings.lazy.compactMap { s in
-            if s.modelId == modelId, s.number == number { return s.pairedWith }
-            return s.modelId == modelId && s.pairedWith == number ? s.number : nil
+    /// car added with it. A trailer's motor car is another model's.
+    private var coupledWith: (number: Int, modelId: String)? {
+        let catalog = Fleet.catalog
+        guard let model = catalog.model(id: modelId) else { return nil }
+        return sightings.lazy.compactMap { s in
+            if s.modelId == modelId, s.number == number, let p = s.pairedWith {
+                return catalog.secondCarModel(p, of: number, model: model).map { (p, $0.id) }
+            }
+            return isSecondCar(s) ? (s.number, s.modelId) : nil
         }.first
+    }
+
+    /// A catch added as this vehicle's second car: paired with its number, in a model that pairs
+    /// with it (so not a second car of a bus or tram that only shares the number).
+    private func isSecondCar(_ s: Sighting) -> Bool {
+        let catalog = Fleet.catalog
+        guard s.pairedWith == number, let model = catalog.model(id: modelId) else { return false }
+        return catalog.secondCarModel(s.number, of: number, model: model)?.id == s.modelId
+    }
+
+    /// The book, the widgets and the share card show this sighting's picture from now on.
+    private func useInBook(_ s: Sighting, of mine: [Sighting]) {
+        for other in mine { other.cover = other.id == s.id ? true : nil }
+        try? context.save()
+        Haptics.shared.tick()
     }
 
     /// No dialog: it goes at once, and the toast at the bottom can bring it back.
@@ -277,6 +362,23 @@ extension String {
     var nonEmpty: String? { isEmpty ? nil : self }
 }
 
+/// One sighting's own sticker, or its photo, small: for choosing which the book shows.
+private struct SightingPicture: View {
+    let sighting: Sighting
+
+    var body: some View {
+        if let sticker = sighting.stickerFile, let img = PhotoStore.thumbnail(sticker, maxPixel: 200) {
+            Image(uiImage: img)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            CatchPhoto(file: sighting.photoFile, maxPixel: 200)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        }
+    }
+}
+
 private extension View {
     /// A List row that looks like plain stacked content: no insets, separators or fill.
     func plainRow() -> some View {
@@ -323,14 +425,21 @@ struct EditSightingSheet: View {
         onSave(moved)
     }
 
-    /// A coupled link only holds between coupled cars of one model: a second car added with
-    /// this one follows its corrected number, and a link that no longer fits goes.
+    /// A coupled link only holds between cars that run together (coupled cars of one model, or
+    /// a trailer and a car that pulls it): a second car added with this one follows its
+    /// corrected number, and a link that no longer fits goes.
     private func relink(to number: Int, modelId: String) {
-        let fits = modelId == sighting.modelId && Fleet.catalog.model(id: modelId)?.isCoupled(number) == true
-        if let p = sighting.pairedWith, !fits || p == number { sighting.pairedWith = nil }
-        for second in sightings where second.modelId == sighting.modelId && second.pairedWith == sighting.number
+        let catalog = Fleet.catalog
+        if let p = sighting.pairedWith, !catalog.match(number: p, kind: .tram).candidates.contains(where: {
+            catalog.secondCarModel(number, of: p, model: $0)?.id == modelId
+        }) {
+            sighting.pairedWith = nil
+        }
+        let model = catalog.model(id: modelId)
+        for second in sightings where second.pairedWith == sighting.number && second.id != sighting.id
             && abs(second.date.timeIntervalSince(sighting.date)) < 1 {
-            second.pairedWith = fits && second.number != number ? number : nil
+            let fits = model.flatMap { catalog.secondCarModel(second.number, of: number, model: $0) }?.id == second.modelId
+            second.pairedWith = fits ? number : nil
         }
     }
 }

@@ -49,7 +49,7 @@ enum BackupService {
                                     latitude: s.latitude, longitude: s.longitude, street: s.street,
                                     district: s.district, line: s.line, photoFile: s.photoFile,
                                     stickerFile: s.stickerFile, weatherCode: s.weatherCode,
-                                    temperature: s.temperature, pairedWith: s.pairedWith)
+                                    temperature: s.temperature, pairedWith: s.pairedWith, cover: s.cover)
         }, manual: manual.map { .init(number: $0.number, modelId: $0.modelId) })
     }
 
@@ -65,7 +65,9 @@ extension ModelContext {
     func restore(_ backup: BackupManifest, into sightings: [Sighting], manual: [ManualAssignment]) throws -> Int {
         let merged = backup.merge(existingIds: Set(sightings.map(\.id)), existingManual: Set(manual.map(\.number)))
         for r in merged.sightings {
-            let s = Sighting(id: r.id, number: r.number, modelId: r.modelId, date: r.date, line: r.line,
+            // A backup from before a model was split files the catch under the old id.
+            let modelId = Fleet.catalog.moved(modelId: r.modelId, number: r.number) ?? r.modelId
+            let s = Sighting(id: r.id, number: r.number, modelId: modelId, date: r.date, line: r.line,
                              photoFile: r.photoFile.flatMap(existingFile), stickerFile: r.stickerFile.flatMap(existingFile))
             s.latitude = r.latitude
             s.longitude = r.longitude
@@ -74,9 +76,12 @@ extension ModelContext {
             s.weatherCode = r.weatherCode
             s.temperature = r.temperature
             s.pairedWith = r.pairedWith
+            s.cover = r.cover
             insert(s)
         }
-        for a in merged.manual { insert(ManualAssignment(number: a.number, modelId: a.modelId)) }
+        for a in merged.manual {
+            insert(ManualAssignment(number: a.number, modelId: Fleet.catalog.moved(modelId: a.modelId, number: a.number) ?? a.modelId))
+        }
         try save()
         return merged.sightings.count
     }

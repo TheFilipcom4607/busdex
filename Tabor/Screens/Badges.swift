@@ -247,10 +247,10 @@ struct BadgeDetailSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             Capsule().fill(Palette.track).frame(width: 36, height: 4).padding(.top, 10)
-            // Tiered badges list their levels, and some their vehicles, so they scroll inside
-            // the same half-height sheet.
-            if badge.tiered || !badge.proof.isEmpty {
-                ScrollView { details.padding(.bottom, 28) }
+            // Tiered badges list their levels, and some their vehicles or what's left to find,
+            // so they scroll inside the same half-height sheet.
+            if badge.tiered || !badge.proof.isEmpty || !badge.missing.isEmpty {
+                ScrollView { details.padding(.bottom, 28).fitScrollWidth() }
                     .scrollIndicators(.hidden)
                     // Soft edge instead of a hard cut where the list runs under the sheet's bottom.
                     .mask(LinearGradient(stops: [.init(color: .black, location: 0.85), .init(color: .clear, location: 1)],
@@ -308,7 +308,7 @@ struct BadgeDetailSheet: View {
                 .em(-0.02, size: 26)
                 .multilineTextAlignment(.center)
                 .padding(.top, 6)
-            Text(revealed ? badge.detail : String(localized: "Keep catching. This one shows itself the moment you earn it."))
+            Text(revealed ? badge.reached : String(localized: "Keep catching. This one shows itself the moment you earn it."))
                 .font(TaborFont.grotesk(14.5))
                 .foregroundStyle(Palette.sub)
                 .multilineTextAlignment(.center)
@@ -350,12 +350,59 @@ struct BadgeDetailSheet: View {
                 .padding(.horizontal, 22)
             }
 
+            // What's left goes first: it's what you open an unfinished badge for.
+            if revealed && !badge.missing.isEmpty {
+                missingList
+                    .padding(.top, 18)
+                    .padding(.horizontal, 22)
+            }
+
             if !badge.proof.isEmpty {
                 proofList
                     .padding(.top, 18)
                     .padding(.horizontal, 22)
             }
         }
+    }
+
+    /// Chips rather than rows, so even 14 missing districts take a few lines. A model opens its page.
+    private var missingList: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            SectionLabel(text: String(localized: "STILL TO FIND"))
+            FlowRow(spacing: 7) {
+                ForEach(badge.missing, id: \.self) { m in
+                    if let id = m.modelId {
+                        Button {
+                            Haptics.shared.tick()
+                            dismiss()
+                            router.openModel(id)
+                        } label: {
+                            missingChip(m.label, opens: true)
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        missingChip(m.label, opens: false)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Quieter than HUNT's filter chips, which toggle: only a model's chip does anything here.
+    private func missingChip(_ label: String, opens: Bool) -> some View {
+        HStack(spacing: 5) {
+            Mono(label.uppercased(), size: 10.5, weight: 600, spacing: 0.08, color: opens ? Palette.ink : Palette.sub)
+            if opens {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(Palette.faint)
+            }
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .background(Palette.card, in: Capsule())
+        .overlay(Capsule().stroke(Palette.ink.opacity(opens ? 0.2 : 0.08)))
     }
 
     /// The vehicles behind the badge; each opens its page in the book.
@@ -547,7 +594,7 @@ struct BadgeToast: View {
                     .font(TaborFont.grotesk(17, 700))
                     .foregroundStyle(Palette.ink)
                     .lineLimit(1)
-                Text(unlock.others > 0 ? String(localized: "and \(unlock.others) more. See them all on your shelf.") : b.detail)
+                Text(unlock.others > 0 ? String(localized: "and \(unlock.others) more. See them all on your shelf.") : b.reached)
                     .font(TaborFont.grotesk(12.5))
                     .foregroundStyle(Palette.sub)
                     .lineLimit(2)

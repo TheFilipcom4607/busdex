@@ -12,9 +12,12 @@ enum HuntFilter: String, CaseIterable {
 
     var name: String {
         switch self {
-        case .uncaught: String(localized: "UNCAUGHT")
-        case .newModels: String(localized: "NEW MODELS")
-        case .everything: String(localized: "ALL")
+        // Keys of their own: the chips need shorter words than the book and stats (in Polish
+        // "NIEZŁAPANE · NOWE MODELE · WSZYSTKIE" doesn't fit next to FILTR). "Missing" (NIE MASZ),
+        // not "new": testers took NEW MODELS for models new to the city (#54).
+        case .uncaught: String(localized: "hunt.filter.uncaught", defaultValue: "UNCAUGHT")
+        case .newModels: String(localized: "hunt.filter.missing", defaultValue: "MISSING")
+        case .everything: String(localized: "hunt.filter.all", defaultValue: "ALL")
         }
     }
 }
@@ -22,7 +25,7 @@ enum HuntFilter: String, CaseIterable {
 /// HUNT: every bus and tram running near you that isn't in your book yet, live (or, in the
 /// ALL view, everything running).
 /// Two rules on the map: a vehicle on its own is a tag with its line, vehicles that would
-/// overlap become one bubble with their count; filled means a model new to you, outlined
+/// overlap become one bubble with their count; filled means a model you're missing, outlined
 /// a model you already have. Colour is always rarity.
 /// A filter (rarities, models) narrows it to what you're after, anywhere in the city.
 struct HuntView: View {
@@ -33,12 +36,21 @@ struct HuntView: View {
     /// Rarities and models picked in the filter sheet; empty shows everything.
     @AppStorage("huntTargets") private var targets = HuntTargets()
     @State private var showFilters = false
+    /// The search field in the header is open (#31): a fleet number or a line.
+    @State private var searching = false
+    @State private var query = ""
+    @FocusState private var queryFocused: Bool
+    /// A vehicle picked from the search: on the map and selected whatever the filters say.
+    @State private var focusId: String?
+    /// A vehicle to open once the feed has it: a Live Activity tap can land before the first poll.
+    @State private var pendingFocus: String?
     /// Satellite photos (with street names) instead of the plain dark map.
     @AppStorage("huntSatellite") private var satellite = false
 
     private let live = LiveFleetService.shared
     private let location = LocationService.shared
     private let routes = RoutesUpdater.shared
+    private let track = TrackService.shared
     private let catalog = Fleet.catalog
 
     @State private var position: MapCameraPosition = .region(Self.warsaw)
@@ -59,15 +71,20 @@ struct HuntView: View {
     @State private var openGroup: [String]?
     /// What the map is showing: pins cover it, however far you zoom out.
     @State private var mapRegion: MKCoordinateRegion?
-    /// The map's rotation, so direction arrows keep pointing the right way on the ground.
-    @State private var mapHeading: Double = 0
+    /// The map's rotation, for your dot and the pins' arrows. Not state of this view: it changes
+    /// every frame of a turn, and redrawing the whole map that often made the compass lag (#52).
+    @State private var turn = MapTurn()
+    /// The map turned the way you're facing, centred on you (the second tap on 3 KM).
+    /// Anything else that moves the map ends it.
+    @State private var facing = false
     private var mapCenter: CLLocationCoordinate2D? { mapRegion?.center }
 
     private static let warsaw = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 52.2297, longitude: 21.0122),
         span: MKCoordinateSpan(latitudeDelta: 0.06, longitudeDelta: 0.06))
-    /// A filtered hunt looks this far: all of Warsaw and the suburban lines.
-    private static let cityRadius = 60_000.0
+    /// Kilometres from the centre past which the feed has nothing (the suburban lines end
+    /// about 40 km out): further than this, you're not in Warsaw.
+    private static let feedReach = 50.0
 
     var body: some View {
         // Read once: the stored filter is decoded from a string on every read.
@@ -78,7 +95,8 @@ struct HuntView: View {
             case .newModels: pin.kind == .newModel
             case .everything: true
             }
-            return wanted && picked.matches(pin.model)
+            // A line from the search shows all of it, like the search counted (#37).
+            return ((wanted || picked.line != nil) && picked.matches(pin)) || pin.id == focusId
         }
         let selected = shown.first { $0.id == selectedId }
 
@@ -101,13 +119,17 @@ struct HuntView: View {
                 }
                 Spacer()
                 HStack(spacing: 8) {
+                    if let tracked = track.trackedId, tracked != selectedId {
+                        trackedButton(tracked)
+                            .transition(.scale(scale: 0.8, anchor: .leading).combined(with: .opacity))
+                    }
                     Spacer()
                     if let selected, !following {
                         followButton(selected)
                             .transition(.scale(scale: 0.8, anchor: .trailing).combined(with: .opacity))
                     }
-                    if offDefaultView {
-                        resetButton
+                    if here != nil, offDefaultView || facing || location.hasHeading {
+                        locationButton
                             .transition(.scale(scale: 0.8, anchor: .trailing).combined(with: .opacity))
                     }
                     mapStyleButton
@@ -118,6 +140,7 @@ struct HuntView: View {
                     .padding(.bottom, 10)
             }
             .animation(.snappy, value: offDefaultView)
+            .animation(.snappy, value: facing)
             .animation(.snappy, value: following)
             .animation(.snappy, value: picked)
         }
@@ -129,8 +152,12 @@ struct HuntView: View {
         // The tab stays alive behind the others once opened, so it comes back at once: the
         // fast polling and the refreshes only run while it's the one on screen.
         .onChange(of: onScreen, initial: true) { _, on in
-            guard on else { return live.stop("hunt") }
+            guard on else {
+                location.stopHeading("hunt")
+                return live.stop("hunt")
+            }
             live.start("hunt")
+            location.startHeading("hunt")
             routes.prepare()
             centerOnceOnYou()
             // Models a fleet update dropped can't match anything; don't leave them as ghost chips.
@@ -143,6 +170,12 @@ struct HuntView: View {
             if phase == .background { live.stop("hunt") }
         }
         .onChange(of: live.snapshot?.fetched, initial: true) { recompute(animated: true) }
+        // MapKit follows you on its own while facing; whatever ends facing leaves the map
+        // where it is rather than letting it keep turning.
+        .onChange(of: facing) { _, on in
+            guard !on, position.followsUserLocation, let camera = turn.camera else { return }
+            position = .camera(camera)
+        }
         .onChange(of: location.latest) {
             centerOnceOnYou()
             live.locationMoved()
@@ -156,14 +189,30 @@ struct HuntView: View {
             openGroup = nil
             recompute(animated: false)
         }
+        // A searched vehicle stays on the map only while it's the one selected.
+        .onChange(of: selectedId) { if selectedId != focusId, pendingFocus == nil { focusId = nil } }
         // Caught vehicles are only fetched for the ALL view.
         .onChange(of: filter) { recompute(animated: false) }
+        // SHOW ON MAP in the book: go to where that model is running, not the 3 km around you.
+        .onChange(of: router.huntModel, initial: true) { _, id in
+            guard let id else { return }
+            router.huntModel = nil
+            centered = true
+            selectedId = nil
+            fit(cityWide().filter { $0.model.id == id && targets.matches($0) })
+        }
+        // A tracked vehicle's Live Activity: straight to it on the map (#61).
+        .onChange(of: router.huntVehicle, initial: true) { _, id in
+            guard let id else { return }
+            router.huntVehicle = nil
+            focus(on: id)
+        }
     }
 
     /// A city-wide (filtered) hunt only gets pins around where you're looking, with a screen's
     /// margin all round, so a broad filter doesn't hand the map a thousand annotations.
     private func onMap(_ shown: [WantedPin]) -> [WantedPin] {
-        guard targets.hasPicks, let r = mapRegion else { return shown }
+        guard targets.isCityWide, let r = mapRegion else { return shown }
         return shown.filter { p in
             p.id == selectedId || (abs(p.vehicle.latitude - r.center.latitude) < r.span.latitudeDelta
                                    && abs(p.vehicle.longitude - r.center.longitude) < r.span.longitudeDelta)
@@ -222,13 +271,15 @@ struct HuntView: View {
                     }
                 }
             }
-            UserAnnotation()
+            // Drawn here rather than MapKit's own dot, which only shows which way you face
+            // while the map follows your heading.
+            UserAnnotation(anchor: .center) { _ in YouDot(turn: turn) }
             // Rarest on top: SwiftUI draws later annotations above earlier ones.
             ForEach(groups(shown).reversed()) { g in
                 if g.pins.count == 1 {
                     Annotation(g.lead.model.name, coordinate: mapCoordinate(g.lead, selected: now), anchor: .bottom) {
                         WantedPinView(pin: g.lead, selected: g.id == selectedId,
-                                      heading: live.trails.heading(g.lead.id).map { $0 - mapHeading })
+                                      travel: live.trails.heading(g.lead.id), turn: turn)
                     }
                     .tag(g.id)
                     .annotationTitles(.hidden)
@@ -247,14 +298,22 @@ struct HuntView: View {
                   : .standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
         .mapControls {}
         .environment(\.colorScheme, .dark)
-        .onMapCameraChange(frequency: .continuous) { ctx in mapHeading = ctx.camera.heading }
+        .onMapCameraChange(frequency: .continuous) { ctx in turn.update(ctx.camera) }
         .onMapCameraChange(frequency: .onEnd) { ctx in
+            // Moved by hand: leave the map where it was put. Moves made in code don't count, nor
+            // does zooming while facing (MapKit keeps following).
+            if position.positionedByUser {
+                following = false
+                facing = false
+            }
+            // Only turned, as the facing map does several times a second: nothing the pins
+            // depend on changed, and redoing them each time made it lag (#52).
+            guard turn.moved(ctx.camera) else { return }
             mapRegion = ctx.region
-            // Moved by hand: leave the map where it was put. Moves made in code don't count.
-            if position.positionedByUser { following = false }
             recompute(animated: false)
         }
         .onChange(of: selectedId) { _, id in
+            if id != nil { facing = false }
             guard let id else {
                 following = false
                 return
@@ -320,10 +379,40 @@ struct HuntView: View {
 
     // MARK: - Chrome
 
+    @ViewBuilder
     private var header: some View {
+        if searching {
+            searchField
+        } else {
+            titleRow
+        }
+    }
+
+    private var titleRow: some View {
         HStack(spacing: 8) {
             Mono("HUNT", size: 12, spacing: 0.16, color: .white.opacity(0.85))
             Spacer()
+            Button {
+                Haptics.shared.tick()
+                withAnimation(.snappy) {
+                    searching = true
+                    selectedId = nil
+                    openGroup = nil
+                }
+                queryFocused = true
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 10.5, weight: .bold))
+                    Mono("SEARCH", size: 10.5, weight: 600, spacing: 0.1, color: .white.opacity(0.85))
+                }
+                .foregroundStyle(.white.opacity(0.85))
+                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .glass(Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Search for a fleet number or a line")
             HStack(spacing: 6) {
                 let isLive = live.status == .live
                 Circle().fill(statusColor).frame(width: 6, height: 6)
@@ -338,6 +427,45 @@ struct HuntView: View {
         }
         .padding(.top, 6)
         .padding(.horizontal, 20)
+    }
+
+    /// Replaces the title row while searching: the field, and Cancel to close it.
+    private var searchField: some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 7) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.6))
+                TextField("", text: $query, prompt: Text("Fleet number or line").foregroundStyle(.white.opacity(0.45)))
+                    .font(TaborFont.mono(14, 600))
+                    .foregroundStyle(Palette.ink)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .submitLabel(.search)
+                    .focused($queryFocused)
+                    .onSubmit(pickTopResult)
+                if !query.isEmpty {
+                    Button {
+                        query = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear the search")
+                }
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .glass(Capsule())
+            Button("Cancel") { endSearch() }
+                .font(TaborFont.grotesk(15, 600))
+                .foregroundStyle(Palette.radar)
+        }
+        .padding(.top, 2)
+        .padding(.horizontal, 20)
+        .transition(.opacity)
     }
 
     private var filterBar: some View {
@@ -409,6 +537,18 @@ struct HuntView: View {
                 ForEach(picked.models.compactMap(catalog.model(id:)).sorted { $0.name < $1.name }) { m in
                     targetChip(m.name.uppercased(), color: m.tier.mapColor) { targets.models.subtract([m.id]) }
                 }
+                if let line = picked.line {
+                    targetChip(String(localized: "LINE \(line)"), color: Palette.ink) { targets.line = nil }
+                }
+                ForEach(picked.lengths.sorted(), id: \.self) { l in
+                    targetChip(l.name, color: Palette.ink) { targets.lengths.remove(l) }
+                }
+                ForEach(ModelSpecs.Drive.allCases.filter { picked.drives.contains($0) }, id: \.self) { d in
+                    targetChip(d.name, color: Palette.ink) { targets.drives.remove(d) }
+                }
+                ForEach(ModelSpecs.Floor.allCases.filter { picked.floors.contains($0) }, id: \.self) { f in
+                    targetChip(f.name.uppercased(), color: Palette.ink) { targets.floors.remove(f) }
+                }
             }
             .padding(.horizontal, 20)
         }
@@ -437,22 +577,33 @@ struct HuntView: View {
         .accessibilityLabel("Remove \(text.capitalized) from the filter")
     }
 
-    /// Back to the 3 km around you: shown once you've zoomed or panned away from it.
-    private var resetButton: some View {
-        Button(action: resetView) {
+    /// Like Apple Maps' arrow: away from the 3 km around you, it goes back there; on it, it
+    /// turns the map the way you're facing; facing, it turns it back to north.
+    private var locationButton: some View {
+        let away = !facing && offDefaultView
+        return Button {
+            if facing || away { return resetView() }
+            Haptics.shared.tick()
+            following = false
+            facing = true
+            turnToFacing()
+        } label: {
             HStack(spacing: 5) {
-                Image(systemName: "location.fill")
+                Image(systemName: facing ? "location.north.line.fill" : away ? "location" : "location.fill")
                     .font(.system(size: 10.5, weight: .bold))
+                    .contentTransition(.symbolEffect(.replace))
                 Mono("3 KM", size: 11, weight: 600, spacing: 0.1, color: Palette.radar)
             }
             .foregroundStyle(Palette.radar)
             .padding(.vertical, 8)
             .padding(.horizontal, 12)
             .glass(Capsule())
+            .overlay(Capsule().fill(Palette.radar.opacity(facing ? 0.16 : 0)).allowsHitTesting(false))
             .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Back to 3 kilometres around you")
+        .accessibilityLabel(facing ? "Turn the map back to north"
+                            : away ? "Back to 3 kilometres around you" : "Turn the map the way you're facing")
     }
 
     /// Back to following the selected vehicle: shown once you've moved the map away from it.
@@ -474,6 +625,29 @@ struct HuntView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Follow #\(pin.vehicle.number) on the map")
+    }
+
+    /// Back to the vehicle on the Lock Screen, once you've wandered off it (#61).
+    private func trackedButton(_ id: String) -> some View {
+        let number = id.split(separator: "#").last.map(String.init) ?? id
+        return Button {
+            Haptics.shared.tick()
+            focus(on: id)
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                    .font(.system(size: 10.5, weight: .bold))
+                Mono("TRACKING #\(number)", size: 11, weight: 600, spacing: 0.1, color: Palette.radar)
+                    .lineLimit(1)
+            }
+            .foregroundStyle(Palette.radar)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .glass(Capsule())
+            .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Show tracked #\(number) on the map")
     }
 
     /// Flips between the plain map and satellite; shows the one you'd switch to.
@@ -502,7 +676,7 @@ struct HuntView: View {
 
     /// Zoomed in or out from the default, or panned (or walked) away from its centre.
     private var offDefaultView: Bool {
-        guard let region = mapRegion, let here = location.recent(maxAge: 300)?.coordinate else { return false }
+        guard let region = mapRegion, let here else { return false }
         // Width, not height: on a tall phone screen the region fits the 6 km across.
         let across = Geo.km((region.center.latitude, region.center.longitude - region.span.longitudeDelta / 2),
                             (region.center.latitude, region.center.longitude + region.span.longitudeDelta / 2)) * 1000
@@ -517,23 +691,36 @@ struct HuntView: View {
         position = .region(region)
     }
 
+    /// Facing: you in the middle, the map turned the way the phone points. MapKit's own
+    /// following, which turns the map smoothly without redrawing HUNT; moving the camera
+    /// ourselves on each compass reading juddered and lagged (#52). It starts a few streets
+    /// across rather than at 3 km, but pinching keeps it following.
+    private func turnToFacing() {
+        withAnimation(.easeInOut(duration: 0.5)) { position = .userLocation(followsHeading: true, fallback: position) }
+    }
+
     private func resetView() {
         guard let region = defaultRegion() else { return }
         Haptics.shared.tick()
         following = false
+        facing = false
         withAnimation(.easeInOut(duration: 0.7)) { position = .region(region) }
     }
 
     @ViewBuilder
     private func bottomCard(shown: [WantedPin], selected: WantedPin?) -> some View {
         Group {
-            if let selected {
+            if searching {
+                searchCard(HuntSearch.results(for: query, snapshot: live.snapshot, catalog: catalog))
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else if let selected {
                 let stats = sightings.stats
                 PinCard(pin: selected, owned: stats.ownedCount(modelId: selected.model.id),
                         mine: stats.vehicle(number: selected.vehicle.number, modelId: selected.model.id),
                         showDistance: hasFix, motion: motion(of: selected),
                         nextStops: creeping(selected)?.upcoming(stops: 3).stops.map(\.name) ?? [],
                         ending: creeping(selected)?.ending(within: 3),
+                        track: trackButton(selected),
                         onOpen: {
                             if selected.kind == .caught {
                                 router.openVehicle(modelId: selected.model.id, number: selected.vehicle.number)
@@ -557,6 +744,180 @@ struct HuntView: View {
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: selectedId)
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: openGroup)
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: searching)
+    }
+
+    // MARK: - Search
+
+    /// What the search found: lines running now, then the vehicles with that number.
+    private func searchCard(_ results: HuntSearch.Results) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if query.trimmingCharacters(in: .whitespaces).isEmpty {
+                SectionLabel(text: String(localized: "SEARCH"))
+                Text("Type a fleet number to find that vehicle, or a line to see everything running on it.")
+                    .font(TaborFont.grotesk(14))
+                    .foregroundStyle(Palette.sub)
+                    .lineSpacing(2)
+                    .padding(.top, 6)
+            } else if results.isEmpty {
+                SectionLabel(text: String(localized: "NOTHING FOUND"))
+                Text("No line “\(query)” is running right now, and no vehicle has that number.")
+                    .font(TaborFont.grotesk(14))
+                    .foregroundStyle(Palette.sub)
+                    .lineSpacing(2)
+                    .padding(.top, 6)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(results.lines, id: \.self) { l in lineRow(l) }
+                        ForEach(results.vehicles, id: \.self) { v in searchedVehicleRow(v) }
+                    }
+                }
+                .scrollBounceBehavior(.basedOnSize)
+                .scrollIndicators(.hidden)
+                .frame(maxHeight: 4.5 * Self.rowHeight)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .huntCard()
+    }
+
+    private func lineRow(_ l: HuntSearch.Line) -> some View {
+        Button { pickLine(l) } label: {
+            HStack(spacing: 10) {
+                Image(systemName: l.kind == .bus ? "bus.fill" : "tram.fill")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Palette.radar)
+                    .frame(width: 22)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(String(localized: "Line \(l.line)"))
+                        .font(TaborFont.grotesk(14.5, 600))
+                    Mono(String(localized: "\(l.count) OUT NOW"), size: 10.5, color: Palette.sub)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Palette.faint)
+            }
+            .frame(height: Self.rowHeight)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func searchedVehicleRow(_ v: HuntSearch.Vehicle) -> some View {
+        let mine = sightings.contains { $0.number == v.number && $0.modelId == v.model.id }
+        let accent = v.model.tier.mapColor
+        return Button { pickVehicle(v) } label: {
+            HStack(spacing: 10) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(mine ? .clear : accent)
+                    .strokeBorder(accent, lineWidth: 1.5)
+                    .frame(width: 5, height: 30)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: 7) {
+                        Mono("#\(v.number)" as String, size: 12, weight: 700, spacing: 0.04, color: Palette.ink)
+                            .fixedSize()
+                        Text(v.model.name)
+                            .font(TaborFont.grotesk(14.5, 600))
+                            .lineLimit(1)
+                    }
+                    Mono(searchedSubtitle(v, mine: mine), size: 10.5, color: v.live == nil ? Palette.faint : Palette.sub)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: v.live == nil ? "book.closed" : "location.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(v.live == nil ? Palette.faint : Palette.radar)
+            }
+            .frame(height: Self.rowHeight)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// "LINE 523 · 2.1 KM · IN YOUR BOOK", or "NOT OUT NOW · OPEN IN BOOK".
+    private func searchedSubtitle(_ v: HuntSearch.Vehicle, mine: Bool) -> String {
+        guard let live = v.live else { return String(localized: "NOT OUT NOW · OPEN IN BOOK") }
+        let user = here
+        let distance = user.map { Geo.km(($0.latitude, $0.longitude), (live.latitude, live.longitude)) * 1000 }
+        return [live.line.isEmpty ? nil : String(localized: "LINE \(live.line)"), distance.map(HuntDistance.text),
+                mine ? String(localized: "IN YOUR BOOK") : nil]
+            .compactMap { $0 }.joined(separator: " · ")
+    }
+
+    /// Return on the keyboard: the answer, when there's only one; a list stays up to pick from.
+    private func pickTopResult() {
+        let r = HuntSearch.results(for: query, snapshot: live.snapshot, catalog: catalog)
+        switch (r.lines.count, r.vehicles.count) {
+        case (1, 0): pickLine(r.lines[0])
+        case (0, 1): pickVehicle(r.vehicles[0])
+        default: break
+        }
+    }
+
+    /// Everything on that line, across the city, through the filter (so it shows as a chip).
+    /// It replaces other picks: a line with LEGENDARY still on would usually show nothing.
+    private func pickLine(_ l: HuntSearch.Line) {
+        Haptics.shared.detent()
+        endSearch()
+        withAnimation(.snappy) { targets = HuntTargets(line: l.line) }
+        // The map only draws pins around where you're looking: go to where the line is.
+        fit(cityWide())
+    }
+
+    /// Frames these vehicles in the open part of the map above the card.
+    private func fit(_ pins: [WantedPin]) {
+        guard !pins.isEmpty else { return }
+        let lats = pins.map(\.vehicle.latitude), lons = pins.map(\.vehicle.longitude)
+        // The open part runs from under the header (a fifth of the way down) to the card's top
+        // edge (about 60%): the pins get that band, a little inside it, and its middle is
+        // nearly a tenth of the map above the map's own centre.
+        let latSpan = max((lats.max()! - lats.min()!) * 2.8, 0.02)
+        let span = MKCoordinateSpan(latitudeDelta: latSpan, longitudeDelta: max((lons.max()! - lons.min()!) * 1.25, 0.01))
+        let center = CLLocationCoordinate2D(latitude: (lats.max()! + lats.min()!) / 2 - latSpan * 0.09,
+                                            longitude: (lons.max()! + lons.min()!) / 2)
+        following = false
+        facing = false
+        withAnimation(.easeInOut(duration: 0.7)) { position = .region(MKCoordinateRegion(center: center, span: span)) }
+    }
+
+    /// Running: fly to it and open its card. Not out: its page in the book.
+    private func pickVehicle(_ v: HuntSearch.Vehicle) {
+        Haptics.shared.detent()
+        endSearch()
+        guard let live = v.live else {
+            return router.openVehicle(modelId: v.model.id, number: v.number)
+        }
+        focus(on: "\(live.kind.rawValue)#\(live.number)")
+    }
+
+    /// Fly to a running vehicle and open its card, past the filters. If the feed hasn't come
+    /// in yet, it opens as soon as it does.
+    private func focus(on id: String) {
+        // Opened cold from a Live Activity: don't let the first fix pull the map back to you.
+        centered = true
+        focusId = id
+        pendingFocus = id
+        recompute(animated: false)
+    }
+
+    private func endSearch() {
+        queryFocused = false
+        withAnimation(.snappy) { searching = false }
+        query = ""
+    }
+
+    /// A vehicle from the search as a pin, wherever it is and whether or not you've caught it.
+    private func searchedPin(_ id: String, in snapshot: LiveSnapshot) -> WantedPin? {
+        guard let v = snapshot.vehicles.first(where: { "\($0.kind.rawValue)#\($0.number)" == id }) else { return nil }
+        let user = here
+        return Wanted.pins(snapshot: LiveSnapshot(vehicles: [v], fetched: snapshot.fetched), catalog: catalog,
+                           caught: sightings.stats, lat: v.latitude, lon: v.longitude, within: 10,
+                           from: user.map { ($0.latitude, $0.longitude) }, includeCaught: true)
+            .first
     }
 
     /// The vehicles in a tapped bubble; picking one opens its card (and ✕ on that card
@@ -640,16 +1001,16 @@ struct HuntView: View {
     /// nearest first (to you, or to the map's centre without a fix) — you're after something
     /// specific, so how far it is matters most.
     private func listed(_ shown: [WantedPin]) -> [WantedPin] {
-        guard targets.hasPicks else { return nearYou(shown) }
+        guard targets.isCityWide else { return nearYou(shown) }
         return shown.sorted { $0.distance < $1.distance }
     }
 
-    /// "UNCAUGHT NEARBY", or "NEW TRAM MODELS NEARBY" with trams picked.
+    /// "UNCAUGHT NEARBY", or "MISSING TRAM MODELS NEARBY" with trams picked.
     private var nearbyTitle: String {
         switch (filter, targets.kind) {
-        case (.newModels, nil): String(localized: "NEW MODELS NEARBY")
-        case (.newModels, .bus): String(localized: "NEW BUS MODELS NEARBY")
-        case (.newModels, .tram): String(localized: "NEW TRAM MODELS NEARBY")
+        case (.newModels, nil): String(localized: "MISSING MODELS NEARBY")
+        case (.newModels, .bus): String(localized: "MISSING BUS MODELS NEARBY")
+        case (.newModels, .tram): String(localized: "MISSING TRAM MODELS NEARBY")
         case (.uncaught, nil): String(localized: "UNCAUGHT NEARBY")
         case (.uncaught, .bus): String(localized: "UNCAUGHT BUSES NEARBY")
         case (.uncaught, .tram): String(localized: "UNCAUGHT TRAMS NEARBY")
@@ -662,14 +1023,17 @@ struct HuntView: View {
     private func wantedList(_ near: [WantedPin]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                SectionLabel(text: targets.hasPicks ? String(localized: "MATCHING YOUR FILTER") : nearbyTitle)
+                // One line even with the count beside it on a 390 pt phone ("BRAKUJĄCE MODELE TRAMWAJÓW").
+                SectionLabel(text: targets.isCityWide ? String(localized: "MATCHING YOUR FILTER") : nearbyTitle)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                 Spacer()
-                Mono(targets.hasPicks ? "\(near.count) OUT NOW" : hasFix ? "\(near.count) WITHIN 3 KM" : "AROUND THE MAP CENTRE",
+                Mono(targets.isCityWide ? "\(near.count) OUT NOW" : hasFix ? "\(near.count) WITHIN 3 KM" : "AROUND THE MAP CENTRE",
                      size: 9.5, color: Palette.faint)
             }
             if filter != .newModels {
                 HStack(spacing: 12) {
-                    LegendSwatch(filled: true, text: String(localized: "NEW MODEL"))
+                    LegendSwatch(filled: true, text: String(localized: "MODEL YOU DON'T HAVE"))
                     LegendSwatch(filled: false, text: String(localized: "MODEL YOU HAVE"))
                     Spacer()
                 }
@@ -704,21 +1068,47 @@ struct HuntView: View {
                                    if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                                }))
         }
-        if targets.hasPicks {
+        if targets.isCityWide {
             guard shown.isEmpty else { return nil }
             return MessageCard(icon: "line.3.horizontal.decrease.circle", title: String(localized: "Nothing out that matches"),
-                               text: filter == .newModels
-                                   ? String(localized: "None of it is a new model for you. Switch to UNCAUGHT, or widen the filter.")
-                                   : filter == .everything
+                               text: targets.line == nil && filter == .newModels
+                                   ? String(localized: "None of it is a model you're missing. Switch to UNCAUGHT, or widen the filter.")
+                                   : targets.line != nil || filter == .everything
                                    ? String(localized: "Nothing on your filter is running right now. It shows up here the moment one is.")
                                    : String(localized: "Nothing on your filter that you haven't caught is running right now. It shows up here the moment one is."),
                                action: (String(localized: "Clear the filter"), { withAnimation(.snappy) { targets = HuntTargets() } }))
         }
         if nearYou(shown).isEmpty {
+            // Nothing of the kind running here at all, caught or not: say that, rather than that
+            // you've caught everything around you (what a tester in Bydgoszcz was told, #38).
+            // Your actual position, even outside Warsaw: that's the case to explain.
+            let around = location.recent(maxAge: 300)?.coordinate ?? mapCenter
+            let running = around.map { a in
+                live.snapshot?.nearby(lat: a.latitude, lon: a.longitude, within: Wanted.radius)
+                    .contains { targets.kind == nil || $0.vehicle.kind == targets.kind } ?? true
+            } ?? true
+            if !running, let around {
+                let center = Self.warsaw.center
+                if Geo.km((around.latitude, around.longitude), (center.latitude, center.longitude)) > Self.feedReach {
+                    return MessageCard(icon: "map", title: String(localized: "Nothing runs near you"),
+                                       text: String(localized: "TABOR follows Warsaw's buses and trams. Pan over to Warsaw, or pick a filter to hunt across the whole city."),
+                                       action: (String(localized: "Show Warsaw"), {
+                                           following = false
+                                           facing = false
+                                           withAnimation(.easeInOut(duration: 0.7)) { position = .region(Self.warsaw) }
+                                       }))
+                }
+                let title = switch targets.kind {
+                case nil: String(localized: "Nothing within 3 km")
+                case .bus: String(localized: "No buses within 3 km")
+                case .tram: String(localized: "No trams within 3 km")
+                }
+                return MessageCard(icon: "location.magnifyingglass", title: title, text: String(localized: "Nothing running within 3 km right now."))
+            }
             let title = switch (filter, targets.kind) {
-            case (.newModels, nil): String(localized: "No new models within 3 km")
-            case (.newModels, .bus): String(localized: "No new bus models within 3 km")
-            case (.newModels, .tram): String(localized: "No new tram models within 3 km")
+            case (.newModels, nil): String(localized: "No models you're missing within 3 km")
+            case (.newModels, .bus): String(localized: "No bus models you're missing within 3 km")
+            case (.newModels, .tram): String(localized: "No tram models you're missing within 3 km")
             case (.uncaught, nil): String(localized: "No uncaught vehicles within 3 km")
             case (.uncaught, .bus): String(localized: "No uncaught buses within 3 km")
             case (.uncaught, .tram): String(localized: "No uncaught trams within 3 km")
@@ -740,7 +1130,16 @@ struct HuntView: View {
 
     // MARK: - State
 
-    private var hasFix: Bool { location.recent(maxAge: 300) != nil }
+    private var hasFix: Bool { here != nil }
+
+    /// Where you are, when it's somewhere the feed covers. From further away (a tester in
+    /// Bydgoszcz), HUNT works as it does without a fix: around where you're looking, with
+    /// distances from there, rather than measuring 230 km to every bus.
+    private var here: CLLocationCoordinate2D? {
+        guard let c = location.recent(maxAge: 300)?.coordinate else { return nil }
+        let center = Self.warsaw.center
+        return Geo.km((c.latitude, c.longitude), (center.latitude, center.longitude)) <= Self.feedReach ? c : nil
+    }
 
     private var statusColor: Color {
         switch live.status {
@@ -763,18 +1162,22 @@ struct HuntView: View {
     /// distances from you when there's a fix.
     private func cityWide() -> [WantedPin] {
         guard let snapshot = live.snapshot else { return [] }
-        let user = location.recent(maxAge: 300)?.coordinate
+        let user = here
         let from = user ?? mapCenter ?? Self.warsaw.center
-        return Wanted.pins(snapshot: snapshot, catalog: catalog, caught: sightings.stats,
-                           lat: from.latitude, lon: from.longitude, within: Self.cityRadius,
-                           from: user.map { ($0.latitude, $0.longitude) }, includeCaught: filter == .everything)
+        if let line = targets.line {
+            return Wanted.onLine(line, snapshot: snapshot, catalog: catalog, caught: sightings.stats,
+                                 lat: from.latitude, lon: from.longitude, from: user.map { ($0.latitude, $0.longitude) })
+        }
+        return Wanted.anywhere(snapshot: snapshot, catalog: catalog, caught: sightings.stats,
+                               lat: from.latitude, lon: from.longitude,
+                               from: user.map { ($0.latitude, $0.longitude) }, includeCaught: filter == .everything)
     }
 
     private var onScreen: Bool { router.tab == .hunt }
 
     private func recompute(animated: Bool) {
         guard onScreen else { return }
-        let user = location.recent(maxAge: 300)?.coordinate
+        let user = here
         guard let snapshot = live.snapshot, let center = mapCenter ?? user else { return }
         // Half the visible diagonal, and never less than the 3 km the list needs.
         let visible = mapRegion.map { r in
@@ -783,9 +1186,9 @@ struct HuntView: View {
         } ?? 0
         // Filtered down to what you're after: look across the whole city, not just the view.
         let picked = targets
-        let filtered = picked.hasPicks
+        let filtered = picked.isCityWide
         var next = filtered
-            ? cityWide().filter { picked.matches($0.model) }
+            ? cityWide().filter { picked.matches($0) }
             : Wanted.pins(snapshot: snapshot, catalog: catalog, caught: sightings.stats,
                           lat: center.latitude, lon: center.longitude, within: max(Wanted.radius, visible),
                           from: user.map { ($0.latitude, $0.longitude) }, includeCaught: filter == .everything)
@@ -796,6 +1199,10 @@ struct HuntView: View {
                                 lat: user.latitude, lon: user.longitude, from: (user.latitude, user.longitude),
                                 includeCaught: filter == .everything)
                 .filter { !ids.contains($0.id) }
+        }
+        // The vehicle picked from the search, wherever it is and whether or not you have it.
+        if let focusId, !next.contains(where: { $0.id == focusId }), let pin = searchedPin(focusId, in: snapshot) {
+            next.append(pin)
         }
         // Only what the map can show gets placed on its route: it's the costly part.
         var placed: [String: RouteMatch] = [:]
@@ -826,6 +1233,11 @@ struct HuntView: View {
             nowCoordinates = coordinates
         }
         if let selectedId, !next.contains(where: { $0.id == selectedId }) { self.selectedId = nil }
+        // The feed is in: open the vehicle waiting for it, or give up if it's not running.
+        if let pendingFocus {
+            self.pendingFocus = nil
+            if let pin = next.first(where: { $0.id == pendingFocus }) { return select(pin) }
+        }
         // Following the selected vehicle and it's leaving the open part above the card: catch up,
         // keeping the zoom. Not after you've moved the map yourself.
         if following, let selectedId, let pin = next.first(where: { $0.id == selectedId }), let region = mapRegion,
@@ -839,7 +1251,7 @@ struct HuntView: View {
     /// The straight-line guess from its trail, checked against its route when there is one:
     /// heading for you but turning off first isn't coming your way.
     private func motion(of pin: WantedPin) -> Motion? {
-        guard let here = location.recent(maxAge: 300)?.coordinate else { return nil }
+        guard let here else { return nil }
         let guess = live.trails.motion(pin.id, lat: here.latitude, lon: here.longitude)
         guard let match = routeMatch(pin) else { return guess }
         return match.motion(fallback: guess, lat: here.latitude, lon: here.longitude)
@@ -861,6 +1273,26 @@ struct HuntView: View {
     /// Where it probably is right now: its route match slid forward by the fix's age.
     private func advanced(_ pin: WantedPin, at date: Date) -> RouteMatch? {
         routeMatch(pin)?.advanced(by: date.timeIntervalSince(pin.vehicle.time), stopped: live.trails.isStopped(pin.id))
+    }
+
+    /// TRACK on the card. It only works while the vehicle is coming your way (it counts down to
+    /// your stop); otherwise it's greyed out and says why, so the button never just goes missing.
+    private func trackButton(_ pin: WantedPin) -> PinCard.Track {
+        if track.isTracking(pin) { return PinCard.Track(state: .on) { track.stop() } }
+        guard track.enabled else {
+            return PinCard.Track(state: .off(String(localized: "Live Activities are off for TABOR. Turn them on in Settings › TABOR to track it.")))
+        }
+        guard let here else {
+            return PinCard.Track(state: .off(String(localized: "TRACK counts down to your stop, so it needs your location.")))
+        }
+        let motion = motion(of: pin)
+        guard motion == .approaching, let m = creeping(pin) ?? routeMatch(pin),
+              let plan = TrackPlan.make(match: m, lat: here.latitude, lon: here.longitude) else {
+            return PinCard.Track(state: .off(motion == nil
+                ? String(localized: "Still watching which way it goes. TRACK works once it's coming your way.")
+                : String(localized: "TRACK works once it's coming your way: it counts down to your stop.")))
+        }
+        return PinCard.Track(state: .ready) { track.start(pin, plan: plan, sightings: sightings) }
     }
 
     /// The selected vehicle, moved on to the last tick.
@@ -948,9 +1380,13 @@ enum HuntDistance {
 private struct WantedPinView: View {
     let pin: WantedPin
     let selected: Bool
-    /// Screen direction of travel (0 = up), once the vehicle has been seen moving.
-    var heading: Double? = nil
+    /// Direction of travel (degrees from north), once the vehicle has been seen moving.
+    var travel: Double? = nil
+    /// The map's rotation, read here so a turning map redraws only the pins.
+    let turn: MapTurn
     private var filled: Bool { pin.kind == .newModel }
+    /// On screen, 0 = up.
+    private var heading: Double? { travel.map { $0 - turn.coarse } }
 
     /// Screen angle (0 = up, clockwise) to the nearest of eight arrows.
     static func arrow(_ degrees: Double) -> String {
@@ -992,6 +1428,73 @@ private struct WantedPinView: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: selected)
         .accessibilityLabel("\(pin.model.tier.name.lowercased()) \(pin.model.name), line \(pin.vehicle.line)")
         .accessibilityAddTraits(.isButton)
+    }
+}
+
+@Observable
+private final class MapTurn {
+    /// Degrees clockwise from north.
+    private(set) var heading: Double = 0
+    /// The same in 5° steps, for the pins' arrows (eight of them, 45° apart): a smooth turn
+    /// would otherwise redraw every pin on every frame.
+    private(set) var coarse: Double = 0
+    /// Where the camera is now, to leave the map there when facing ends.
+    @ObservationIgnored private(set) var camera: MapCamera?
+    /// Where it last came to rest.
+    @ObservationIgnored private var settled: MapCamera?
+
+    func update(_ camera: MapCamera) {
+        self.camera = camera
+        if camera.heading != heading { heading = camera.heading }
+        let step = (camera.heading / 5).rounded() * 5
+        if step != coarse { coarse = step }
+    }
+
+    /// Whether the camera came to rest somewhere new, rather than only turning on the spot.
+    func moved(_ camera: MapCamera) -> Bool {
+        defer { settled = camera }
+        guard let settled else { return true }
+        let a = settled.centerCoordinate, b = camera.centerCoordinate
+        return Geo.km((a.latitude, a.longitude), (b.latitude, b.longitude)) > 0.01
+            || abs(camera.distance / settled.distance - 1) > 0.01
+    }
+}
+
+/// You on the map: Apple's blue dot, with a beam the way the phone points. Like Apple Maps,
+/// the beam widens when the compass isn't sure.
+private struct YouDot: View {
+    let turn: MapTurn
+    private static let blue = Color(uiColor: .systemBlue)
+
+    var body: some View {
+        ZStack {
+            if let heading = LocationService.shared.heading {
+                Beam(spread: min(max(heading.accuracy, 20), 60))
+                    .fill(RadialGradient(colors: [Self.blue.opacity(0.6), Self.blue.opacity(0)],
+                                         center: .center, startRadius: 6, endRadius: 46))
+                    .rotationEffect(.degrees(heading.degrees - turn.heading))
+            }
+            Circle().fill(.white).frame(width: 20, height: 20)
+                .shadow(color: .black.opacity(0.35), radius: 3)
+            Circle().fill(Self.blue).frame(width: 14, height: 14)
+        }
+        .frame(width: 92, height: 92)
+        .allowsHitTesting(false)
+        .accessibilityLabel("You")
+    }
+
+    private struct Beam: Shape {
+        /// Half the beam's angle, in degrees.
+        var spread: Double
+
+        func path(in rect: CGRect) -> Path {
+            let c = CGPoint(x: rect.midX, y: rect.midY)
+            var p = Path()
+            p.move(to: c)
+            p.addArc(center: c, radius: rect.width / 2, startAngle: .degrees(-90 - spread), endAngle: .degrees(-90 + spread), clockwise: false)
+            p.closeSubpath()
+            return p
+        }
     }
 }
 
@@ -1054,7 +1557,24 @@ private struct PinCard: View {
     let nextStops: [String]
     /// Its route ends within those stops, or it's at the last one.
     let ending: (end: RouteEnd, arrived: Bool)?
+    /// Follow it on the Lock Screen (#42).
+    let track: Track
     let onOpen: () -> Void
+    /// Why TRACK is greyed out, shown for a few seconds after tapping it.
+    @State private var trackHint: String?
+
+    struct Track {
+        enum State: Equatable {
+            case ready
+            /// Already followed: the button stops it.
+            case on
+            /// Can't be tracked now, and why.
+            case off(String)
+        }
+
+        let state: State
+        var action: () -> Void = {}
+    }
     /// Off to the camera to catch it.
     let onCatch: () -> Void
     let onClose: () -> Void
@@ -1147,17 +1667,20 @@ private struct PinCard: View {
                     }
                     .foregroundStyle(Palette.ink)
                     .padding(.vertical, 13)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 12)
                     .background(Palette.chip, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(Color.white.opacity(0.1)))
                 }
                 .buttonStyle(StickerPressStyle())
                 .accessibilityLabel("Open \(pin.model.name) in the book")
+                trackButton
                 Button(action: onCatch) {
                     HStack(spacing: 7) {
                         Image(systemName: AppTab.catchTab.symbol)
                             .font(.system(size: 13, weight: .bold))
                         Mono("CATCH IT", size: 12, weight: 700, spacing: 0.12, color: pin.model.tier.onMapColor)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                     .foregroundStyle(pin.model.tier.onMapColor)
                     .frame(maxWidth: .infinity)
@@ -1168,9 +1691,60 @@ private struct PinCard: View {
                 .accessibilityLabel("Open the camera to catch it")
             }
             .padding(.top, 2)
+            if let trackHint {
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Image(systemName: "bell.slash").font(.system(size: 11, weight: .semibold))
+                    Text(trackHint).font(TaborFont.grotesk(12.5)).fixedSize(horizontal: false, vertical: true)
+                }
+                .foregroundStyle(Palette.sub)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
         .padding(16)
         .huntCard(radius: 20, stroke: pin.accent.opacity(0.35))
+        .task(id: trackHint) {
+            guard trackHint != nil else { return }
+            try? await Task.sleep(for: .seconds(4))
+            withAnimation(.snappy) { trackHint = nil }
+        }
+        // Coming your way now: whatever held it back no longer does.
+        .onChange(of: track.state) { if track.state == .ready { trackHint = nil } }
+    }
+
+    private var trackButton: some View {
+        let on = track.state == .on
+        let off: String? = if case .off(let why) = track.state { why } else { nil }
+        let ink = on ? Palette.bg : off != nil ? Palette.faint : Palette.radar
+        return Button {
+            if let off {
+                Haptics.shared.nope()
+                withAnimation(.snappy) { trackHint = off }
+            } else {
+                Haptics.shared.tick()
+                track.action()
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: on ? "bell.fill" : "bell")
+                    .font(.system(size: 11, weight: .bold))
+                Mono(on ? "TRACKING" : "TRACK", size: 12, weight: 700, spacing: 0.12, color: ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .foregroundStyle(ink)
+            .padding(.vertical, 13)
+            .padding(.horizontal, 11)
+            .background(on ? Palette.radar : Palette.chip, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .stroke(off != nil ? Color.white.opacity(0.08) : Palette.radar.opacity(0.4)))
+        }
+        .buttonStyle(StickerPressStyle())
+        // Ahead of CATCH IT, which stretches: "OBSERWUJESZ" wrapped in two otherwise. The
+        // buttons' padding is tight enough that "ZŁAP GO" still fits beside it.
+        .layoutPriority(1)
+        .accessibilityLabel(on ? String(localized: "Stop tracking it on the Lock Screen")
+                            : off ?? String(localized: "Track it on the Lock Screen until it reaches you"))
+        .animation(.snappy, value: track.state)
     }
 }
 

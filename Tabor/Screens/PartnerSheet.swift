@@ -1,14 +1,16 @@
 import SwiftUI
 
-/// A coupled tram's other car: tap one of the likeliest numbers, or type it off the car.
+/// A coupled tram's other car, or a vintage trailer's motor car and back: tap one of the
+/// likeliest numbers, or type it off the car.
 struct PartnerSheet: View {
     let model: VehicleModel
     let number: Int
     let suggestions: [CoupledSet.Suggestion]
-    /// This model's numbers already in the book, for NEW vs SEEN AGAIN.
+    /// Numbers already in the book of the models the other car can be from, for NEW vs SEEN AGAIN.
     let owned: Set<Int>
     @Binding var partner: Int?
     @Environment(\.dismiss) private var dismiss
+    private let catalog = Fleet.catalog
 
     @State private var text = ""
     @FocusState private var focused: Bool
@@ -20,7 +22,9 @@ struct PartnerSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Older trams run as two cars, each with its own number. Add the other car to your book with this one.")
+                    Text(model.isCoupled(number)
+                         ? "Older trams run as two cars, each with its own number. Add the other car to your book with this one."
+                         : "Vintage trams can pull a trailer, which has a number of its own. Add the other car to your book with this one.")
                         .font(TaborFont.grotesk(14))
                         .foregroundStyle(Palette.sub)
                         .lineSpacing(3)
@@ -57,6 +61,7 @@ struct PartnerSheet: View {
                     }
                 }
                 .padding(22)
+                .fitScrollWidth()
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Palette.bg)
@@ -117,6 +122,7 @@ struct PartnerSheet: View {
         case .fixed: String(localized: "ALWAYS RUNS WITH IT")
         case .photo: String(localized: "ALSO READ IN YOUR PHOTO")
         case .feed: String(localized: "RUNNING RIGHT HERE NOW")
+        case .trailer: String(localized: "VINTAGE TRAILER")
         case .neighbour: String(localized: "ONE NUMBER AWAY")
         }
     }
@@ -124,8 +130,10 @@ struct PartnerSheet: View {
     /// Why a typed number can't be the other car, or nil if it can.
     private func problem(with n: Int) -> String? {
         if n == number { return String(localized: "THAT'S THE CAR YOU SHOT") }
+        if catalog.secondCarModel(n, of: number, model: model) != nil { return nil }
+        if model.isTrailer(number) { return String(localized: "NOT A CAR THAT PULLS TRAILERS") }
+        if model.pullsTrailers(number) { return String(localized: "NOT A VINTAGE TRAILER") }
         if !model.has(n) { return String(localized: "NOT A \(model.name.uppercased()) NUMBER") }
-        if !model.isCoupled(n) { return String(localized: "THAT CAR DOESN'T RUN COUPLED") }
-        return nil
+        return String(localized: "THAT CAR DOESN'T RUN COUPLED")
     }
 }

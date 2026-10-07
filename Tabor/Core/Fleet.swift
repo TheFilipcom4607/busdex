@@ -13,18 +13,21 @@ public enum VehicleKind: String, Codable, Sendable, CaseIterable {
     }
 }
 
-/// Vehicles of one model delivered in the same production year — the design's
+/// One operator's vehicles of one model from the same production year — the design's
 /// "2024 BATCH · R-1 WORONICZA · 1970—1987" section.
 public struct Batch: Codable, Hashable, Sendable {
     public let year: Int?
     public let depotCode: String
     public let depotName: String
+    /// Short name, e.g. "MZA", "KMKM". Fleet files before 2026-10-03 have none.
+    public let `operator`: String?
     public let numbers: [Int]
 
-    public init(year: Int?, depotCode: String, depotName: String, numbers: [Int]) {
+    public init(year: Int?, depotCode: String, depotName: String, operator: String? = nil, numbers: [Int]) {
         self.year = year
         self.depotCode = depotCode
         self.depotName = depotName
+        self.operator = `operator`
         self.numbers = numbers
     }
 
@@ -33,6 +36,11 @@ public struct Batch: Codable, Hashable, Sendable {
     /// "R-1 WORONICZA", or just the depot name when it has no R-code.
     public var depotDisplay: String {
         (depotCode.isEmpty ? depotName : "\(depotCode) \(depotName)").uppercased()
+    }
+
+    /// The depot, or the owner when there's none (KMKM's preserved buses): "KMKM".
+    public var placeDisplay: String {
+        depotName.isEmpty ? (self.operator ?? "").uppercased() : depotDisplay
     }
 }
 
@@ -74,12 +82,21 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     /// Cars that always run together, e.g. [[1000, 1001]]. In a model that isn't `coupled`,
     /// only these cars are.
     public let sets: [[Int]]
+    /// Its cars with no motor of their own, e.g. the vintage ND #1620: they run hitched behind a
+    /// car of a model that `tows`, any one of them, so they're paired across models.
+    public let trailers: [Int]
+    /// Its cars (other than its own `trailers`) can pull a trailer.
+    public let tows: Bool
+    /// Ids its numbers had before a model was split, e.g. the 120N Tramicus was part of
+    /// `tram-pesa-120n`: catches filed under one of them move here (`FleetCatalog.moved`).
+    public let formerly: [String]
 
     public init(id: String, name: String, make: String, code: String? = nil, kind: VehicleKind,
                 operators: [String], fleet: Int, firstYear: Int?, lastYear: Int?, batches: [Batch],
                 vintage: Bool = false, onTest: Bool = false, runs: String? = nil, trial: String? = nil,
                 runsPl: String? = nil, trialPl: String? = nil, specs: ModelSpecs? = nil, variants: [SpecVariant] = [],
-                liveries: [String: String]? = nil, coupled: Bool = false, sets: [[Int]] = []) {
+                liveries: [String: String]? = nil, coupled: Bool = false, sets: [[Int]] = [],
+                trailers: [Int] = [], tows: Bool = false, formerly: [String] = []) {
         self.id = id
         self.name = name
         self.make = make
@@ -101,11 +118,14 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         self.liveries = liveries
         self.coupled = coupled
         self.sets = sets
+        self.trailers = trailers
+        self.tows = tows
+        self.formerly = formerly
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, name, make, code, kind, operators, fleet, firstYear, lastYear, batches, vintage, onTest, runs, trial,
-             runsPl, trialPl, specs, variants, liveries, coupled, sets
+             runsPl, trialPl, specs, variants, liveries, coupled, sets, trailers, tows, formerly
     }
 
     public init(from decoder: Decoder) throws {
@@ -132,6 +152,9 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         liveries = try? c.decodeIfPresent([String: String].self, forKey: .liveries)
         coupled = try c.decodeIfPresent(Bool.self, forKey: .coupled) ?? false
         sets = (try? c.decodeIfPresent([[Int]].self, forKey: .sets)) ?? []
+        trailers = (try? c.decodeIfPresent([Int].self, forKey: .trailers)) ?? []
+        tows = (try? c.decodeIfPresent(Bool.self, forKey: .tows)) ?? false
+        formerly = (try? c.decodeIfPresent([String].self, forKey: .formerly)) ?? []
     }
 
     /// A special paint job, if this vehicle has one.
@@ -176,6 +199,18 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     /// This car runs coupled to another, so a catch can add its partner.
     public func isCoupled(_ number: Int) -> Bool {
         has(number) && (coupled || sets.contains { $0.contains(number) })
+    }
+
+    /// A car with no motor, pulled by a car of a model that `tows`.
+    public func isTrailer(_ number: Int) -> Bool { has(number) && trailers.contains(number) }
+
+    /// A car that can pull a trailer.
+    public func pullsTrailers(_ number: Int) -> Bool { tows && has(number) && !trailers.contains(number) }
+
+    /// A catch of this car can add a second car: a coupled tram's other car, a trailer's
+    /// motor car, or a motor car's trailer.
+    public func takesSecondCar(_ number: Int) -> Bool {
+        isCoupled(number) || isTrailer(number) || pullsTrailers(number)
     }
 
     /// The car it always runs with, if it's in a fixed set.
@@ -284,7 +319,7 @@ public struct ModelSpecs: Codable, Hashable, Sendable {
     /// 11947 mm is "11.9", 18000 mm "18": metres, to a tenth.
     public var metres: Double? { length.map { (Double($0) / 100).rounded() / 10 } }
 
-    public enum Drive: String, Codable, Sendable {
+    public enum Drive: String, Codable, Sendable, CaseIterable {
         case diesel, electric, hydrogen, cng, lng, hybrid
 
         public var name: String {
@@ -299,7 +334,7 @@ public struct ModelSpecs: Codable, Hashable, Sendable {
         }
     }
 
-    public enum Floor: String, Codable, Sendable {
+    public enum Floor: String, Codable, Sendable, CaseIterable {
         case low = "LF", lowEntry = "LE", high = "HF"
 
         public var name: String {
@@ -367,10 +402,18 @@ public enum Tier: String, Sendable, CaseIterable {
 
     /// Thresholds from the design prototype's `tierOf`.
     public static func of(fleet: Int) -> Tier {
-        if fleet <= 12 { return .legendary }
-        if fleet <= 48 { return .gold }
-        if fleet <= 80 { return .rare }
-        return .common
+        [.legendary, .gold, .rare].first { fleet <= $0.maxFleet! } ?? .common
+    }
+
+    /// The most vehicles a model can have and still be this tier. Nil for COMMON, which has
+    /// no ceiling, and for the tiers that don't go by size.
+    public var maxFleet: Int? {
+        switch self {
+        case .legendary: 12
+        case .gold: 48
+        case .rare: 80
+        case .common, .vintage, .onTest: nil
+        }
     }
 
     /// The caps label. `rawValue` is stored (the HUNT filter), so it stays English.

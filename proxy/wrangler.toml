@@ -3,6 +3,7 @@
 #   npx wrangler secret put DANE_TOKEN # the dane.um.warszawa.pl token (dane.um.warszawa.pl/en/key-api)
 #   npx wrangler secret put UM_KEY     # the old api.um.warszawa.pl key, until the city switches it off
 #   npx wrangler secret put ROUTES_UPLOAD_TOKEN  # what the routes Action sends to PUT /v1/routes
+#   npx wrangler secret put APNS_KEY   # the .p8 APNs auth key, for Live Activity pushes (track.js)
 #   npx wrangler deploy
 name = "tabor-live"
 main = "src/index.js"
@@ -22,6 +23,12 @@ name = "PER_IP"
 namespace_id = "1001"
 simple = { limit = 60, period = 60 }
 
+# The fleet lookup for other projects (src/lookup.js), kept apart from the app's limit.
+[[ratelimits]]
+name = "LOOKUP_PER_IP"
+namespace_id = "1002"
+simple = { limit = 30, period = 60 }
+
 # routes.json for HUNT's future trails (src/routes.js). KV, not R2: one small write a day.
 [[kv_namespaces]]
 binding = "ROUTES"
@@ -31,3 +38,18 @@ id = "197432fc70f44a5692736b7762d8eb60"
 [observability.logs]
 enabled = true
 invocation_logs = true
+
+# Live Activities (track.js): one Durable Object holds every followed vehicle and polls the
+# feed for all of them. SQLite-backed, which the free plan allows.
+[[durable_objects.bindings]]
+name = "TRACKER"
+class_name = "Tracker"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Tracker"]
+
+# Not secret: the APNs key's ID and the team it belongs to.
+[vars]
+APNS_KEY_ID = "GA9ARZQR96"
+APNS_TEAM_ID = "4FGGTM5838"

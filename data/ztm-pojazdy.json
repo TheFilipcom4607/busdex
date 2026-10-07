@@ -1,5 +1,5 @@
 {
-"fetched": "2026-09-28",
+"fetched": "2026-10-06",
 "source": "https://dane.um.warszawa.pl/api/action/get_ztm_pojazdy",
 "vehicles": [
 {
@@ -863,7 +863,7 @@
 "idMarki": 40,
 "year": 2012,
 "carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
-"depot": "R-1 \"Woronicza\" (R-07)",
+"depot": "R-3 \"Ostrobramska\" (R-10)",
 "colour": "RAL 1003+3020"
 },
 {
@@ -917,7 +917,7 @@
 "idMarki": 40,
 "year": 2012,
 "carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
-"depot": "R-1 \"Woronicza\" (R-07)",
+"depot": "R-3 \"Ostrobramska\" (R-10)",
 "colour": "RAL 1003+3020"
 },
 {
@@ -926,17 +926,8 @@
 "idMarki": 40,
 "year": 2012,
 "carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
-"depot": "R-1 \"Woronicza\" (R-07)",
+"depot": "R-3 \"Ostrobramska\" (R-10)",
 "colour": "RAL 1003+3020"
-},
-{
-"kind": "BUS",
-"number": "1400",
-"idMarki": 23,
-"year": 2007,
-"carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
-"depot": "R-4 \"Stalowa\" (R-13)",
-"colour": "RAL 1004+3003"
 },
 {
 "kind": "BUS",
@@ -1376,7 +1367,7 @@
 "idMarki": 37,
 "year": 2011,
 "carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
-"depot": "R-3 \"Ostrobramska\" (R-10)",
+"depot": "R-4 \"Stalowa\" (R-13)",
 "colour": "RAL 1003+3020"
 },
 {
@@ -6799,6 +6790,15 @@
 },
 {
 "kind": "BUS",
+"number": "5801",
+"idMarki": 5804,
+"year": 2026,
+"carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
+"depot": "R-2 \"Kleszczowa\" (R-11)",
+"colour": "RAL 1003+3020"
+},
+{
+"kind": "BUS",
 "number": "5802",
 "idMarki": 5804,
 "year": 2026,
@@ -7097,6 +7097,132 @@
 {
 "kind": "BUS",
 "number": "5835",
+"idMarki": 5804,
+"year": 2026,
+"carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
+"depot": "R-2 \"Kleszczowa\" (R-11)",
+"colour": "RAL 1003+3020"
+},
+{
+"kind": "BUS",
+"number": "5836",
+"idMarki": 5804,
+"year": 2026,
+"carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
+"depot": "R-2 \"Kleszczowa\" (R-11)",
+"colour": "RAL 1003+3020"
+},
+{
+"kind": "BUS",
+"number": "5837",
+"idMarki": 5804,
+"year": 2026,
+"carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
+"depot": "R-2 \"Kleszczowa\" (R-11)",
+"colour": "RAL 1003+3020"
+},
+{
+"kind": "BUS",
+"number": "5838",
+"idMarki": 5804,
+"year": 2026,
+"carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
+"depot": "R-2 \"Kleszczowa\" (R-11)",
+"colour": "RAL 1003+3020"
+},
+{
+"kind": "BUS",
+"number": "5839",
+"idMarki": 5804,
+"year": 2025,
+"carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
+"depot": "R-2 \"Kleszczowa\" (R-11)",
+"colour": "RAL 1003+3020"
+},
+{
+"kind": "BUS",
+"number": "5840",
+"idMarki": 5804,
+"year": 2026,
+"carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
+"depot": "R-2 \"Kleszczowa\" (R-11)",
+"colour": "RAL 1003+3020"
+},
+{
+"kind": "BUS",
+"number": "5841",
+"idMarki": 5804,
+"year": 2026,
+"carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
+"depot": "R-2 \"Kleszczowa\" (R-11)",
+"colour": "RAL 1003+3020"
+},
+{
+"kind": "BUS",
+"number": "5842",
+"idMarki": 5804,
+"year": 2026,
+"carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
+"depot": "R-2 \"Kleszczowa\" (R-11)",
+"colour": "RAL 1003+3020"
+},
+{
+"kind": "BUS",
+"number": "5843",
+"idMarki": 5804,
+"year": 2025,
+"carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
+"depot": "R-2 \"Kleszczowa\" (R-11)",
+"colour": "RAL 1003+3020"
+},
+{
+"kind": "BUS",
+"number": "5844",
+"idMarki": 5804,
+"year": 2026,
+"carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
+"depot": "R-2 \"Kleszczowa\" (R-11)",
+"colour": "RAL 1003+3020"
+},
+{
+"kind": "BUS",
+"number": "5845",
+"idMarki": 5804,
+"year": 2026,
+"carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
+"depot": "R-2 \"Kleszczowa\" (R-11)",
+"colour": "RAL 1003+3020"
+},
+{
+"kind": "BUS",
+"number": "5846",
+"idMarki": 5804,
+"year": 2026,
+"carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
+"depot": "R-2 \"Kleszczowa\" (R-11)",
+"colour": "RAL 1003+3020"
+},
+{
+"kind": "BUS",
+"number": "5847",
+"idMarki": 5804,
+"year": 2026,
+"carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
+"depot": "R-2 \"Kleszczowa\" (R-11)",
+"colour": "RAL 1003+3020"
+},
+{
+"kind": "BUS",
+"number": "5848",
+"idMarki": 5804,
+"year": 2025,
+"carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
+"depot": "R-2 \"Kleszczowa\" (R-11)",
+"colour": "RAL 1003+3020"
+},
+{
+"kind": "BUS",
+"number": "5849",
 "idMarki": 5804,
 "year": 2026,
 "carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
@@ -8788,6 +8914,15 @@
 },
 {
 "kind": "BUS",
+"number": "6900",
+"idMarki": 23,
+"year": 2007,
+"carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
+"depot": "R-4 \"Stalowa\" (R-13)",
+"colour": "RAL 1004+3003"
+},
+{
+"kind": "BUS",
 "number": "6905",
 "idMarki": 191,
 "year": 1995,
@@ -8971,6 +9106,15 @@
 "number": "70020",
 "idMarki": 4812,
 "year": 2020,
+"carrier": "PKS Grodzisk Mazowiecki Sp. z o.o.",
+"depot": "Klementowicka PKS",
+"colour": "RAL 5010 (L)"
+},
+{
+"kind": "BUS",
+"number": "70021",
+"idMarki": 4936,
+"year": 2021,
 "carrier": "PKS Grodzisk Mazowiecki Sp. z o.o.",
 "depot": "Klementowicka PKS",
 "colour": "RAL 5010 (L)"
@@ -15277,15 +15421,6 @@
 },
 {
 "kind": "BUS",
-"number": "9635",
-"idMarki": 5810,
-"year": 2026,
-"carrier": "Mobilis Sp. z o.o.",
-"depot": "Posag 7 Panien MOB",
-"colour": "RAL 1003+3020"
-},
-{
-"kind": "BUS",
 "number": "9636",
 "idMarki": 5810,
 "year": 2026,
@@ -15575,6 +15710,15 @@
 {
 "kind": "BUS",
 "number": "9815",
+"idMarki": 77,
+"year": 2016,
+"carrier": "Mobilis Sp. z o.o.",
+"depot": "Posag 7 Panien MOB",
+"colour": "RAL 1003+3020"
+},
+{
+"kind": "BUS",
+"number": "9816",
 "idMarki": 77,
 "year": 2016,
 "carrier": "Mobilis Sp. z o.o.",

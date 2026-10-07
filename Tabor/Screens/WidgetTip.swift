@@ -77,7 +77,7 @@ struct WidgetHowTo: View {
                         Mono("WIDGETS", size: 10.5, weight: 600, spacing: 0.14, color: Palette.yellow)
                         Text("Your book, one glance away")
                             .font(TaborFont.grotesk(26, 600))
-                        Text("Your newest stickers, your rarity sets, or a different sticker every hour. They update after every catch.")
+                        Text("Your stats, a catch from this day in the past, your newest stickers, your rarity sets, or a different sticker every hour. They update after every catch.")
                             .font(TaborFont.grotesk(14))
                             .foregroundStyle(Palette.sub)
                     }
@@ -113,6 +113,7 @@ struct WidgetHowTo: View {
                 .padding(.horizontal, 22)
                 .padding(.top, 18)
                 .padding(.bottom, 28)
+                .fitScrollWidth()
             }
             .scrollIndicators(.hidden)
         }
@@ -126,20 +127,26 @@ struct WidgetHowTo: View {
 
     private var previews: some View {
         VStack(spacing: 18) {
+            preview(String(localized: "Stats"), family: .systemMedium) {
+                StatsWidgetView(summary: snapshot.period(.month), snapshot: snapshot, family: .systemMedium)
+            }
+            preview(String(localized: "Memories"), family: .systemMedium) {
+                MemoryWidgetView(memory: snapshot.memory(on: .now), family: .systemMedium)
+            }
             preview(String(localized: "Latest catches"), family: .systemMedium) {
                 RecentWidgetView(snapshot: snapshot, family: .systemMedium)
             }
             HStack(alignment: .top, spacing: 16) {
-                preview(String(localized: "Rarity sets"), family: .systemSmall) {
-                    RarityWidgetView(snapshot: snapshot, family: .systemSmall)
+                preview(String(localized: "Your book"), family: .systemSmall) {
+                    ProgressWidgetView(entry: ProgressEntry(date: .now, snapshot: snapshot, image: latestImage), family: .systemSmall)
                 }
                 preview(String(localized: "Sticker shuffle"), family: .systemSmall) {
                     ShuffleWidgetView(entry: ShuffleEntry(date: .now, snapshot: snapshot, card: snapshot.shuffleCard(at: .now)),
                                       family: .systemSmall)
                 }
             }
-            preview(String(localized: "Your book"), family: .systemMedium) {
-                ProgressWidgetView(entry: ProgressEntry(date: .now, snapshot: snapshot, image: latestImage), family: .systemMedium)
+            preview(String(localized: "Rarity sets"), family: .systemMedium) {
+                RarityWidgetView(snapshot: snapshot, family: .systemMedium)
             }
         }
         // They're pictures here; the links inside only work on the Home Screen.

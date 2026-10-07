@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		A10000000000000000000042 /* TaborControls.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A10000000000000000000041 /* TaborControls.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A10000000000000000000078 /* TaborShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A10000000000000000000077 /* TaborShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -17,6 +18,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = A10000000000000000000050;
 			remoteInfo = TaborControls;
+		};
+		A10000000000000000000079 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A10000000000000000000030 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A10000000000000000000070;
+			remoteInfo = TaborShare;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -28,6 +36,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				A10000000000000000000042 /* TaborControls.appex in Embed Foundation Extensions */,
+				A10000000000000000000078 /* TaborShare.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -37,6 +46,7 @@
 /* Begin PBXFileReference section */
 		A10000000000000000000001 /* Tabor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tabor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000041 /* TaborControls.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TaborControls.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000077 /* TaborShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TaborShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000060 /* Tabor.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Tabor.xcconfig; path = Config/Tabor.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -56,6 +66,25 @@
 				TaborControls.entitlements,
 			);
 			target = A10000000000000000000050 /* TaborControls */;
+		};
+		A1000000000000000000007C /* Exceptions for "TaborShare" folder in "TaborShare" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+				TaborShare.entitlements,
+			);
+			target = A10000000000000000000070 /* TaborShare */;
+		};
+		A1000000000000000000007D /* Exceptions for "Shared" folder in "TaborShare" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				OpenCatchIntent.swift,
+				OpenHuntIntent.swift,
+				StatsWidgetViews.swift,
+				TrackActivity.swift,
+				WidgetViews.swift,
+			);
+			target = A10000000000000000000070 /* TaborShare */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -78,7 +107,18 @@
 		};
 		A10000000000000000000048 /* Shared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A1000000000000000000007D /* Exceptions for "Shared" folder in "TaborShare" target */,
+			);
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		A1000000000000000000007B /* TaborShare */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A1000000000000000000007C /* Exceptions for "TaborShare" folder in "TaborShare" target */,
+			);
+			path = TaborShare;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -98,6 +138,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A10000000000000000000072 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -108,6 +155,7 @@
 				A10000000000000000000060 /* Tabor.xcconfig */,
 				A10000000000000000000048 /* Shared */,
 				A10000000000000000000046 /* TaborControls */,
+				A1000000000000000000007B /* TaborShare */,
 				A10000000000000000000006 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -117,6 +165,7 @@
 			children = (
 				A10000000000000000000001 /* Tabor.app */,
 				A10000000000000000000041 /* TaborControls.appex */,
+				A10000000000000000000077 /* TaborShare.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -137,6 +186,7 @@
 			);
 			dependencies = (
 				A10000000000000000000045 /* PBXTargetDependency */,
+				A1000000000000000000007A /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				A10000000000000000000003 /* Tabor */,
@@ -168,6 +218,27 @@
 			productReference = A10000000000000000000041 /* TaborControls.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		A10000000000000000000070 /* TaborShare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000074 /* Build configuration list for PBXNativeTarget "TaborShare" */;
+			buildPhases = (
+				A10000000000000000000071 /* Sources */,
+				A10000000000000000000072 /* Frameworks */,
+				A10000000000000000000073 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A1000000000000000000007B /* TaborShare */,
+				A10000000000000000000048 /* Shared */,
+			);
+			name = TaborShare;
+			productName = TaborShare;
+			productReference = A10000000000000000000077 /* TaborShare.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -182,6 +253,9 @@
 						CreatedOnToolsVersion = 27.0;
 					};
 					A10000000000000000000050 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					A10000000000000000000070 = {
 						CreatedOnToolsVersion = 27.0;
 					};
 				};
@@ -203,6 +277,7 @@
 			targets = (
 				A10000000000000000000010 /* Tabor */,
 				A10000000000000000000050 /* TaborControls */,
+				A10000000000000000000070 /* TaborShare */,
 			);
 		};
 /* End PBXProject section */
@@ -216,6 +291,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		A10000000000000000000053 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000073 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -239,6 +321,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A10000000000000000000071 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -246,6 +335,11 @@
 			isa = PBXTargetDependency;
 			target = A10000000000000000000050 /* TaborControls */;
 			targetProxy = A10000000000000000000044 /* PBXContainerItemProxy */;
+		};
+		A1000000000000000000007A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A10000000000000000000070 /* TaborShare */;
+			targetProxy = A10000000000000000000079 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -299,8 +393,9 @@
 			baseConfigurationReference = A10000000000000000000060 /* Tabor.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-White AppIcon-Blue";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = 4FGGTM5838;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -337,8 +432,9 @@
 			baseConfigurationReference = A10000000000000000000060 /* Tabor.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-White AppIcon-Blue";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = 4FGGTM5838;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -375,7 +471,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = 4FGGTM5838;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
@@ -402,7 +498,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = 4FGGTM5838;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
@@ -416,6 +512,58 @@
 				);
 				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.filipmanikowski.tabor.controls;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		A10000000000000000000075 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 27;
+				DEVELOPMENT_TEAM = 4FGGTM5838;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				CODE_SIGN_ENTITLEMENTS = TaborShare/TaborShare.entitlements;
+				INFOPLIST_FILE = TaborShare/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TABOR;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.filipmanikowski.tabor.share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		A10000000000000000000076 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 27;
+				DEVELOPMENT_TEAM = 4FGGTM5838;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				CODE_SIGN_ENTITLEMENTS = TaborShare/TaborShare.entitlements;
+				INFOPLIST_FILE = TaborShare/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TABOR;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.filipmanikowski.tabor.share;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -450,6 +598,15 @@
 			buildConfigurations = (
 				A10000000000000000000055 /* Debug */,
 				A10000000000000000000056 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A10000000000000000000074 /* Build configuration list for PBXNativeTarget "TaborShare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000075 /* Debug */,
+				A10000000000000000000076 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

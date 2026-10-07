@@ -17,8 +17,12 @@ struct ModelPageView: View {
     @Query private var sightings: [Sighting]
     @State private var sort: StickerSort = .number
     @AppStorage(DebugRecord.enabledKey) private var debugMode = false
+    @AppStorage("huntTargets") private var huntTargets = HuntTargets()
+    @AppStorage("huntFilter") private var huntFilter: HuntFilter = .uncaught
     /// Debug: the vehicle picked for deletion, waiting for confirmation.
     @State private var deleting: Int?
+    /// The sticker just stuck in, bouncing once it's scrolled into view.
+    @State private var landed: Int?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(Router.self) private var router
@@ -78,6 +82,10 @@ struct ModelPageView: View {
                 HStack(spacing: 7) {
                     KindTag(kind: model.kind)
                     TierPill(tier: model.tier, fleet: model.fleet)
+                    Spacer(minLength: 0)
+                    if owned.count < model.fleet {
+                        showOnMapButton(model, haveSome: !owned.isEmpty)
+                    }
                 }
                 // One line at full size, else one line a little smaller, else wrap on spaces.
                 ViewThatFits(in: .horizontal) {
@@ -114,68 +122,89 @@ struct ModelPageView: View {
             // With specs, the scroll's own top margin makes up the gap.
             .padding(.bottom, model.specs == nil ? 14 : 4)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    // At the top of the scroll rather than above it, so the stickers keep the room.
-                    // Starts below the soft top edge, which should only fade what's scrolled up.
-                    if let spread = model.spread {
-                        specsRow(spread, kind: model.kind)
-                            .padding(.top, Self.softEdge)
-                            .padding(.bottom, 16)
-                    }
-                    ForEach(Array(model.batches.enumerated()), id: \.offset) { i, batch in
-                        batchHeader(batch, have: batch.numbers.filter { ownedByNumber[$0] != nil }.count, trial: model.trialDisplay,
-                                    drive: model.drive(of: batch))
-                            .padding(.top, i == 0 ? 6 : 18)
-                            .padding(.bottom, 10)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .overlay(alignment: .top) { Rectangle().fill(Color.white.opacity(0.08)).frame(height: 1) }
-                            .padding(.top, i == 0 ? 0 : 14)
-                        LazyVGrid(columns: columns, spacing: 11) {
-                            ForEach(ordered(batch.numbers, owned: ownedByNumber), id: \.self) { n in
-                                if let v = ownedByNumber[n] {
-                                    // A button, not a NavigationLink: a link steals the long press
-                                    // the debug delete menu needs.
-                                    Button { router.bookPath.append(.vehicle(modelId: model.id, number: n)) } label: {
-                                        DieCut(number: n, sticker: sightings.sticker(number: n, modelId: model.id),
-                                               photo: sightings.photo(number: n, modelId: model.id)) {
-                                            if v.timesSeen > 1 {
-                                                Mono("×\(v.timesSeen)", size: 9.5, spacing: 0, color: Palette.stickerCount)
+            ScrollViewReader { scroll in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        // At the top of the scroll rather than above it, so the stickers keep the room.
+                        // Starts below the soft top edge, which should only fade what's scrolled up.
+                        if let spread = model.spread {
+                            specsRow(spread, kind: model.kind)
+                                .padding(.top, Self.softEdge)
+                                .padding(.bottom, 16)
+                        }
+                        ForEach(Array(model.batches.enumerated()), id: \.offset) { i, batch in
+                            batchHeader(batch, have: batch.numbers.filter { ownedByNumber[$0] != nil }.count, trial: model.trialDisplay,
+                                        drive: model.drive(of: batch))
+                                .padding(.top, i == 0 ? 6 : 18)
+                                .padding(.bottom, 10)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .overlay(alignment: .top) { Rectangle().fill(Color.white.opacity(0.08)).frame(height: 1) }
+                                .padding(.top, i == 0 ? 0 : 14)
+                            LazyVGrid(columns: columns, spacing: 11) {
+                                ForEach(ordered(batch.numbers, owned: ownedByNumber), id: \.self) { n in
+                                    if let v = ownedByNumber[n] {
+                                        // A button, not a NavigationLink: a link steals the long press
+                                        // the debug delete menu needs.
+                                        Button { router.bookPath.append(.vehicle(modelId: model.id, number: n)) } label: {
+                                            DieCut(number: n, sticker: sightings.sticker(number: n, modelId: model.id),
+                                                   photo: sightings.photo(number: n, modelId: model.id)) {
+                                                if v.timesSeen > 1 {
+                                                    Mono("×\(v.timesSeen)", size: 9.5, spacing: 0, color: Palette.stickerCount)
+                                                }
                                             }
+                                            .frame(height: 104)
+                                            .scaleEffect(landed == n ? 1.12 : 1)
                                         }
-                                        .frame(height: 104)
+                                        .buttonStyle(StickerPressStyle(tilt: stickerTilt(n)))
+                                        .contextMenu { debugMenu(n) }
+                                        .id(n)
+                                    } else {
+                                        EmptySlot(label: String(n)).frame(height: 104)
                                     }
-                                    .buttonStyle(StickerPressStyle(tilt: stickerTilt(n)))
-                                    .contextMenu { debugMenu(n) }
-                                } else {
-                                    EmptySlot(label: String(n)).frame(height: 104)
+                                }
+                            }
+                        }
+                        let strays = owned.filter { v in !model.numbers.contains(v.number) }
+                        if !strays.isEmpty {
+                            Mono("NOT IN ZTM DATABASE · ADDED BY YOU", size: 10, spacing: 0.14, color: Palette.faint)
+                                .padding(.top, 32)
+                                .padding(.bottom, 10)
+                            LazyVGrid(columns: columns, spacing: 11) {
+                                ForEach(strays, id: \.number) { v in
+                                    Button { router.bookPath.append(.vehicle(modelId: model.id, number: v.number)) } label: {
+                                        DieCut(number: v.number, sticker: sightings.sticker(number: v.number, modelId: model.id),
+                                               photo: sightings.photo(number: v.number, modelId: model.id))
+                                            .frame(height: 104)
+                                            .scaleEffect(landed == v.number ? 1.12 : 1)
+                                    }
+                                    .buttonStyle(StickerPressStyle(tilt: stickerTilt(v.number)))
+                                    .contextMenu { debugMenu(v.number) }
+                                    .id(v.number)
                                 }
                             }
                         }
                     }
-                    let strays = owned.filter { v in !model.numbers.contains(v.number) }
-                    if !strays.isEmpty {
-                        Mono("NOT IN ZTM DATABASE · ADDED BY YOU", size: 10, spacing: 0.14, color: Palette.faint)
-                            .padding(.top, 32)
-                            .padding(.bottom, 10)
-                        LazyVGrid(columns: columns, spacing: 11) {
-                            ForEach(strays, id: \.number) { v in
-                                Button { router.bookPath.append(.vehicle(modelId: model.id, number: v.number)) } label: {
-                                    DieCut(number: v.number, sticker: sightings.sticker(number: v.number, modelId: model.id),
-                                           photo: sightings.photo(number: v.number, modelId: model.id))
-                                        .frame(height: 104)
-                                }
-                                .buttonStyle(StickerPressStyle(tilt: stickerTilt(v.number)))
-                                .contextMenu { debugMenu(v.number) }
-                            }
-                        }
-                    }
+                    .padding(.horizontal, 22)
+                    .padding(.bottom, 24)
+                    .fitScrollWidth()
                 }
-                .padding(.horizontal, 22)
-                .padding(.bottom, 24)
+                .scrollIndicators(.hidden)
+                .softTopEdge(Self.softEdge)
+                // A catch just stuck in: down to it, wherever its batch is, rather than the top (#51).
+                .task(id: router.landing) {
+                    guard let n = router.landing, owned.contains(where: { $0.number == n }) else { return }
+                    // Cleared so coming back from a vehicle page doesn't scroll again, but only at the
+                    // end: it's the task's id, and changing it cancels the task.
+                    defer { router.landing = nil }
+                    // Once the reveal has gone and the page is laid out.
+                    try? await Task.sleep(for: .milliseconds(350))
+                    withAnimation(.easeInOut(duration: 0.45)) { scroll.scrollTo(n, anchor: .center) }
+                    try? await Task.sleep(for: .milliseconds(450))
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) { landed = n }
+                    try? await Task.sleep(for: .milliseconds(250))
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.6)) { landed = nil }
+                }
             }
-            .scrollIndicators(.hidden)
-            .softTopEdge(Self.softEdge)
         }
         .taborScreen()
         // String(n): a fleet number is an id, never "1,075".
@@ -243,9 +272,10 @@ struct ModelPageView: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
-    /// "18", or "10.5—12" where the vehicles differ.
+    /// "18", or "10.5—12" where the vehicles differ. Word joiners keep a range on one line:
+    /// "siedzących: 25—29" otherwise broke before the dash on a 390 pt phone.
     private func span<T>(_ r: ClosedRange<T>, _ show: (T) -> String) -> String {
-        r.lowerBound == r.upperBound ? show(r.lowerBound) : "\(show(r.lowerBound))—\(show(r.upperBound))"
+        r.lowerBound == r.upperBound ? show(r.lowerBound) : "\(show(r.lowerBound))\u{2060}—\u{2060}\(show(r.upperBound))"
     }
 
     private func subtitle(_ m: VehicleModel) -> String {
@@ -269,7 +299,7 @@ struct ModelPageView: View {
         let year = b.year.map { String(localized: "\(String($0)) BATCH") } ?? trial ?? String(localized: "YEAR UNKNOWN")
         let done = have == b.numbers.count
         return HStack(spacing: 8) {
-            Mono([year, drive?.name ?? "", b.depotDisplay, b.rangeDisplay].filter { !$0.isEmpty }.joined(separator: " · "),
+            Mono([year, drive?.name ?? "", b.placeDisplay, b.rangeDisplay].filter { !$0.isEmpty }.joined(separator: " · "),
                  size: 10, spacing: 0.14, color: Palette.dim)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
@@ -286,6 +316,31 @@ struct ModelPageView: View {
     }
 
     /// Owned first (as the design shows), then the rest, by number or catch date.
+    /// Adds the model to HUNT's filter and goes to where it's running (#45).
+    private func showOnMapButton(_ model: VehicleModel, haveSome: Bool) -> some View {
+        Button {
+            Haptics.shared.tick()
+            huntTargets = huntTargets.adding(model)
+            // MISSING hides a model you already have, so it would show nothing.
+            if haveSome, huntFilter == .newModels { huntFilter = .uncaught }
+            router.showOnHunt(model.id)
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                    .font(.system(size: 10, weight: .bold))
+                Mono("SHOW ON MAP", size: 10.5, weight: 600, spacing: 0.1, color: Palette.radar)
+                    .lineLimit(1)
+            }
+            .foregroundStyle(Palette.radar)
+            .padding(.vertical, 4)
+            .padding(.horizontal, 9)
+            .background(Palette.radar.opacity(0.12), in: Capsule())
+            .overlay(Capsule().stroke(Palette.radar.opacity(0.4)))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Show on the HUNT map")
+    }
+
     private func ordered(_ numbers: [Int], owned: [Int: OwnedVehicle]) -> [Int] {
         let have = numbers.filter { owned[$0] != nil }
         let rest = numbers.filter { owned[$0] == nil }

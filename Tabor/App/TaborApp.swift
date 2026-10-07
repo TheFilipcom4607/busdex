@@ -56,11 +56,40 @@ enum BookRoute: Hashable {
 final class Router {
     var tab: AppTab = .catchTab
     var bookPath: [BookRoute] = []
+    /// Goes up when a photo shared from another app is waiting in `ShareInbox`: CATCH takes it.
+    var sharedPhotos = 0
+    /// A model sent from its page in the book (#45): HUNT frames where it's running, then clears it.
+    var huntModel: String?
+    /// A running vehicle ("BUS#1998") HUNT centres on and opens, from a Live Activity tap (#61).
+    var huntVehicle: String?
 
-    /// After sticking a catch in: jump to its model page in the book.
-    func openModel(_ id: String) {
+    /// A photo shared to TABOR: catch it on CATCH, like one picked from the library.
+    func catchShared() {
+        guard !ShareInbox.isEmpty else { return }
+        tab = .catchTab
+        bookPath.removeAll()
+        sharedPhotos += 1
+    }
+
+    /// The number just stuck in: its model page scrolls to it, then clears it (#51).
+    var landing: Int?
+
+    /// A model's page in the book; after sticking a catch in, scrolled to where it went.
+    func openModel(_ id: String, landing: Int? = nil) {
         tab = .book
         bookPath = [.model(id)]
+        self.landing = landing
+    }
+
+    /// Its vehicles on HUNT's map. The filter is already set; the book keeps its place.
+    func showOnHunt(_ modelId: String) {
+        huntModel = modelId
+        tab = .hunt
+    }
+
+    func showOnHunt(vehicle id: String) {
+        huntVehicle = id
+        tab = .hunt
     }
 
     func openVehicle(modelId: String, number: Int) {
@@ -76,6 +105,7 @@ struct RootView: View {
     /// Tabs opened so far. They stay alive behind the current one, so switching back is
     /// instant and keeps where you were: HUNT's map and pins, how far down the book you were.
     @State private var opened: Set<AppTab> = []
+    @State private var tabBarHeight: CGFloat = 0
     @Query private var sightings: [Sighting]
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
@@ -85,7 +115,7 @@ struct RootView: View {
             // CATCH goes when you leave it: that's what turns the camera off.
             if router.tab == .catchTab { CatchView() }
             if keeps(.hunt) { HuntView().tabLayer(on: router.tab == .hunt) }
-            if keeps(.book) { BookTab().tabLayer(on: router.tab == .book) }
+            if keeps(.book) { BookTab(tabBarHeight: tabBarHeight).tabLayer(on: router.tab == .book) }
             if keeps(.me) { MeView().tabLayer(on: router.tab == .me) }
         }
         .onChange(of: router.tab, initial: true) { _, tab in opened.insert(tab) }
@@ -109,6 +139,7 @@ struct RootView: View {
                 // Like any tab bar: tapping BOOK again goes back to the index.
                 if tab == .book, !router.bookPath.isEmpty { router.bookPath.removeAll() }
             }
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { tabBarHeight = $0 }
         }
         .background(Palette.bg.ignoresSafeArea())
         .environment(router)
@@ -116,7 +147,11 @@ struct RootView: View {
         // Keep the live feed ticking on every tab, so HUNT opens with trails already drawn.
         .onAppear { LiveFleetService.shared.start(LiveFleetService.appClient) }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { LiveFleetService.shared.start(LiveFleetService.appClient) }
+            if phase == .active {
+                LiveFleetService.shared.start(LiveFleetService.appClient)
+                // Shared while TABOR was closed, or the share sheet couldn't open it.
+                router.catchShared()
+            }
             if phase == .background {
                 LiveFleetService.shared.stop(LiveFleetService.appClient)
                 undo.finish()
@@ -134,12 +169,16 @@ struct RootView: View {
         }
         // Widget taps.
         .onOpenURL { url in
+            if url == ShareInbox.url { return router.catchShared() }
             switch WidgetLink.target(url) {
             case .book:
                 router.tab = .book
                 router.bookPath.removeAll()
             case .vehicle(let modelId, let number):
                 router.openVehicle(modelId: modelId, number: number)
+            case .hunt(let id):
+                // A Live Activity, not a widget: nothing to say about the widget tip.
+                return router.showOnHunt(vehicle: id)
             case nil:
                 return
             }
@@ -167,7 +206,11 @@ struct RootView: View {
             await WeatherService.backfill(sightings, context: context)
         }
         // Refresh the Home / Lock Screen widgets whenever what they show could have changed.
-        .task(id: widgetKey) { await WidgetBridge.publish(sightings) }
+        .task(id: widgetKey) {
+            await WidgetBridge.publish(sightings)
+            // A tracked vehicle just went into the book: its Live Activity says so and ends.
+            TrackService.shared.endCaught(sightings)
+        }
     }
 
     private func keeps(_ tab: AppTab) -> Bool { router.tab == tab || opened.contains(tab) }
@@ -176,22 +219,31 @@ struct RootView: View {
         let latest = sightings.max { $0.date < $1.date }
         let vehicles = Set(sightings.map { "\($0.modelId)#\($0.number)" }).count
         return [String(sightings.count), String(vehicles), latest?.id.uuidString, latest?.modelId, latest.map { String($0.number) },
-                latest?.stickerFile, latest?.photoFile].map { $0 ?? "-" }.joined(separator: "|")
+                latest?.stickerFile, latest?.photoFile,
+                // A picture picked for the book changes the cards too.
+                sightings.filter { $0.cover == true }.map(\.id.uuidString).sorted().joined()].map { $0 ?? "-" }.joined(separator: "|")
     }
 }
 
 struct BookTab: View {
+    /// The tab bar's inset stops at the NavigationStack, so each page gets it again here,
+    /// or the end of every book list runs under the bar (#43).
+    let tabBarHeight: CGFloat
     @Environment(Router.self) private var router
 
     var body: some View {
         @Bindable var router = router
         NavigationStack(path: $router.bookPath) {
             BookIndexView()
+                .safeAreaPadding(.bottom, tabBarHeight)
                 .navigationDestination(for: BookRoute.self) { route in
-                    switch route {
-                    case .model(let id): ModelPageView(modelId: id)
-                    case .vehicle(let modelId, let number): VehicleView(modelId: modelId, number: number)
+                    Group {
+                        switch route {
+                        case .model(let id): ModelPageView(modelId: id)
+                        case .vehicle(let modelId, let number): VehicleView(modelId: modelId, number: number)
+                        }
                     }
+                    .safeAreaPadding(.bottom, tabBarHeight)
                 }
         }
     }

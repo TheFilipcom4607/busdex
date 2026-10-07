@@ -21,6 +21,20 @@ public struct Achievement: Identifiable, Hashable, Sendable {
     /// The vehicles behind it: what earned it, or, not earned yet, the closest so far. Empty for
     /// badges that just count (Collector) or aren't about particular vehicles.
     public let proof: [Proof]
+    /// What's still to find, for badges that need one of each from a known list (every district,
+    /// every operator, every model at a depot). Empty once earned.
+    public let missing: [Missing]
+
+    /// Something a badge still needs: a district, an operator, or a model (which opens its page).
+    public struct Missing: Hashable, Sendable {
+        public let label: String
+        public let modelId: String?
+
+        public init(_ label: String, modelId: String? = nil) {
+            self.label = label
+            self.modelId = modelId
+        }
+    }
 
     /// One vehicle behind a badge, with why it counts ("21 YEARS OLD", "LINE 16").
     public struct Proof: Hashable, Sendable {
@@ -36,7 +50,8 @@ public struct Achievement: Identifiable, Hashable, Sendable {
     }
 
     public init(id: String, title: String, detail: String, symbol: String, progress: Int, goal: Int,
-                level: Int? = nil, levels: Int = 1, secret: Bool = false, steps: [String] = [], proof: [Proof] = []) {
+                level: Int? = nil, levels: Int = 1, secret: Bool = false, steps: [String] = [], proof: [Proof] = [],
+                missing: [Missing] = []) {
         self.id = id
         self.title = title
         self.detail = detail
@@ -49,11 +64,15 @@ public struct Achievement: Identifiable, Hashable, Sendable {
         self.steps = steps
         // A secret keeps its vehicles to itself until it's earned.
         self.proof = secret && !(goal > 0 && (level ?? (progress >= goal ? 1 : 0)) > 0) ? [] : proof
+        self.missing = missing
     }
 
     public var earned: Bool { level > 0 }
     public var maxed: Bool { level >= levels }
     public var tiered: Bool { levels > 1 }
+    /// What the level reached asks for: a tiered badge at level 1 of Collector is "10 different
+    /// vehicles", not the next level's "100". Not earned yet, it's the first goal.
+    public var reached: String { tiered && level > 0 && level <= steps.count ? steps[level - 1] : detail }
     public var fraction: Double { maxed ? 1 : goal > 0 ? min(Double(progress) / Double(goal), 1) : 0 }
     public var isDepot: Bool { id.hasPrefix("depot-") }
 
@@ -342,30 +361,43 @@ public enum Achievements {
                            proof: c.proof(shown.map(\.0)) { String(localized: "\(age["\($0.modelId)#\($0.number)"] ?? 0) YEARS OLD") })
     }
 
-    /// Operators are counted by each model's main one: a model shared by several
-    /// operators doesn't tick them all off.
+    /// Each vehicle counts for its own batch's operator: Urbino 18 CNGs run for MZA and
+    /// ReloBus, and #9925 is ReloBus's (#35). Older fleet files fall back to the model's main one.
     static func allOperators(_ c: Context) -> Achievement? {
         let regular = c.catalog.models.filter { $0.regular }
-        let all = Set(regular.compactMap(\.operators.first))
+        let all = Set(regular.flatMap { m in m.batches.compactMap { $0.operator ?? m.operators.first } })
         guard !all.isEmpty else { return nil }
-        let have = Set(regular.filter(c.has).compactMap(\.operators.first))
-        // Your first catch from each operator.
-        let proof = have.sorted().compactMap { op in
-            c.sightings.sorted { $0.date < $1.date }.first { s in c.model(s).map { $0.regular && $0.operators.first == op } ?? false }
-                .map { Achievement.Proof(modelId: $0.modelId, number: $0.number, note: op.uppercased()) }
+        let op = { (s: SightingRecord) -> String? in
+            guard let m = c.model(s), m.regular else { return nil }
+            return m.batch(containing: s.number)?.operator ?? m.operators.first
         }
+        // Your first catch from each operator.
+        var first: [String: SightingRecord] = [:]
+        for s in c.sightings.sorted(by: { $0.date < $1.date }) {
+            if let o = op(s), first[o] == nil { first[o] = s }
+        }
+        let proof = first.sorted { $0.key < $1.key }
+            .map { o, s in Achievement.Proof(modelId: s.modelId, number: s.number, note: o.uppercased()) }
         return Achievement(id: "all-operators", title: String(localized: "Every operator"), detail: String(localized: "A vehicle from all \(all.count) operators"),
-                           symbol: "person.3.fill", progress: have.count, goal: all.count, proof: proof)
+                           symbol: "person.3.fill", progress: first.count, goal: all.count, proof: proof,
+                           missing: all.subtracting(first.keys).sorted(by: plOrder).map { Achievement.Missing($0) })
     }
 
     // MARK: Places
 
+    /// By the catch's coordinates: the geocoder's name is usually a neighbourhood ("Grochów"),
+    /// so it's only the fallback, for catches without them or in a sliver between two outlines.
     static func everyDistrict(_ c: Context) -> Achievement {
-        let byDistrict = Dictionary(grouping: c.sightings.sorted { $0.date < $1.date }) { $0.district.flatMap(district(of:)) }
+        let byDistrict = Dictionary(grouping: c.sightings.sorted { $0.date < $1.date }) { s in
+            let named = s.district.flatMap(district(of:))
+            guard let lat = s.latitude, let lon = s.longitude else { return named }
+            return Districts.at(lat, lon) ?? (Geo.inWarsaw(lat, lon) ? named : nil)
+        }
         let proof = byDistrict.compactMap { d, ss in d.map { Achievement.Proof(modelId: ss[0].modelId, number: ss[0].number, note: $0.uppercased()) } }
             .sorted { ($0.note ?? "") < ($1.note ?? "") }
         return Achievement(id: "every-district", title: String(localized: "Every district"), detail: String(localized: "A catch in all \(districts.count) districts of Warsaw"),
-                           symbol: "map.fill", progress: proof.count, goal: districts.count, proof: proof)
+                           symbol: "map.fill", progress: proof.count, goal: districts.count, proof: proof,
+                           missing: districts.filter { byDistrict[$0] == nil }.map { Achievement.Missing($0) })
     }
 
     /// Two catches on the same day at least 15 km apart.
@@ -508,20 +540,32 @@ public enum Achievements {
             let atDepot = { (b: Batch) in b.depotCode == d.code && b.depotName == d.name }
             let models = c.catalog.models.filter { m in m.regular && m.kind == d.kind && m.batches.contains(where: atDepot) }
             guard !models.isEmpty else { return nil }
-            let have = models.filter { m in
+            let caught = { (m: VehicleModel) in
                 let mine = c.owned[m.id] ?? []
                 return m.batches.contains { atDepot($0) && $0.numbers.contains(where: mine.contains) }
-            }.count
+            }
+            let have = models.filter(caught).count
             return Achievement(id: "depot-\(d.kind.rawValue)-\(d.code)-\(d.name)",
                                title: d.code.isEmpty ? d.name : "\(d.code) \(d.name)",
                                detail: d.kind == .tram ? String(localized: "Every tram model at the depot")
                                    : String(localized: "Every bus model at the depot"),
                                symbol: d.kind == .tram ? "tram.fill.tunnel" : "bus.doubledecker.fill",
-                               progress: have, goal: models.count)
+                               progress: have, goal: models.count,
+                               missing: models.filter { !caught($0) }.sorted { ($0.name, $0.firstYear ?? 0) < ($1.name, $1.firstYear ?? 0) }.map { m in
+                                   // Two Conecto Gs share R-2 Kleszczowa: their years tell them apart.
+                                   let twin = models.filter { $0.name == m.name }.count > 1
+                                   return Achievement.Missing(twin ? [m.name, m.yearsDisplay].compactMap { $0 }.joined(separator: " ") : m.name,
+                                                              modelId: m.id)
+                               })
         }
     }
 
     // MARK: Helpers
+
+    /// Polish alphabetical order, so "Średnicki" comes after "ReloBus", not after "Z".
+    static func plOrder(_ a: String, _ b: String) -> Bool {
+        a.compare(b, locale: Locale(identifier: "pl_PL")) == .orderedAscending
+    }
 
     /// "1,000" (the separator comes from the string catalog, not the device's region, so
     /// it matches the language the badge is written in).
@@ -561,5 +605,40 @@ public enum Geo {
     /// suburbs inside the box don't count, which is fine for a badge).
     public static func inWarsaw(_ lat: Double, _ lon: Double) -> Bool {
         (52.0977...52.3681).contains(lat) && (20.8517...21.2712).contains(lon)
+    }
+}
+
+/// Which of Warsaw's districts a point is in, from their outlines (Districts.swift, generated).
+public enum Districts {
+    private struct Shape {
+        let name: String
+        let ring: [(latitude: Double, longitude: Double)]
+        let lat: ClosedRange<Double>, lon: ClosedRange<Double>
+    }
+
+    private static let shapes: [Shape] = encoded.map { name, polyline in
+        let ring = Polyline.decode(polyline)
+        return Shape(name: name, ring: ring,
+                     lat: ring.map(\.latitude).min()!...ring.map(\.latitude).max()!,
+                     lon: ring.map(\.longitude).min()!...ring.map(\.longitude).max()!)
+    }
+
+    /// nil outside the city, and in the few-metre slivers simplifying leaves between neighbours.
+    public static func at(_ lat: Double, _ lon: Double) -> String? {
+        shapes.first { s in
+            guard s.lat.contains(lat), s.lon.contains(lon) else { return false }
+            // Ray casting: an odd number of edge crossings to the east means inside.
+            var inside = false
+            var j = s.ring.count - 1
+            for i in s.ring.indices {
+                let a = s.ring[i], b = s.ring[j]
+                if (a.latitude > lat) != (b.latitude > lat),
+                   lon < (b.longitude - a.longitude) * (lat - a.latitude) / (b.latitude - a.latitude) + a.longitude {
+                    inside.toggle()
+                }
+                j = i
+            }
+            return inside
+        }?.name
     }
 }

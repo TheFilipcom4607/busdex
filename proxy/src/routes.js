@@ -7,6 +7,7 @@
 
 const KEY = 'routes';
 const GTFS = 'https://gtfs.ztm.waw.pl/last/';
+const POJAZDY = 'https://dane.um.warszawa.pl/api/action/get_ztm_pojazdy';
 // Fewer lines than this means a broken build (a normal day has about 300): keep yesterday's.
 const MIN_LINES = 200;
 
@@ -42,6 +43,30 @@ export async function getGtfs(request, env) {
   return new Response(res.body, {
     headers: { 'Content-Type': 'application/zip', 'Content-Length': res.headers.get('Content-Length') ?? '' },
   });
+}
+
+// The city's vehicle list, passed through for the nightly fleet Action (fleet.yml): like the
+// GTFS, dane.um.warszawa.pl lets GitHub's runners time out but answers from Warsaw. Streamed
+// untouched, since parsing 1.3 MB would blow the 10 ms of CPU.
+export async function getPojazdy(request, env) {
+  if (!(await authorized(request, env))) return json({ result: 'Unauthorized' }, 401);
+  let res;
+  try {
+    res = await fetch(POJAZDY, {
+      method: 'POST',
+      headers: { Authorization: env.DANE_TOKEN, 'Content-Type': 'application/json' },
+      body: '{}',
+      signal: AbortSignal.timeout(50_000),
+    });
+  } catch (e) {
+    console.log(`pojazdy: ${e}`);
+    return json({ result: `The city didn't answer: ${e}` }, 502);
+  }
+  if (!res.ok) {
+    console.log(`pojazdy: the city answered ${res.status} (colo ${request.cf?.colo})`);
+    return json({ result: `The city answered ${res.status}` }, 502);
+  }
+  return new Response(res.body, { headers: { 'Content-Type': 'application/json; charset=utf-8' } });
 }
 
 // The Action sends the file already gzipped, with its line count and feed in headers: parsing

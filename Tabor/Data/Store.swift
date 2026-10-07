@@ -24,6 +24,9 @@ final class Sighting {
     /// A coupled tram's second car, added with the car you shot: that car's number. Only a
     /// link for display and badges; each car keeps its own files and can go on its own.
     var pairedWith: Int?
+    /// Picked on the vehicle page as the picture the book shows for this vehicle, instead of
+    /// the newest. Only one per vehicle is set; if two ever are, the newest wins.
+    var cover: Bool?
 
     init(id: UUID = UUID(), number: Int, modelId: String, date: Date = .now, line: String? = nil,
          photoFile: String? = nil, stickerFile: String? = nil) {
@@ -35,6 +38,8 @@ final class Sighting {
         self.photoFile = photoFile
         self.stickerFile = stickerFile
     }
+
+    var hasPicture: Bool { stickerFile != nil || photoFile != nil }
 
     var record: SightingRecord {
         SightingRecord(number: number, modelId: modelId, date: date, line: line, district: district, street: street,
@@ -86,13 +91,50 @@ enum TaborStore {
             try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, groupContainer: .none,
                                                                                cloudKitDatabase: cloud))
         }
-        if let synced = try? open(.automatic) { return synced }
-        do {
-            return try open(.none)
-        } catch {
-            fatalError("Can't open the catch store: \(error)")
+        let container: ModelContainer
+        if let synced = try? open(.automatic) {
+            container = synced
+        } else {
+            do {
+                container = try open(.none)
+            } catch {
+                fatalError("Can't open the catch store: \(error)")
+            }
         }
+        // Before any screen reads the book, so nothing shows a catch under a model it left.
+        followSplits(in: ModelContext(container), catalog: Fleet.catalog)
+        return container
     }()
+
+    static let splitsSeenKey = "huntSplitsSeen"
+
+    /// When a model has been split (the 120N family into Tramicus, Swing and Swing Duo),
+    /// moves catches and hand-picked numbers to the part that has their number, and adds the
+    /// new parts to a HUNT filter that had the old model picked. That last step happens once
+    /// per part, so taking one out of the filter afterwards sticks.
+    static func followSplits(in context: ModelContext, catalog: FleetCatalog, defaults: UserDefaults = .standard) {
+        var changed = false
+        for s in (try? context.fetch(FetchDescriptor<Sighting>())) ?? [] {
+            if let to = catalog.moved(modelId: s.modelId, number: s.number) { s.modelId = to; changed = true }
+        }
+        for a in (try? context.fetch(FetchDescriptor<ManualAssignment>())) ?? [] {
+            if let to = catalog.moved(modelId: a.modelId, number: a.number) { a.modelId = to; changed = true }
+        }
+        if changed { try? context.save() }
+
+        let parts = catalog.models.filter { !$0.formerly.isEmpty }
+        var seen = Set(defaults.stringArray(forKey: splitsSeenKey) ?? [])
+        guard !parts.allSatisfy({ seen.contains($0.id) }) else { return }
+        if let raw = defaults.string(forKey: "huntTargets") {
+            var targets = HuntTargets(rawValue: raw)
+            for m in parts where !seen.contains(m.id) && !targets.models.isDisjoint(with: m.formerly) {
+                targets.models.insert(m.id)
+            }
+            defaults.set(targets.rawValue, forKey: "huntTargets")
+        }
+        seen.formUnion(parts.map(\.id))
+        defaults.set(Array(seen).sorted(), forKey: splitsSeenKey)
+    }
 }
 
 extension Array where Element == Sighting {
@@ -102,14 +144,24 @@ extension Array where Element == Sighting {
         filter { $0.number == number && $0.modelId == modelId }.sorted { $0.date > $1.date }
     }
 
-    /// Best photo for a vehicle: the most recent sighting that has one.
-    func photo(number: Int, modelId: String) -> String? {
-        of(number: number, modelId: modelId).lazy.compactMap(\.photoFile).first
+    /// The sighting picked for the book, if it still has a picture.
+    func cover(number: Int, modelId: String) -> Sighting? {
+        of(number: number, modelId: modelId).first { $0.cover == true && $0.hasPicture }
     }
 
-    /// The vehicle's die-cut sticker, newest first.
+    /// The vehicle's photo: the picked sighting's, else the most recent one.
+    func photo(number: Int, modelId: String) -> String? {
+        let list = of(number: number, modelId: modelId)
+        if let c = list.first(where: { $0.cover == true && $0.hasPicture }), let p = c.photoFile { return p }
+        return list.lazy.compactMap(\.photoFile).first
+    }
+
+    /// The vehicle's die-cut sticker: the picked sighting's (none if it has only a photo, so
+    /// that photo shows), else the newest.
     func sticker(number: Int, modelId: String) -> String? {
-        of(number: number, modelId: modelId).lazy.compactMap(\.stickerFile).first
+        let list = of(number: number, modelId: modelId)
+        if let c = list.first(where: { $0.cover == true && $0.hasPicture }) { return c.stickerFile }
+        return list.lazy.compactMap(\.stickerFile).first
     }
 }
 

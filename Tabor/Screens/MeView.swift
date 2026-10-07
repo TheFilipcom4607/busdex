@@ -8,6 +8,7 @@ struct MeView: View {
     @Environment(Router.self) private var router
     @State private var showSettings = false
     @State private var showMap = false
+    @State private var showStats = false
     @State private var showWidgetHowTo = false
     @AppStorage(WidgetTip.seenKey) private var widgetTipSeen = false
     private let catalog = Fleet.catalog
@@ -53,13 +54,31 @@ struct MeView: View {
                     .padding(.top, 20)
                     .padding(.horizontal, 22)
 
-                StatsStrip(items: [
-                    (stats.caught.grouped, String(localized: "CAUGHT"), Palette.ink),
-                    (percent(stats.fleetShare(catalog: catalog)), String(localized: "OF FLEET"), Palette.yellow),
-                    ("\(Streak.days(sightings.map(\.date)))", String(localized: "DAY STREAK"), Palette.ink),
-                    (depotsTouched(stats), String(localized: "DEPOTS"), Palette.ink),
-                ])
+                HStack(alignment: .firstTextBaseline) {
+                    SectionLabel(text: String(localized: "STATS"))
+                    Spacer()
+                    if !sightings.isEmpty {
+                        Button {
+                            showStats = true
+                        } label: { Mono("ALL STATS", size: 10.5, color: Palette.yellow) }
+                        .buttonStyle(.plain)
+                    }
+                }
                 .padding(.top, 18)
+                .padding(.bottom, 9)
+                .padding(.horizontal, 22)
+
+                Button {
+                    if !sightings.isEmpty { showStats = true }
+                } label: {
+                    StatsStrip(items: [
+                        (stats.caught.grouped, String(localized: "CAUGHT"), Palette.ink),
+                        (fleetShareText(stats.fleetShare(catalog: catalog)), String(localized: "OF FLEET"), Palette.yellow),
+                        ("\(Streak.days(sightings.map(\.date)))", String(localized: "DAY STREAK"), Palette.ink),
+                        (depotsTouched(stats), String(localized: "DEPOTS"), Palette.ink),
+                    ])
+                }
+                .buttonStyle(StickerPressStyle())
                 .padding(.horizontal, 22)
 
                 if !widgetTipSeen, sightings.count >= WidgetTip.afterCatches {
@@ -76,6 +95,12 @@ struct MeView: View {
                 BadgeShelf(badges: Achievements.evaluate(sightings.map(\.record), catalog: catalog))
                     .padding(.top, 18)
                     .padding(.horizontal, 22)
+
+                if !sightings.isEmpty {
+                    CatchLogSection(sightings: sightings)
+                        .padding(.top, 16)
+                        .padding(.horizontal, 22)
+                }
 
                 HStack(alignment: .firstTextBaseline) {
                     SectionLabel(text: String(localized: "WHERE YOU SPOT"))
@@ -102,11 +127,21 @@ struct MeView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 22)
             }
+            .fitScrollWidth()
         }
         .scrollIndicators(.hidden)
         .taborScreen()
         .sheet(isPresented: $showSettings) { SettingsSheet() }
         .sheet(isPresented: $showWidgetHowTo) { WidgetHowTo() }
+        .sheet(isPresented: $showStats) {
+            StatsSheet(sightings: sightings) { route in
+                showStats = false
+                switch route {
+                case .model(let id): router.openModel(id)
+                case .vehicle(let modelId, let number): router.openVehicle(modelId: modelId, number: number)
+                }
+            }
+        }
         // Every time ME comes up, not once: the tab stays alive behind the others.
         .task(id: router.tab == .me) {
             guard router.tab == .me else { return }
@@ -146,15 +181,6 @@ struct MeView: View {
             Mono("\(geotagged.count) PINS", size: 9.5, color: Palette.faint)
         }
         .padding(.horizontal, 4)
-    }
-
-    /// One decimal under 10%, so the first few hundred catches visibly move it.
-    private func percent(_ v: Double) -> String {
-        let pct = FloatingPointFormatStyle<Double>.Percent().locale(.app)
-        if v <= 0 { return 0.0.formatted(pct.precision(.fractionLength(0))) }
-        if v < 0.001 { return "<" + 0.001.formatted(pct.precision(.fractionLength(1))) }
-        if v < 0.1 { return v.formatted(pct.precision(.fractionLength(1))) }
-        return v.formatted(pct.precision(.fractionLength(0)))
     }
 
     /// Depots whose vehicles you've caught, out of all depots in the snapshot.
@@ -288,6 +314,7 @@ struct SpotMap: View {
     var onOpen: ((Sighting) -> Void)?
     /// The catch whose card is open. Tapping empty map clears it.
     @State private var selectedId: UUID?
+    @Namespace private var mapScope
     private static let warsaw = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 52.2297, longitude: 21.0122),
         span: MKCoordinateSpan(latitudeDelta: 0.22, longitudeDelta: 0.22))
@@ -299,7 +326,7 @@ struct SpotMap: View {
         ZStack(alignment: .bottom) {
             Map(initialPosition: pins.isEmpty ? .region(Self.warsaw) : .automatic,
                 interactionModes: interactive ? .all : [],
-                selection: interactive ? $selectedId : .constant(nil)) {
+                selection: interactive ? $selectedId : .constant(nil), scope: mapScope) {
                 ForEach(pins) { s in
                     let color = (Fleet.catalog.model(id: s.modelId)?.tier ?? .common).mapColor
                     let picked = s.id == selectedId
@@ -317,6 +344,7 @@ struct SpotMap: View {
                 }
             }
             .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
+            .mapControls {}
             .environment(\.colorScheme, .dark)
             .ignoresSafeArea(edges: interactive ? .all : [])
 
@@ -328,6 +356,16 @@ struct SpotMap: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        // The map runs under the status bar, and so would its own compass (#39): this one keeps
+        // to the safe area, level with the close button. It shows only while the map is turned.
+        .overlay(alignment: .topTrailing) {
+            if interactive {
+                MapCompass(scope: mapScope)
+                    .padding(.trailing, 18)
+                    .padding(.top, 8)
+            }
+        }
+        .mapScope(mapScope)
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: selectedId)
         .onChange(of: selectedId) { _, id in if id != nil { Haptics.shared.tick() } }
     }
@@ -433,6 +471,7 @@ struct SettingsSheet: View {
                 } footer: {
                     Text("Weather comes from Open-Meteo: TABOR sends each geotagged catch's time and rough location (to about 1 km). Nothing else leaves your phone.")
                 }
+                AppIconSection()
                 if showsDebug {
                     Section {
                         Toggle("Debug mode", isOn: $debugMode)
@@ -513,6 +552,7 @@ struct SettingsSheet: View {
                         if let fleetStatus { Text(fleetStatus).foregroundStyle(Palette.yellow) }
                         Text(Fleet.catalog.sourceDisplay)
                         Text("New deliveries show up without an app update: TABOR checks GitHub for a fresher ZTM snapshot once a day.")
+                        Text("District outlines for the badges: © OpenStreetMap contributors.")
                     }
                 }
                 TipJarSection()

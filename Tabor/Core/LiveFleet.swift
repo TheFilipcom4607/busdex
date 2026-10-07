@@ -215,9 +215,11 @@ public enum LiveHints {
 
     /// The line the vehicle was running on at `date`, if the feed saw it recently enough.
     /// A coupled car the feed doesn't report takes its set's line: the lead car right there,
-    /// else its fixed partner, else the one neighbouring number that's running.
+    /// else its fixed partner, else the one neighbouring number that's running. A trailer
+    /// takes its motor car's (which needs `catalog`, to know which cars pull trailers).
     public static func line(for number: Int, kind: VehicleKind, snapshot: LiveSnapshot?, at date: Date,
-                            model: VehicleModel? = nil, nearby: [NearbyVehicle] = []) -> String? {
+                            model: VehicleModel? = nil, nearby: [NearbyVehicle] = [],
+                            catalog: FleetCatalog? = nil) -> String? {
         func reported(_ n: Int) -> String? {
             guard let v = snapshot?.vehicle(number: n, kind: kind), !v.line.isEmpty,
                   abs(date.timeIntervalSince(v.time)) <= lineWindow
@@ -225,8 +227,9 @@ public enum LiveHints {
             return v.line
         }
         if let line = reported(number) { return line }
-        guard let model, model.kind == kind, model.isCoupled(number) else { return nil }
-        if let lead = CoupledSet.partner(of: number, model: model, nearby: nearby), let line = reported(lead.number) {
+        guard let model, model.kind == kind, model.isCoupled(number) || model.isTrailer(number) else { return nil }
+        if let lead = CoupledSet.partner(of: number, model: model, nearby: nearby, catalog: catalog),
+           let line = reported(lead.number) {
             return line
         }
         if let fixed = model.fixedPartner(of: number) { return reported(fixed) }
@@ -237,16 +240,24 @@ public enum LiveHints {
 
 /// Trams that run as two coupled cars, each with its own number. The live feed has one row
 /// per set, under one car's number (usually the even one); the other car never shows up.
+/// A vintage trailer is the same: the feed has its motor car.
 public enum CoupledSet {
     /// The feed's lead car for `number`'s set: a same-model coupled tram within the rescue
     /// radius, and the only one, unless it's the fixed partner. Pairing isn't strict parity
     /// (1381 and 1387 lead sets) and a ±1 neighbour can be another model, so it goes by model.
-    public static func partner(of number: Int, model: VehicleModel, nearby: [NearbyVehicle]) -> LiveVehicle? {
-        guard model.kind == .tram, model.isCoupled(number) else { return nil }
-        let leads = nearby.filter {
+    /// For a trailer, the only car right there that pulls trailers (with `catalog`).
+    public static func partner(of number: Int, model: VehicleModel, nearby: [NearbyVehicle],
+                               catalog: FleetCatalog? = nil) -> LiveVehicle? {
+        guard model.kind == .tram else { return nil }
+        let close = nearby.filter {
             $0.distance <= LiveHints.rescueRadius && $0.vehicle.kind == .tram && $0.vehicle.number != number
-                && model.isCoupled($0.vehicle.number)
         }.map(\.vehicle)
+        if model.isTrailer(number), let catalog {
+            let motors = close.filter { catalog.secondCarModel($0.number, of: number, model: model) != nil }
+            return motors.count == 1 ? motors[0] : nil
+        }
+        guard model.isCoupled(number) else { return nil }
+        let leads = close.filter { model.isCoupled($0.number) }
         if let fixed = model.fixedPartner(of: number), let lead = leads.first(where: { $0.number == fixed }) { return lead }
         return leads.count == 1 ? leads[0] : nil
     }
@@ -256,14 +267,14 @@ public enum CoupledSet {
                                nearby: [NearbyVehicle]) -> (model: VehicleModel, lead: LiveVehicle)? {
         guard !nearby.isEmpty else { return nil }
         let hits = catalog.match(number: number, kind: .tram).candidates.compactMap { m in
-            partner(of: number, model: m, nearby: nearby).map { (model: m, lead: $0) }
+            partner(of: number, model: m, nearby: nearby, catalog: catalog).map { (model: m, lead: $0) }
         }
         return hits.count == 1 ? hits[0] : nil
     }
 
     public struct Suggestion: Sendable, Equatable {
         public enum Source: String, Sendable {
-            case fixed, photo, feed
+            case fixed, photo, feed, trailer
             case neighbour = "±1"
         }
         public let number: Int
@@ -271,19 +282,21 @@ public enum CoupledSet {
     }
 
     /// Up to three numbers for the car coupled to `number`, likeliest first: its fixed partner,
-    /// another number of the same model read in the photo, the feed's lead car, then n−1 and
-    /// n+1. Only real coupled cars of the same model, never the caught number itself.
+    /// another car it can run with read in the photo, the feed's lead car, a motor car's
+    /// trailers, then n−1 and n+1. Only cars it can really run with, never the caught number.
     public static func suggestions(for number: Int, model: VehicleModel, photoNumbers: [Int],
-                                   nearby: [NearbyVehicle]) -> [Suggestion] {
-        guard model.isCoupled(number) else { return [] }
+                                   nearby: [NearbyVehicle], catalog: FleetCatalog) -> [Suggestion] {
+        guard model.takesSecondCar(number) else { return [] }
         var out: [Suggestion] = []
         func add(_ n: Int?, _ source: Suggestion.Source) {
-            guard let n, n != number, model.isCoupled(n), !out.contains(where: { $0.number == n }) else { return }
+            guard let n, catalog.secondCarModel(n, of: number, model: model) != nil,
+                  !out.contains(where: { $0.number == n }) else { return }
             out.append(Suggestion(number: n, source: source))
         }
         add(model.fixedPartner(of: number), .fixed)
         photoNumbers.forEach { add($0, .photo) }
-        add(partner(of: number, model: model, nearby: nearby)?.number, .feed)
+        add(partner(of: number, model: model, nearby: nearby, catalog: catalog)?.number, .feed)
+        if model.pullsTrailers(number) { catalog.trailers.forEach { add($0, .trailer) } }
         add(number - 1, .neighbour)
         add(number + 1, .neighbour)
         return Array(out.prefix(3))
@@ -335,6 +348,28 @@ public enum Wanted {
         }.prefix(limit))
     }
 
+    /// Everything out on the feed, however far from you: what a filtered HUNT looks through.
+    /// The feed is only Warsaw's, so there's no radius to keep to; with one (60 km around you),
+    /// a tester in Bydgoszcz saw 0 next to every filter and an empty map (#38).
+    public static func anywhere(snapshot: LiveSnapshot, catalog: FleetCatalog, caught: CollectionStats,
+                                lat: Double, lon: Double, from user: (lat: Double, lon: Double)? = nil,
+                                includeCaught: Bool = false) -> [WantedPin] {
+        pins(snapshot: snapshot, catalog: catalog, caught: caught, lat: lat, lon: lon, within: .infinity,
+             from: user, includeCaught: includeCaught)
+    }
+
+    /// Everything on one line, picked from HUNT's search: whether or not you have it, nearest
+    /// first, so the map shows the line the search counted (#37). Through the header filter, a
+    /// line you'd caught all of said "4 out now" and then showed nothing.
+    public static func onLine(_ line: String, snapshot: LiveSnapshot, catalog: FleetCatalog, caught: CollectionStats,
+                              lat: Double, lon: Double, from user: (lat: Double, lon: Double)? = nil) -> [WantedPin] {
+        let key = HuntSearch.lineKey(line)
+        let on = LiveSnapshot(vehicles: snapshot.vehicles.filter { HuntSearch.lineKey($0.line) == key },
+                              fetched: snapshot.fetched)
+        return anywhere(snapshot: on, catalog: catalog, caught: caught, lat: lat, lon: lon,
+                        from: user, includeCaught: true).sorted { $0.distance < $1.distance }
+    }
+
     /// Vintage and test stock sort last in the book, but one that's actually out running
     /// is as rare a sight as anything: rank it with the legendaries.
     static func huntRank(_ tier: Tier) -> Int {
@@ -350,44 +385,134 @@ public struct HuntTargets: Equatable, Sendable, RawRepresentable {
     public var models: Set<String>
     /// Only buses or only trams; nil for both. Narrows the picks rather than adding to them.
     public var kind: VehicleKind?
+    /// One line as the feed writes it ("523", "N83"), from HUNT's search. Narrows, like the kind.
+    public var line: String?
+    /// Specs from the city's data (#31). Within one, any counts (12 M or 18 M); each one picked
+    /// narrows the rest, like the kind does.
+    public var lengths: Set<LengthBand>
+    public var drives: Set<ModelSpecs.Drive>
+    public var floors: Set<ModelSpecs.Floor>
 
-    public init(tiers: Set<Tier> = [], models: Set<String> = [], kind: VehicleKind? = nil) {
+    public init(tiers: Set<Tier> = [], models: Set<String> = [], kind: VehicleKind? = nil, line: String? = nil,
+                lengths: Set<LengthBand> = [], drives: Set<ModelSpecs.Drive> = [], floors: Set<ModelSpecs.Floor> = []) {
         self.tiers = tiers
         self.models = models
         self.kind = kind
+        self.line = line
+        self.lengths = lengths
+        self.drives = drives
+        self.floors = floors
     }
 
-    public var isEmpty: Bool { !hasPicks && kind == nil }
-    /// Rarities or models picked: you're after something specific, so HUNT looks across
-    /// the whole city. Buses or trams alone keep the usual view around you.
+    public var isEmpty: Bool { !isCityWide && kind == nil }
+    /// Rarities or models picked: these add to each other.
     public var hasPicks: Bool { !tiers.isEmpty || !models.isEmpty }
-    public var count: Int { tiers.count + models.count + (kind == nil ? 0 : 1) }
+    public var hasSpecs: Bool { !lengths.isEmpty || !drives.isEmpty || !floors.isEmpty }
+    /// You're after something specific, so HUNT looks across the whole city. Buses or trams
+    /// alone keep the usual view around you.
+    public var isCityWide: Bool { hasPicks || hasSpecs || line != nil }
+    public var count: Int {
+        tiers.count + models.count + (kind == nil ? 0 : 1) + (line == nil ? 0 : 1)
+            + lengths.count + drives.count + floors.count
+    }
 
+    /// Whether a model can match at all, whatever vehicle and line: for counting picks.
     public func matches(_ model: VehicleModel) -> Bool {
         (kind == nil || model.kind == kind)
             && (!hasPicks || tiers.contains(model.tier) || models.contains(model.id))
     }
 
-    /// "kind:TRAM,tier:GOLD,model:bus-mercus-syn2z", so it can live in UserDefaults.
+    /// A vehicle out now: its model, its own specs (a model's odd vehicles can differ, like the
+    /// 2019 CNG Lion's City Gs) and its line.
+    public func matches(_ model: VehicleModel, number: Int, line: String) -> Bool {
+        guard matches(model) else { return false }
+        if let want = self.line, HuntSearch.lineKey(line) != HuntSearch.lineKey(want) { return false }
+        guard hasSpecs else { return true }
+        let specs = model.specs(of: number)
+        if !lengths.isEmpty, !(specs?.length.flatMap(LengthBand.of).map(lengths.contains) ?? false) { return false }
+        // Trams have no drive in the city's data: a drive picked means buses.
+        if !drives.isEmpty, !(specs?.drive.map(drives.contains) ?? false) { return false }
+        if !floors.isEmpty, !(specs?.floor.map(floors.contains) ?? false) { return false }
+        return true
+    }
+
+    public func matches(_ pin: WantedPin) -> Bool {
+        matches(pin.model, number: pin.vehicle.number, line: pin.vehicle.line)
+    }
+
+    /// With a model added from its page in the book (#45). Picks add up, but whatever narrows
+    /// them could hide it: the line goes, and so does a type or spec none of its vehicles have.
+    public func adding(_ model: VehicleModel) -> HuntTargets {
+        var t = self
+        t.models.insert(model.id)
+        t.line = nil
+        if let kind, kind != model.kind { t.kind = nil }
+        let specs = model.numbers.map { model.specs(of: $0) }
+        if !lengths.isEmpty, !specs.contains(where: { $0?.length.flatMap(LengthBand.of).map(lengths.contains) ?? false }) { t.lengths = [] }
+        if !drives.isEmpty, !specs.contains(where: { $0?.drive.map(drives.contains) ?? false }) { t.drives = [] }
+        if !floors.isEmpty, !specs.contains(where: { $0?.floor.map(floors.contains) ?? false }) { t.floors = [] }
+        return t
+    }
+
+    /// Lengths in bands that sort buses and trams alike: minibuses and the oldest trams, the
+    /// standard 12 m bus, articulated buses and short trams, long trams, the longest trams.
+    public enum LengthBand: String, CaseIterable, Sendable, Comparable {
+        case under10 = "0-10", to13 = "10-13", to20 = "13-20", to30 = "20-30", over30 = "30-"
+
+        /// Millimetres.
+        public static func of(_ length: Int) -> LengthBand {
+            switch length {
+            case ..<10_000: .under10
+            case ..<13_000: .to13
+            case ..<20_000: .to20
+            case ..<30_000: .to30
+            default: .over30
+            }
+        }
+
+        public var name: String {
+            switch self {
+            case .under10: String(localized: "UNDER 10 M")
+            case .to13: String(localized: "10–13 M")
+            case .to20: String(localized: "13–20 M")
+            case .to30: String(localized: "20–30 M")
+            case .over30: String(localized: "30 M+")
+            }
+        }
+
+        public static func < (a: Self, b: Self) -> Bool {
+            allCases.firstIndex(of: a)! < allCases.firstIndex(of: b)!
+        }
+    }
+
+    /// "kind:TRAM,tier:GOLD,model:bus-mercus-syn2z,line:523,drive:cng", so it can live in
+    /// UserDefaults. Older versions skip the tokens they don't know.
     public var rawValue: String {
         ((kind.map { ["kind:\($0.rawValue)"] } ?? []) + tiers.map { "tier:\($0.rawValue)" }.sorted()
-            + models.map { "model:\($0)" }.sorted())
+            + models.map { "model:\($0)" }.sorted() + (line.map { ["line:\($0)"] } ?? [])
+            + lengths.sorted().map { "length:\($0.rawValue)" } + drives.map { "drive:\($0.rawValue)" }.sorted()
+            + floors.map { "floor:\($0.rawValue)" }.sorted())
             .joined(separator: ",")
     }
 
     /// Unknown tokens (a tier renamed in a later version) are skipped, never fatal.
     public init(rawValue: String) {
-        var tiers = Set<Tier>(), models = Set<String>(), kind: VehicleKind?
+        var t = HuntTargets()
         for token in rawValue.split(separator: ",") {
-            if token.hasPrefix("tier:") {
-                if let tier = Tier(rawValue: String(token.dropFirst(5))) { tiers.insert(tier) }
-            } else if token.hasPrefix("model:"), token.count > 6 {
-                models.insert(String(token.dropFirst(6)))
-            } else if token.hasPrefix("kind:") {
-                kind = VehicleKind(rawValue: String(token.dropFirst(5)))
+            guard let colon = token.firstIndex(of: ":") else { continue }
+            let key = token[..<colon], value = String(token[token.index(after: colon)...])
+            switch key {
+            case "tier": if let tier = Tier(rawValue: value) { t.tiers.insert(tier) }
+            case "model": if !value.isEmpty { t.models.insert(value) }
+            case "kind": t.kind = VehicleKind(rawValue: value)
+            case "line": if !value.isEmpty { t.line = value }
+            case "length": if let l = LengthBand(rawValue: value) { t.lengths.insert(l) }
+            case "drive": if let d = ModelSpecs.Drive(rawValue: value) { t.drives.insert(d) }
+            case "floor": if let f = ModelSpecs.Floor(rawValue: value) { t.floors.insert(f) }
+            default: break
             }
         }
-        self.init(tiers: tiers, models: models, kind: kind)
+        self = t
     }
 }
 

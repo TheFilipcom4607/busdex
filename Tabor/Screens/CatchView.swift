@@ -1,3 +1,4 @@
+import AVKit
 import CoreLocation
 import PhotosUI
 import SwiftData
@@ -35,6 +36,12 @@ struct CatchDraft: Identifiable {
     /// Every number read in the photo, best first. A live lock skips the still read, so this
     /// may finish after the reveal opens.
     var photoNumbers: Task<[Int], Never>?
+    /// The whole read of the photo: where each number is written, for other vehicles in it.
+    var photoRead: Task<TextReader.Report, Never>?
+    /// Other vehicles read in the photo, offered on the reveal (`AlsoInShot`).
+    var alsoInShot: [AlsoInShot.Vehicle] = []
+    /// Numbers of those you added: each becomes a catch of its own.
+    var alsoAdded: [Int] = []
 }
 
 struct CatchView: View {
@@ -72,6 +79,7 @@ struct CatchView: View {
     /// Zoom when the current pinch started.
     @State private var pinchStart: CGFloat?
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(Router.self) private var router
 
     private let catalog = Fleet.catalog
 
@@ -168,6 +176,18 @@ struct CatchView: View {
             camera.stop()
             live.stop("camera")
         }
+        // The volume buttons (and Camera Control) fire the shutter, as in the Camera app:
+        // quicker than finding the button on screen with a bus pulling away. The system
+        // only hands them over while the camera runs, so volume works as usual elsewhere.
+        .onCameraCaptureEvent(isEnabled: draft == nil && camera.status == .running) { event in
+            switch event.phase {
+            case .began: shutterDown = true
+            case .ended:
+                shutterDown = false
+                Task { await shoot() }
+            default: shutterDown = false
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, visible { live.start("camera") }
             if phase == .active, draft == nil, visible { Task { await camera.start() } }
@@ -185,13 +205,18 @@ struct CatchView: View {
             let isNew = m.suggested.map { stats.vehicle(number: n, modelId: $0.id) == nil } ?? false
             Haptics.shared.numberLocked(isNew: isNew)
         }
+        // A photo shared from another app (Photos, Lightroom…): caught like an imported one.
+        .onChange(of: router.sharedPhotos, initial: true) { takeShared() }
         .onChange(of: pickerItem) { _, item in
             guard let item else { return }
+            // The picker is still sliding away; a reveal presented under it comes out laid out
+            // with no safe area (header under the status bar), for as long as it's up.
+            let pickerGone = ContinuousClock.now + .milliseconds(600)
             Task {
                 capturing = true
                 defer { capturing = false }
                 if let data = try? await item.loadTransferable(type: Data.self) {
-                    await begin(with: data, live: nil, fromCamera: false)
+                    await begin(with: data, live: nil, fromCamera: false, presentAfter: pickerGone)
                 } else {
                     Haptics.shared.nope()
                     DebugRecord.begin(source: "import", mode: mode)?.update { $0.error = "couldn't load the picked photo" }
@@ -204,6 +229,8 @@ struct CatchView: View {
             frozen = nil
             camera.resetReading()
             if visible { Task { await camera.start() } }
+            // Shared while this reveal was up.
+            takeShared()
         }) { d in
             RevealView(draft: d)
                 .windowControlsClearance()
@@ -518,6 +545,8 @@ struct CatchView: View {
         .padding(3)
         .glass(Capsule())
         .animation(.snappy(duration: 0.2), value: active)
+        .opacity(camera.controlsFullscreen ? 0 : 1)
+        .animation(.easeOut(duration: 0.2), value: camera.controlsFullscreen)
     }
 
     /// "0.5", "1", "2.4", "5".
@@ -598,7 +627,7 @@ struct CatchView: View {
     private func liveLine(_ n: Int?, model: VehicleModel) -> String? {
         guard let n else { return nil }
         let v = live.nearby.first { $0.vehicle.number == n && $0.vehicle.kind == model.kind }?.vehicle
-            ?? CoupledSet.partner(of: n, model: model, nearby: live.nearby)
+            ?? CoupledSet.partner(of: n, model: model, nearby: live.nearby, catalog: catalog)
         return v?.line.nonEmpty
     }
 
@@ -666,7 +695,18 @@ struct CatchView: View {
         }
     }
 
-    private func begin(with data: Data, live: Int?, fromCamera: Bool, record: DebugRecord? = nil) async {
+    /// The photo waiting in the share inbox, if any and if nothing else is being caught.
+    private func takeShared() {
+        guard draft == nil, !capturing, let data = ShareInbox.take() else { return }
+        Task {
+            capturing = true
+            defer { capturing = false }
+            await begin(with: data, live: nil, fromCamera: false, record: DebugRecord.begin(source: "share", mode: mode))
+        }
+    }
+
+    private func begin(with data: Data, live: Int?, fromCamera: Bool, record: DebugRecord? = nil,
+                       presentAfter: ContinuousClock.Instant? = nil) async {
         let preview = await Task.detached(priority: .userInitiated) {
             PhotoStore.downsample(data, maxPixel: 900).map(UIImage.init(cgImage:))
         }.value
@@ -747,6 +787,7 @@ struct CatchView: View {
                            debug: record)
         d.nearby = nearby
         d.photoNumbers = Task { await ocr.value.candidates.sorted { $0.score > $1.score }.map(\.number) }
+        d.photoRead = ocr
         if let n = number {
             let plain = catalog.match(number: n, preferring: mode.kind, manual: manual.map)
             let match = lookup(n, nearby: nearby)
@@ -754,13 +795,15 @@ struct CatchView: View {
             d.modelId = match.suggested?.id
             if fromCamera, let model = match.suggested {
                 let snapshot = self.live.snapshot
-                d.line = LiveHints.line(for: n, kind: model.kind, snapshot: snapshot, at: d.date, model: model, nearby: nearby)
+                d.line = LiveHints.line(for: n, kind: model.kind, snapshot: snapshot, at: d.date, model: model, nearby: nearby,
+                                        catalog: catalog)
                 d.autoLine = d.line
                 // "set": borrowed from the coupled car the feed reports instead.
                 liveInfo.lineSource = d.line == nil ? "none" : snapshot?.vehicle(number: n, kind: model.kind) == nil ? "set" : "live"
             }
             if let model = match.suggested {
-                d.partnerSuggestions = CoupledSet.suggestions(for: n, model: model, photoNumbers: photoNumbers, nearby: nearby)
+                d.partnerSuggestions = CoupledSet.suggestions(for: n, model: model, photoNumbers: photoNumbers, nearby: nearby,
+                                                              catalog: catalog)
             }
             let described = DebugRecord.describe(match), suggested = d.modelId
             record?.update {
@@ -780,6 +823,7 @@ struct CatchView: View {
             }
         }
         camera.stop()
+        if let presentAfter { try? await Task.sleep(until: presentAfter) }
         draft = d
     }
 }

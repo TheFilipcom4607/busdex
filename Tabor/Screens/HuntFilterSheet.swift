@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Pick what HUNT shows: buses or trams only, and whole rarities or particular models, any
-/// of which counts (a wanted list). Changes apply as you tap, so the map behind the
-/// half-height sheet follows.
+/// Pick what HUNT shows: buses or trams only, whole rarities or particular models, any of
+/// which counts (a wanted list), and specs that narrow it down (length, drive, floor). Changes
+/// apply as you tap, so the map behind the half-height sheet follows.
 struct HuntFilterSheet: View {
     @Binding var targets: HuntTargets
     /// Every uncaught vehicle running right now, anywhere (in the ALL view, caught ones too).
@@ -60,6 +60,8 @@ struct HuntFilterSheet: View {
                         }
                     }
 
+                    specs(picked: picked, running: ofKind)
+
                     SectionLabel(text: String(localized: "MODELS"))
                         .padding(.top, 24)
                         .padding(.bottom, 9)
@@ -81,6 +83,7 @@ struct HuntFilterSheet: View {
                     }
                 }
                 .padding(22)
+                .fitScrollWidth()
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Palette.bg)
@@ -106,6 +109,71 @@ struct HuntFilterSheet: View {
 
     // MARK: - Pieces
 
+    /// Length, drive and floor from the city's data. Only what this type has: trams have no
+    /// drive in it, and no bus is 30 m long.
+    @ViewBuilder
+    private func specs(picked: HuntTargets, running: [WantedPin]) -> some View {
+        let models = catalog.models.filter { picked.kind == nil || $0.kind == picked.kind }
+        let all = models.flatMap { [$0.specs].compactMap { $0 } + $0.variants.map(\.specs) }
+        let lengths = HuntTargets.LengthBand.allCases.filter { b in all.contains { $0.length.map(HuntTargets.LengthBand.of) == b } }
+        let drives = ModelSpecs.Drive.allCases.filter { d in all.contains { $0.drive == d } }
+        let floors = ModelSpecs.Floor.allCases.filter { f in all.contains { $0.floor == f } }
+        let specsOut = running.map { $0.model.specs(of: $0.vehicle.number) }
+
+        SectionLabel(text: String(localized: "LENGTH"))
+            .padding(.top, 24)
+            .padding(.bottom, 9)
+        FlowRow(spacing: 7) {
+            ForEach(lengths, id: \.self) { b in
+                specChip(b.name, count: specsOut.filter { $0?.length.map(HuntTargets.LengthBand.of) == b }.count,
+                         on: picked.lengths.contains(b)) { targets.lengths.formSymmetricDifference([b]) }
+            }
+        }
+        if !drives.isEmpty {
+            HStack(alignment: .firstTextBaseline) {
+                SectionLabel(text: String(localized: "DRIVE"))
+                Spacer()
+                if picked.kind == nil { Mono(String(localized: "BUSES"), size: 9.5, color: Palette.faint) }
+            }
+            .padding(.top, 24)
+            .padding(.bottom, 9)
+            FlowRow(spacing: 7) {
+                ForEach(drives, id: \.self) { d in
+                    specChip(d.name, count: specsOut.filter { $0?.drive == d }.count,
+                             on: picked.drives.contains(d)) { targets.drives.formSymmetricDifference([d]) }
+                }
+            }
+        }
+        SectionLabel(text: String(localized: "FLOOR"))
+            .padding(.top, 24)
+            .padding(.bottom, 9)
+        FlowRow(spacing: 7) {
+            ForEach(floors, id: \.self) { f in
+                specChip(f.name.uppercased(), count: specsOut.filter { $0?.floor == f }.count,
+                         on: picked.floors.contains(f)) { targets.floors.formSymmetricDifference([f]) }
+            }
+        }
+    }
+
+    private func specChip(_ text: String, count: Int, on: Bool, toggle: @escaping () -> Void) -> some View {
+        Button {
+            Haptics.shared.tick()
+            withAnimation(.snappy) { toggle() }
+        } label: {
+            HStack(spacing: 6) {
+                Mono(text, size: 11, weight: 700, spacing: 0.1, color: on ? Palette.bg : Palette.ink)
+                Mono("\(count)", size: 11, weight: 500, spacing: 0, color: on ? Palette.bg.opacity(0.65) : Palette.faint)
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(on ? Palette.ink : Palette.chip, in: Capsule())
+            .overlay(Capsule().stroke(Palette.ink.opacity(on ? 0 : 0.2)))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(text.capitalized), \(count) out now")
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
     /// One of BUS / TRAM, or neither: tapping the lit one goes back to both.
     private func kindChip(_ k: VehicleKind, count: Int, on: Bool) -> some View {
         Button {
@@ -114,6 +182,8 @@ struct HuntFilterSheet: View {
                 targets.kind = on ? nil : k
                 // A model of the other kind could never match any more: drop it.
                 if !on { targets.models = targets.models.filter { catalog.model(id: $0)?.kind == k } }
+                // Trams have no drive in the city's data, so a drive picked would match nothing.
+                if !on, k == .tram { targets.drives = [] }
             }
         } label: {
             HStack(spacing: 6) {

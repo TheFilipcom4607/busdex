@@ -1,0 +1,49 @@
+name: Fleet data matches its script
+
+# fleet.json and fleet-models.csv are built by fetch_fleet.py from the saved files in data/,
+# and every correction lives in the script's hand-kept lists. This rebuilds them offline and
+# fails if the committed files differ, so a hand edit to fleet.json (which the nightly refresh
+# would quietly undo) or a script change committed without its rebuild never reaches main.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Tabor/Resources/fleet.json"
+      - "data/**"
+      - "scripts/fetch_fleet.py"
+      - "scripts/export_models_csv.py"
+      - ".github/workflows/fleet-reproducible.yml"
+  pull_request:
+    paths:
+      - "Tabor/Resources/fleet.json"
+      - "data/**"
+      - "scripts/fetch_fleet.py"
+      - "scripts/export_models_csv.py"
+      - ".github/workflows/fleet-reproducible.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fleet-reproducible-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Rebuild offline and compare
+        run: |
+          python3 scripts/fetch_fleet.py --offline
+          python3 scripts/export_models_csv.py
+          if ! git diff --exit-code --stat -- Tabor/Resources/fleet.json data/fleet-models.csv; then
+            echo "::error::The committed fleet data isn't what fetch_fleet.py builds. Make the change as a rule in fetch_fleet.py, run 'python3 scripts/fetch_fleet.py --offline' and 'python3 scripts/export_models_csv.py', and commit the result."
+            exit 1
+          fi

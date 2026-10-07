@@ -14,17 +14,32 @@ struct CorrectionSheet: View {
     @State private var pickedByHand = false
     @State private var search = ""
     @State private var kind: VehicleKind?
+    /// The line a RUNNING NEARBY chip filled in, so another chip may replace it.
+    @State private var lineFromChip: String?
+    /// The kind the typed line set, so a different line may change it (a kind you tap stays).
+    @State private var kindFromLine: VehicleKind?
     @FocusState private var numberFocused: Bool
+    @FocusState private var lineFocused: Bool
 
     private let catalog = Fleet.catalog
+    private let live = LiveFleetService.shared
+    private let routes = RoutesUpdater.shared
 
     var body: some View {
         let number = Int(numberText)
         let match = number.map { catalog.match(number: $0, kind: kind, manual: manual.map) } ?? .unknown
         let candidates = match.candidates
+        let onLine = self.onLine
+        let searched = { (m: VehicleModel) in
+            search.isEmpty || m.name.localizedStandardContains(search) || (m.code ?? "").localizedStandardContains(search)
+        }
+        let lineModels = onLine.models.filter { m in !candidates.contains { $0.id == m.id } && searched(m) }
+        let lineIds = Set(lineModels.map(\.id))
         let others = catalog.pickerOrder(candidates: candidates, kind: kind)
             .dropFirst(candidates.count)
-            .filter { search.isEmpty || $0.name.localizedStandardContains(search) || ($0.code ?? "").localizedStandardContains(search) }
+            .filter { !lineIds.contains($0.id) && searched($0) }
+        // As the feed writes it ("L-8"), whatever case and dashes went into the field.
+        let lineName = onLine.running.first?.vehicle.line ?? line.trimmingCharacters(in: .whitespaces).uppercased()
 
         NavigationStack {
             ScrollView {
@@ -47,30 +62,74 @@ struct CorrectionSheet: View {
                     Mono(status(match, number: number), size: 10.5, color: statusColor(match, number: number))
                         .padding(.top, 8)
 
-                    HStack(spacing: 7) {
-                        kindChip(nil, String(localized: "ANY", comment: "Vehicle kind: bus or tram"))
-                        kindChip(.bus, VehicleKind.bus.name)
-                        kindChip(.tram, VehicleKind.tram.name)
-                        Spacer()
-                        HStack(spacing: 6) {
-                            Mono("LINE", size: 10.5)
-                            TextField("", text: $line, prompt: Text("—").foregroundStyle(Palette.ghost))
-                                .font(TaborFont.mono(15, 700))
-                                .keyboardType(.asciiCapable)
-                                .textInputAutocapitalization(.characters)
-                                .frame(width: 54)
+                    // Missed the number? What was running right there when you shot (#41).
+                    let running = nearbyChoices
+                    if !running.isEmpty {
+                        SectionLabel(text: String(localized: "RUNNING NEARBY"))
+                            .padding(.top, 18)
+                            .padding(.bottom, 8)
+                        ScrollView(.horizontal) {
+                            HStack(spacing: 7) {
+                                ForEach(running, id: \.self) { n in
+                                    vehicleChip(n.vehicle, detail: "\(n.vehicle.line) · \(distanceText(n.distance))",
+                                                on: n.vehicle.number == number)
+                                }
+                            }
                         }
-                        .padding(.vertical, 6)
-                        .padding(.horizontal, 10)
-                        .background(Palette.card, in: Capsule())
+                        .scrollIndicators(.hidden)
+                        .scrollClipDisabled()
+                    }
+
+                    // Polish chips are wider and used to squeeze LINE's label out, leaving a
+                    // bare "—" circle nobody could place (#48); then it goes on a row of its own.
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 7) {
+                            kindChips
+                            Spacer(minLength: 0)
+                            lineField
+                        }
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 7) { kindChips }
+                            lineField
+                        }
                     }
                     .padding(.top, 18)
+
+                    // A typed line used to change nothing on screen (#50): now it lists what runs it.
+                    if !onLine.running.isEmpty {
+                        SectionLabel(text: String(localized: "ON LINE \(lineName) NOW"))
+                            .padding(.top, 18)
+                            .padding(.bottom, 8)
+                        ScrollView(.horizontal) {
+                            HStack(spacing: 7) {
+                                ForEach(onLine.running.prefix(10), id: \.self) { r in
+                                    vehicleChip(r.vehicle, detail: r.distance.map(distanceText) ?? "", on: r.vehicle.number == number)
+                                }
+                            }
+                        }
+                        .scrollIndicators(.hidden)
+                        .scrollClipDisabled()
+                    } else if !lineName.isEmpty {
+                        Mono(lineFeedAsked ? String(localized: "LINE \(lineName) ISN'T RUNNING NOW · SAVED WITH THE CATCH")
+                                           : String(localized: "THE LINE IS SAVED WITH THE CATCH"),
+                             size: 10, color: Palette.dim)
+                            .padding(.top, 10)
+                    }
 
                     if !candidates.isEmpty {
                         SectionLabel(text: candidates.count > 1 ? String(localized: "THIS NUMBER EXISTS ON") : String(localized: "IN THE ZTM DATABASE"))
                             .padding(.top, 22)
                             .padding(.bottom, 8)
                         ForEach(candidates) { m in modelRow(m, number: number) }
+                    }
+
+                    if !lineModels.isEmpty {
+                        SectionLabel(text: String(localized: "MODELS ON LINE \(lineName)"))
+                            .padding(.top, 22)
+                            .padding(.bottom, 8)
+                        VStack(spacing: 6) {
+                            ForEach(lineModels) { m in modelRow(m, number: number) }
+                        }
                     }
 
                     SectionLabel(text: candidates.isEmpty ? String(localized: "PICK THE MODEL") : String(localized: "SOMETHING ELSE"))
@@ -87,6 +146,7 @@ struct CorrectionSheet: View {
                     }
                 }
                 .padding(22)
+                .fitScrollWidth()
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Palette.bg)
@@ -120,13 +180,107 @@ struct CorrectionSheet: View {
             modelId = draft.modelId
             pickedByHand = draft.modelPickedByHand
             if draft.number == nil { numberFocused = true }
+            routes.prepare()
         }
+        .onChange(of: onLine.kind) { applyLineKind() }
+    }
+
+    /// The live vehicles around you at the shutter, nearest first: camera shots only.
+    private var nearbyChoices: [NearbyVehicle] {
+        var seen = Set<String>()
+        return draft.nearby
+            .filter { seen.insert("\($0.vehicle.kind.rawValue)#\($0.vehicle.number)").inserted }
+            .prefix(6)
+            .map { $0 }
+    }
+
+    /// The live feed is only asked about a photo from the last half hour: it says what's out now,
+    /// not what was out when an older shot was taken.
+    private var lineFeedAsked: Bool {
+        Date().timeIntervalSince(draft.date) < 30 * 60 && live.fresh(maxAge: 120) != nil
+    }
+
+    private var onLine: LineLookup.Result {
+        let here = LocationService.shared.recent(maxAge: 300).map { (lat: $0.coordinate.latitude, lon: $0.coordinate.longitude) }
+        return LineLookup.lookup(line, snapshot: lineFeedAsked ? live.fresh(maxAge: 120) : nil, routes: routes.book,
+                                 near: here, catalog: catalog, manual: manual.map)
+    }
+
+    /// The line says bus or tram, unless you tapped a kind yourself.
+    private func applyLineKind() {
+        guard kind == nil || kind == kindFromLine, onLine.kind != kind else { return }
+        kind = onLine.kind
+        kindFromLine = kind
+        // Never over a model you picked by hand.
+        if !pickedByHand { autoPick() }
+    }
+
+    private func distanceText(_ metres: Double) -> String {
+        metres < 1000 ? "\(Int((metres / 10).rounded()) * 10) m"
+            : "\((metres / 1000).formatted(.number.precision(.fractionLength(1)))) km"
+    }
+
+    private func vehicleChip(_ v: LiveVehicle, detail: String, on: Bool) -> some View {
+        Button {
+            Haptics.shared.tick()
+            // Picked: the keyboard would only hide the model it just matched.
+            lineFocused = false
+            numberFocused = false
+            numberText = String(v.number)
+            kind = v.kind
+            // The line comes along unless you typed one yourself.
+            if line.isEmpty || line == draft.autoLine || line == lineFromChip {
+                line = v.line
+                lineFromChip = v.line
+            }
+            autoPick()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: v.kind == .bus ? "bus.fill" : "tram.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                Text(String(v.number))
+                    .font(TaborFont.mono(14, 700))
+                if !detail.isEmpty {
+                    Mono(detail, size: 10, color: on ? Palette.bg.opacity(0.7) : Palette.dim)
+                }
+            }
+            .foregroundStyle(on ? Palette.bg : Palette.ink)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(on ? Palette.yellow : Palette.card, in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder private var kindChips: some View {
+        kindChip(nil, String(localized: "ANY", comment: "Vehicle kind: bus or tram"))
+        kindChip(.bus, VehicleKind.bus.name)
+        kindChip(.tram, VehicleKind.tram.name)
+    }
+
+    private var lineField: some View {
+        HStack(spacing: 6) {
+            Mono("LINE", size: 10.5)
+                .fixedSize()
+            TextField("", text: $line, prompt: Text("—").foregroundStyle(Palette.ghost))
+                .font(TaborFont.mono(15, 700))
+                .keyboardType(.asciiCapable)
+                .textInputAutocapitalization(.characters)
+                .submitLabel(.done)
+                .focused($lineFocused)
+                .frame(width: 54)
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .background(Palette.card, in: Capsule())
+        .fixedSize()
     }
 
     private func kindChip(_ k: VehicleKind?, _ label: String) -> some View {
         Button {
             Haptics.shared.tick()
             kind = k
+            kindFromLine = nil
             autoPick()
         } label: {
             Mono(label, size: 11, weight: 600, color: kind == k ? Palette.bg : Palette.sub)

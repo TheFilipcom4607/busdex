@@ -7,12 +7,14 @@ Two sources, plus the hand-kept lists below:
   wins, so model ids never change.
 - The city's open-data vehicle list (dane.um.warszawa.pl, get_ztm_pojazdy), refreshed daily,
   data/ztm-pojazdy.json. It adds the vehicles the scrape hasn't got, each joining the model
-  most of its type (idMarki) belongs to, plus each model's specs.
+  most of its type (idMarki) belongs to, plus each model's specs. It also says which vehicles
+  still run (a scrape row it has dropped is left out) and where they're based.
 
 Usage:  python3 scripts/fetch_fleet.py            # fetch the city's list + build
         python3 scripts/fetch_fleet.py --offline  # rebuild from the saved files
         python3 scripts/fetch_fleet.py --scrape   # re-scrape ZTM's database too (slow)
         python3 scripts/fetch_fleet.py --allow-drop  # let model ids disappear (on purpose)
+        python3 scripts/fetch_fleet.py --touch    # restamp `fetched` even if nothing changed
 
 The city's list needs TABOR_DANE_TOKEN, from the environment or Config/Secrets.xcconfig.
 """
@@ -25,7 +27,7 @@ import time
 import urllib.parse
 import urllib.request
 from collections import Counter, defaultdict
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -142,9 +144,16 @@ def dane_token():
 
 def fetch_city():
     """The city's vehicle list, trimmed to what the build uses, saved to data/ztm-pojazdy.json."""
-    req = urllib.request.Request(DANE, data=b"{}", method="POST", headers={
-        **HEADERS, "Accept": "application/json", "Content-Type": "application/json",
-        "Authorization": dane_token()})
+    # The city times out on GitHub's runners, so the Action goes through the tabor-live Worker
+    # (DANE_URL, with the upload token), as build_routes.py does for the GTFS.
+    if os.environ.get("DANE_URL"):
+        req = urllib.request.Request(os.environ["DANE_URL"], headers={
+            **HEADERS, "Accept": "application/json",
+            "Authorization": f"Bearer {os.environ['ROUTES_UPLOAD_TOKEN']}"})
+    else:
+        req = urllib.request.Request(DANE, data=b"{}", method="POST", headers={
+            **HEADERS, "Accept": "application/json", "Content-Type": "application/json",
+            "Authorization": dane_token()})
     for attempt in range(4):
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
@@ -176,7 +185,9 @@ def fetch_city():
 def with_city(vehicles, city, report=True):
     """The scrape plus the vehicles only the city lists. A new number joins the model most
     numbers of its type (idMarki) already belong to; a type nothing known belongs to is
-    printed for a human to place, and left out. Numbers only we list are kept, and printed."""
+    printed for a human to place, and left out. A scrape row the city no longer lists is
+    gone from the fleet (printed), unless STILL_RUNNING keeps it. The city's depot wins: it's
+    refreshed daily, the scrape isn't."""
     listed = {(c["kind"], c["number"]): c for c in city["vehicles"]}
     votes = defaultdict(Counter)
     # Hand-added deliveries count as known too: they're how a brand-new type gets placed.
@@ -186,7 +197,17 @@ def with_city(vehicles, city, report=True):
         if c := listed.get((kind, number)):
             votes[(kind, c["idMarki"])][(make, model)] += 1
     ours = {(v["kind"], v["number"]) for v in vehicles}
-    out, added, unplaced = list(vehicles), Counter(), defaultdict(list)
+    out, added, unplaced, gone = [], Counter(), defaultdict(list), defaultdict(list)
+    for v in vehicles:
+        c = listed.get((v["kind"], v["number"]))
+        if c:
+            out.append({**v, "depot": c["depot"] or v["depot"]})
+        elif (v["kind"], v["number"]) in STILL_RUNNING or not v["number"].isdigit():
+            out.append(v)
+        else:
+            retired = RETIRED.get((v["kind"], v["make"], v["model"], short_carrier(v["carrier"])), set())
+            if int(v["number"]) not in retired:
+                gone[(v["kind"], v["make"], v["model"])].append(int(v["number"]))
     for (kind, number), c in sorted(listed.items()):
         if (kind, number) in ours or not number.isdigit():
             continue
@@ -203,12 +224,8 @@ def with_city(vehicles, city, report=True):
         print(f"  + {n} from the city's list: {model}")
     for (kind, id_marki), numbers in sorted(unplaced.items()):
         print(f"  ? {kind} type {id_marki} fits no model yet, left out: {', '.join(numbers)}")
-    missing = defaultdict(list)
-    for v in vehicles:
-        if (v["kind"], v["number"]) not in listed and v["number"].isdigit():
-            missing[(v["kind"], v["make"], v["model"])].append(int(v["number"]))
-    for (kind, make, model), numbers in sorted(missing.items()):
-        print(f"  - not in the city's list: {kind} {make} {model} {span(numbers)}")
+    for (kind, make, model), numbers in sorted(gone.items()):
+        print(f"  - gone from the city's list, left out: {kind} {make} {model} {span(numbers)}")
     return out
 
 
@@ -223,10 +240,29 @@ def span(numbers):
     return ", ".join(f"{a}-{b}" if a != b else f"{a}" for a, b in runs)
 
 
+# Both of ZTM's lists number a few heritage cars with a suffix. "403-1" is K #403 itself, the
+# "Berlinek" (Warszawikia, kmkm.waw.pl; issue #33), not a trailer, and its fleet number is 403.
+# MZA's Urbino 12 #1400 became heritage bus #6900 in October 2026 (phototrans.eu): the scrape
+# still has the old number. Drop this once a scrape lists #6900 itself.
+RENUMBER = {("TRAM", "403-1"): "403", ("BUS", "1400"): "6900"}
+
+
+def renumbered(rows):
+    return [{**r, "number": RENUMBER.get((r["kind"], r["number"]), r["number"])} for r in rows]
+
+
+def load_raw():
+    return renumbered(json.loads(RAW.read_text())["vehicles"])
+
+
+def load_city():
+    city = json.loads(CITY.read_text())
+    return {**city, "vehicles": renumbered(city["vehicles"])}
+
+
 def source_rows():
     """Every vehicle row fleet.json is built from, before the hand-kept lists."""
-    scraped = json.loads(RAW.read_text())["vehicles"]
-    return with_city(scraped, json.loads(CITY.read_text()), report=False) if CITY.exists() else scraped
+    return with_city(load_raw(), load_city(), report=False) if CITY.exists() else load_raw()
 
 
 # What the city calls each drive, for the model page.
@@ -310,7 +346,10 @@ DISPLAY_NAMES = {
     ("Konstal", "105N"): "Konstal 105Na",
     ("Alstom Konstal", "105N"): "Konstal 105N2k",
     ("Alstom Konstal", "116N"): "Alstom 116Na",
-    ("Pesa", "120N"): "Pesa 120N / 120Na Swing",
+    # Split by SPLIT below; names per Warszawikia.
+    ("Pesa", "120N"): "Pesa 120N Tramicus",
+    ("Pesa", "120Na"): "Pesa 120Na Swing",
+    ("Pesa", "120NaDuo"): "Pesa 120NaDuo Swing Duo",
     ("Pesa", "128N"): "Pesa 128N Jazz Duo",
     ("Pesa", "134N"): "Pesa 134N Jazz",
     ("Linke-Hoffmann", "Lw"): "Linke-Hofmann Lw",
@@ -324,19 +363,23 @@ DISPLAY_NAMES = {
 # VINTAGE and leaves them out of the "% of fleet" total. Checked 2026-09-22 against
 # kmkm.waw.pl/wlt-2026 and live tracking (api.zbiorkom.live).
 VINTAGE = {
-    "tram-falkenried-a", "tram-linke-hoffmann-lw", "tram-lilpop-c",
-    "tram-gdanska-fabryka-wagonow-wiwk-k", "tram-cred-d-wag-4egtw", "tram-konstal-n",
+    "tram-falkenried-a", "tram-linke-hoffmann-lw", "tram-lilpop-c", "tram-warsztaty-glowne-w",
+    "tram-gdanska-fabryka-wagonow-wiwk-k", "tram-konstal-n",
     "tram-konstal-4n", "tram-konstal-13n", "tram-konstal-102n",
     "bus-ikarus-260", "bus-ikarus-280", "bus-solaris-urbino-15",
 }
 
 # Vintage vehicles filed under a regular model in the ZTM database: split out into a
-# vintage model of their own. KMKM-owned 105Na sets (kmkm.waw.pl/tramwaje-lista).
+# vintage model of their own. KMKM-owned 105Na sets (kmkm.waw.pl/tramwaje-lista), and #1006,
+# TW's wood-panelled promotional car: a works car since 2012, out for hire and line T, never
+# on regular routes (tramwar.pl/tw1006.html; the city's list gives it a type of its own).
 VINTAGE_NUMBERS = {
-    ("TRAM", "Konstal", "105N"): {1000, 1001, 1251, 1252},
-    # MZA's own heritage buses sit in the 69xx range (with the Ikarus and Urbino 15).
+    ("TRAM", "Konstal", "105N"): {1000, 1001, 1006, 1251, 1252},
+    # MZA's own heritage buses sit in the 69xx range (with the Ikarus and Urbino 15). #6900 is
+    # the 2007 Urbino 12 #1400, renumbered after its last run on 18.09.2026 (phototrans.eu).
     ("BUS", "MAN", "A23"): {6922},
     ("BUS", "Solaris", "Urbino 18"): {6923},
+    ("BUS", "Solaris", "Urbino 12"): {6900},
 }
 
 # Trams that run as two coupled cars, each with its own fleet number. The live feed reports a
@@ -346,15 +389,25 @@ VINTAGE_NUMBERS = {
 # "all 30 cars coupled in 15 sets" (Warszawikia). In the live feed (checked for issue #23), 46 of
 # 47 running 105Na numbers were even, 44 of 44 105N2k and 10 of 10 123N; single-car models split
 # about half and half.
-# Left out: N/4N cars with ND/4ND trailers, since which numbers are the trailers isn't confirmed.
+# The vintage N/4N trailers are TRAILERS below, not sets. The vintage 105Nas aren't COUPLED:
+# their FIXED_SETS pair the KMKM's cars, and #1006 runs alone (its partner #1007 was scrapped
+# in 2011).
 COUPLED = {
-    "tram-konstal-105n", "tram-alstom-konstal-105n", "tram-hcp-123n", "tram-konstal-105n-vintage",
+    "tram-konstal-105n", "tram-alstom-konstal-105n", "tram-hcp-123n",
 }
 
 # Sets that always run together: the KMKM's 105Na sets (kmkm.waw.pl/tramwaje-lista) and the
 # 13N "żaba" pair on tourist line 36 (kmkm.waw.pl/wlt-2026). A set in a model that isn't in
 # COUPLED marks only its own two cars as coupled.
 FIXED_SETS = [(1000, 1001), (1252, 1251), (821, 818)]
+
+# Vintage trailers with no motor of their own: ND #1620 and 4ND #1811 (kmkm.waw.pl/tramwaje-lista;
+# ZTM files both under "Konstal N"). They're hitched behind whichever motor car runs that day:
+# Warszawikia has K #403 + 4ND, 4Nj + 4ND and 4Nj + ND on line W, so there are no fixed pairs.
+# TOWING are the models whose cars pull them (issue #33). Emitted as "trailers" on the model that
+# holds them and "tows" on the towing models; older app versions ignore both keys.
+TRAILERS = {1620, 1811}
+TOWING = {"tram-konstal-n", "tram-konstal-4n", "tram-gdanska-fabryka-wagonow-wiwk-k"}
 
 # Preserved buses that aren't in the ZTM database at all: the KMKM club's collection
 # (kmkm.waw.pl/autobusy-lista, 2026-09-22) plus MZA heritage buses on tourist line 100
@@ -390,6 +443,10 @@ EXTRA_VINTAGE_BUSES = [
     ("San", "H-100A", 8082, "KMKM", 1972),
     ("San", "H-100B", 160, "KMKM", 1973),
     ("Solaris", "Urbino 15", 8731, "KMKM", 2001),
+    # MZA's own heritage buses on line 100 (issue #36; build years from wawakom.pl). The 1932
+    # Somua is left out: it has no fleet number, so it can't be caught.
+    ("Jelcz", "M181M", 6971, "MZA", 1999),
+    ("Neoplan", "N4020td", 6960, "MZA", 1999),
 ]
 
 
@@ -399,6 +456,34 @@ MERGE = {
     ("TRAM", "Alstom Konstal", ""): ("Alstom Konstal", "105N"),  # #2011, #2013: 105N2k
     ("TRAM", "Konstal", "116N"): ("Alstom Konstal", "116N"),     # #3002-3004: 116Na
     ("BUS", "Iveco", "CBLE4/00"): ("Iveco", "Crossway LE"),       # #39533: CBLE is the Crossway LE's factory code
+}
+
+# Single vehicles ZTM files under another type: (kind, number) -> (make, model). The 105Ni
+# sets 1364+1363, 1390+1386, 2006+2007 and 2008+2009 have the same rebuild as the 105Ni cars
+# filed as Alstom Konstal (1391, 2010-2023), but ZTM calls them plain Konstal (tramwar.pl
+# twstat.html, tram105n2k.html). Their catches move with them (`formerly`).
+RETYPE = {("TRAM", str(n)): ("Alstom Konstal", "105N") for n in (1363, 1364, 1386, 1390, 2006, 2007, 2008, 2009)}
+
+
+# ZTM files some different types under one make/model string; these split them by number:
+# (kind, make, model) -> [(numbers, model, id)], plus a make when the part has another maker.
+# Each part names its id, since one of them keeps the id the whole family had (the biggest,
+# so most catches stay put) and the others can't take the slug that's left. The app moves
+# catches to the part that has their number (`formerly` in fleet.json).
+SPLIT = {
+    # The 15 original 120Ns, the 180 Swings and the 6 two-way Swing Duos (Warszawikia; the
+    # city's list has them as types of their own: 31.82 m, 30.12 m, and 30.12 m with 28 seats).
+    ("TRAM", "Pesa", "120N"): [
+        (range(3101, 3116), "120N", "tram-pesa-120n-tramicus"),
+        (range(3116, 3296), "120Na", "tram-pesa-120n"),
+        (range(3501, 3507), "120NaDuo", "tram-pesa-120naduo"),
+    ],
+    # #2204 is a W tower car built by the Warsztaty Główne in 1928, not a Lilpop C (issue #33;
+    # kmkm.waw.pl/w-2204-2, transphoto.org). A museum car since 1996, at R-3 Mokotów since 2018.
+    ("TRAM", "Lilpop", "C"): [
+        ({257}, "C", "tram-lilpop-c"),
+        ({2204}, "W", "tram-warsztaty-glowne-w", "Warsztaty Główne"),
+    ],
 }
 
 
@@ -429,16 +514,46 @@ EXTRA_BUSES = [
 # Never remove a row once its trial ends: people who caught the bus keep it in their
 # book, and the book only shows models fleet.json still has.
 # Irizar ie tram 12 #959: MZA's trial from R-4 Stalowa, mid to end of September 2026 (TransInfo, Polskie Radio 24), seen live on line 106 on
-# 2026-09-25 (api.um.warszawa.pl).
+# 2026-09-25 (api.um.warszawa.pl). MZA's press office (email, 2026-10-02): extended to 23 October, mainly
+# on 106 until 7 October (122 on 3 Oct, 166 on 4 Oct).
 TEST_BUSES = [
     ("Irizar", "ie tram 12", 959, "MZA", 'R-4 "Stalowa" (R-13)',
-     "LINE 106 · ALSO 122, 123, 157, 166 · TRIAL UNTIL 30 SEP 2026", "ON TRIAL SEP 2026",
-     "LINIA 106 · TAKŻE 122, 123, 157, 166 · TESTY DO 30 WRZ 2026", "TESTY WRZ 2026"),
+     "LINE 106 · ALSO 122, 123, 157, 166 · TRIAL UNTIL 23 OCT 2026", "ON TRIAL SEP–OCT 2026",
+     "LINIA 106 · TAKŻE 122, 123, 157, 166 · TESTY DO 23 PAŹ 2026", "TESTY WRZ–PAŹ 2026"),
 ]
 TRIALS = {(make, model): t for make, model, _, _, _, *t in TEST_BUSES}
 
 RETIRED = {
     ("BUS", "MAN", "A37", "Mobilis"): set(range(9501, 9562)),
+    # Old trams ZTM still lists that neither KMKM's heritage list nor Warszawikia has: works cars,
+    # or (#504) sold to a private buyer (issue #33, 2026-10-03).
+    # #2400 too: KMKM keeps it, but with no seats, and tramwar.pl/twgosp.html lists it as a
+    # transport works car rebuilt from #408 in 1969 (issue #33, 2026-10-05).
+    ("TRAM", "Gdańska Fabryka Wagonów / WIwK", "K", "Tramwaje Warszawskie"): {2400, 2405},
+    ("TRAM", "Konstal", "N", "Tramwaje Warszawskie"): {775, 1724, 1727, 1770},
+    ("TRAM", "Konstal", "13N", "Tramwaje Warszawskie"): {504, 534, 535},
+    # Struck off on 12.09.2025, a week after its partner #1316, and a works car at R-5 since
+    # (tramwar.pl zmtab25.html, twgosp.html). The city still lists it (issue #33, 2026-10-05).
+    ("TRAM", "Konstal", "105N", "Tramwaje Warszawskie"): {1315},
+    # Heritage cars waiting for repair, so not on the street (issue #33, 2026-10-04). Put them
+    # back once they run again, and "tram-cred-d-wag-4egtw" back in VINTAGE.
+    ("TRAM", "Credé/Düwag", "4EGTw", "Tramwaje Warszawskie"): {205},
+    ("TRAM", "Konstal", "102N", "Tramwaje Warszawskie"): {42},
+}
+
+# Scrape rows the city's list has dropped that still exist. Anything else the city drops is
+# gone: the 2008 Urbino 12s and 18s (#18xx, #88xx) left MZA in 2026, many sold on to other
+# towns (phototrans.eu, checked 2026-10-05). (kind, number).
+STILL_RUNNING = {
+    # The 13N KMKM keeps for special runs, formally TW's works car (kmkm.waw.pl/tramwaje-lista,
+    # tramwar.pl/twgosp.html).
+    ("TRAM", "407"),
+    # Runs as 1390+1386 (tramwar.pl/tram105n2k.html, 2026-09-16); the city dropped only 1390.
+    ("TRAM", "1390"),
+    # Still with their owners and no withdrawal on phototrans.eu (2026-10-05): off the road for
+    # now, not gone. Recheck if they stay off the city's list.
+    ("BUS", "6212"), ("BUS", "7308"), ("BUS", "7322"), ("BUS", "7717"),
+    ("BUS", "9802"), ("BUS", "9823"), ("BUS", "9854"),
 }
 
 
@@ -451,6 +566,13 @@ def with_vintage_extras(vehicles):
             continue
         make, model = MERGE.get((v["kind"], v["make"], v["model"]), (v["make"], v["model"]))
         v = {**v, "make": make, "model": model}
+        if retype := RETYPE.get((v["kind"], v["number"])):
+            v = {**v, "make": retype[0], "model": retype[1], "formerly": slug(f"{v['kind']}-{make}-{model}")}
+            make, model = retype
+        for numbers, part, part_id, *part_make in SPLIT.get((v["kind"], make, model), []):
+            if v["number"].isdigit() and int(v["number"]) in numbers:
+                v = {**v, "make": part_make[0] if part_make else make, "model": part, "id": part_id,
+                     "formerly": slug(f"{v['kind']}-{make}-{model}")}
         split = VINTAGE_NUMBERS.get((v["kind"], v["make"], v["model"]), set())
         out.append({**v, "vintage": v["number"].isdigit() and int(v["number"]) in split})
     # Once ZTM catches up and lists one of these itself, its own row wins.
@@ -466,9 +588,12 @@ def with_vintage_extras(vehicles):
         out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
                     "carrier": owner, "depot": depot, "kind": "BUS", "year": None,
                     "vintage": False, "onTest": True})
+    # Neither of ZTM's lists has these, so a city row with one of their numbers is another
+    # vehicle (#1983 is also MZA's 2024 Yutong U12): "unlisted" keeps its specs off them.
     for make, model, number, owner, year in EXTRA_VINTAGE_BUSES:
         out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
-                    "carrier": owner, "depot": "", "kind": "BUS", "year": year, "vintage": True})
+                    "carrier": owner, "depot": "", "kind": "BUS", "year": year, "vintage": True,
+                    "unlisted": True})
     return out
 
 
@@ -498,7 +623,7 @@ def build(vehicles, city=None):
     groups = defaultdict(list)
     for v in with_vintage_extras(vehicles):
         if not v["number"].isdigit():
-            continue  # e.g. "403-1": trailer cars of a heritage set
+            continue  # a suffixed number RENUMBER doesn't know yet
         split = v["vintage"] and (v["kind"], v["make"], v["model"]) in VINTAGE_NUMBERS
         groups[(v["kind"], v["make"], v["model"], split)].append(v)
 
@@ -506,21 +631,29 @@ def build(vehicles, city=None):
     for (kind, make, model, split), vs in groups.items():
         if len({v["number"] for v in vs}) != len(vs):
             raise ValueError(f"duplicate fleet number in {make} {model}")
+        # A batch is one operator's vehicles of one year: KMKM's 1993 Ikarus 260 isn't part of
+        # MZA's (#36), and the "Every operator" badge credits the operator of the vehicle caught.
+        # And one depot's: a year's delivery is often split across depots (the 128Ns of 2014
+        # run from R-1, R-3 and R-5), and the depot badges go by the batch.
         by_year = defaultdict(list)
         for v in vs:
-            by_year[v["year"]].append(v)
+            by_year[(v["year"], short_carrier(v["carrier"]), parse_depot(v["depot"]))].append(v)
         batches = []
-        for y, bvs in sorted(by_year.items(), key=lambda kv: (kv[0] is None, -(kv[0] or 0))):
-            depot = Counter(parse_depot(v["depot"]) for v in bvs).most_common(1)[0][0]
+        for (y, carrier, depot), bvs in sorted(by_year.items(), key=lambda kv: (kv[0][0] is None, -(kv[0][0] or 0), -len(kv[1]))):
             batches.append({
                 "year": y,
                 "depotCode": depot[0], "depotName": depot[1],
+                "operator": carrier,
                 "numbers": sorted(int(v["number"]) for v in bvs),
             })
         years = [v["year"] for v in vs if v["year"]]
-        model_id = slug(f"{kind}-{make}-{model}") + ("-vintage" if split else "")
+        model_id = vs[0].get("id") or slug(f"{kind}-{make}-{model}") + ("-vintage" if split else "")
+        if len({v.get("id") for v in vs}) != 1:
+            raise ValueError(f"{make} {model}: some numbers aren't in any SPLIT part")
+        formerly = sorted({v["formerly"] for v in vs if v.get("formerly")} - {model_id})
         # Specs from the type most of this model's vehicles are, in the city's list.
-        in_city = [city_rows[(kind, v["number"])] for v in vs if (kind, v["number"]) in city_rows]
+        in_city = [city_rows[(kind, v["number"])] for v in vs
+                   if (kind, v["number"]) in city_rows and not v.get("unlisted")]
         majority = Counter(c["idMarki"] for c in in_city).most_common(1)
         model_specs = specs(types[(kind, majority[0][0])], kind) if majority and (kind, majority[0][0]) in types else None
         # Vehicles of another type with other specs: the 2010 Lion's City Gs are diesel, the
@@ -553,7 +686,11 @@ def build(vehicles, city=None):
             **({"specs": model_specs} if model_specs else {}),
             **({"variants": variants} if variants else {}),
             **({"liveries": dict(sorted(liveries.items(), key=lambda kv: int(kv[0])))} if liveries else {}),
+            # Ids this model's numbers were filed under before a SPLIT. Older apps ignore it.
+            **({"formerly": formerly} if formerly else {}),
         })
+    ids = Counter(m["id"] for m in models)
+    assert all(c == 1 for c in ids.values()), f"duplicate model ids: {[i for i, c in ids.items() if c > 1]}"
     numbers = {m["id"]: {n for b in m["batches"] for n in b["numbers"]} for m in models}
     for m in models:
         # Trams only: 1000 and 1001 are bus numbers too.
@@ -562,6 +699,12 @@ def build(vehicles, city=None):
             m["coupled"] = True
         if sets:
             m["sets"] = sets
+        if m["kind"] == "TRAM" and (trailers := sorted(TRAILERS & numbers[m["id"]])):
+            m["trailers"] = trailers
+        if m["id"] in TOWING:
+            m["tows"] = True
+    assert sum(len(m.get("trailers", [])) for m in models) == len(TRAILERS), "a TRAILERS number isn't in the data"
+    assert not TOWING - numbers.keys(), f"TOWING ids not in the data any more: {TOWING - numbers.keys()}"
     missing = COUPLED - numbers.keys()
     assert not missing, f"COUPLED ids not in the data any more: {missing}"
     placed = sum(1 for m in models for _ in m.get("sets", []))
@@ -572,13 +715,21 @@ def build(vehicles, city=None):
 
     depots = sorted({parse_depot(v["depot"]) + (v["kind"],) for v in vehicles if v["depot"]})
     raw = json.loads(RAW.read_text())
-    # Phones download fleet.json when this date beats theirs.
-    fetched = max(raw["fetched"], city["fetched"]) if city else raw["fetched"]
+    depots = [{"code": c, "name": n, "kind": k} for c, n, k in depots]
+    previous = json.loads(OUT.read_text()) if OUT.exists() else None
+    # Phones download fleet.json when this beats theirs (a plain string comparison), so it's
+    # when the content last changed, to the minute: a second push on the same day still
+    # reaches them. A rebuild that changes nothing keeps the old one, so it leaves no diff;
+    # --touch stamps it anyway (for a file whose old stamp phones already have).
+    if previous and previous["models"] == models and previous["depots"] == depots and "--touch" not in sys.argv:
+        fetched = previous["fetched"]
+    else:
+        fetched = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     city_en = f" and the city's open data (fetched {city['fetched']})" if city else ""
     city_pl = f" i otwarte dane miasta (stan z {city['fetched']})" if city else ""
     # Phones show only the models fleet.json has, so a vanished id hides people's catches.
-    if OUT.exists() and "--allow-drop" not in sys.argv:
-        gone = {m["id"] for m in json.loads(OUT.read_text())["models"]} - {m["id"] for m in models}
+    if previous and "--allow-drop" not in sys.argv:
+        gone = {m["id"] for m in previous["models"]} - {m["id"] for m in models}
         if gone:
             print(f"refusing to write: model ids would disappear: {', '.join(sorted(gone))}\n"
                   "(rerun with --allow-drop if that's on purpose)", file=sys.stderr)
@@ -592,7 +743,7 @@ def build(vehicles, city=None):
                     "klub KMKM, TransInfo, phototrans.eu i GPS na żywo",
         "fetched": fetched,
         "models": models,
-        "depots": [{"code": c, "name": n, "kind": k} for c, n, k in depots],
+        "depots": depots,
     }, ensure_ascii=False, separators=(",", ":")))
     total = sum(m["fleet"] for m in models)
     print(f"wrote {OUT.relative_to(ROOT)}: {len(models)} models, {total} vehicles, {len(depots)} depots")
@@ -601,5 +752,7 @@ def build(vehicles, city=None):
 if __name__ == "__main__":
     if "--scrape" in sys.argv:
         scrape()
-    city = json.loads(CITY.read_text()) if "--offline" in sys.argv else fetch_city()
-    build(with_city(json.loads(RAW.read_text())["vehicles"], city), city)
+    if "--offline" not in sys.argv:
+        fetch_city()
+    city = load_city()
+    build(with_city(load_raw(), city), city)

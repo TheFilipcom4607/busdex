@@ -87,6 +87,22 @@ private func sampleModel() -> VehicleModel {
     #expect(NumberExtractor.digitTokens("WX-2021").isEmpty)
     #expect(NumberExtractor.digitTokens("NR 1974").map(\.value) == [1974])
     #expect(NumberExtractor.digitTokens("LINIA 119").map(\.value) == [119])
+    // The stripe and lamp after a Solbus's 2022 read as "/6"; a line and brigade stays out.
+    #expect(NumberExtractor.digitTokens("2022/6").map(\.value) == [2022])
+    #expect(NumberExtractor.digitTokens("180/6").isEmpty)
+    #expect(NumberExtractor.digitTokens("6/2022").isEmpty)
+    // A plate's digits read apart from "WGM" (TestFlight: "WGM 02115" offered tram 2115).
+    #expect(NumberExtractor.digitTokens("02115").isEmpty)
+}
+
+@Test func plateDigitsReadOnTheirOwnAreNotAVehicle() {
+    let obs = [
+        TextObservation(text: "9833", confidence: 1, height: 0.04),
+        TextObservation(text: "WGM", confidence: 1, height: 0.02),
+        TextObservation(text: "02115", confidence: 1, height: 0.02),
+        TextObservation(text: "O2115", confidence: 1, height: 0.02),
+    ]
+    #expect(NumberExtractor.candidates(in: obs, mode: .auto, catalog: catalog).map(\.number) == [9833])
 }
 
 @Test func lookalikeLettersReadAsDigits() {
@@ -129,6 +145,28 @@ private func sampleModel() -> VehicleModel {
     #expect(NumberExtractor.best(in: obs, mode: .auto, catalog: catalog) == 8592)
 }
 
+@Test func lineOnTheDisplayLosesToTheFleetNumber() {
+    // Two Urbinos on Krakowskie Przedmieście: the 503's display is the biggest text, and 503
+    // is also a 13N tram.
+    let obs = [TextObservation(text: "503 NATOLIN PŁN.", confidence: 1, height: 0.05),
+               TextObservation(text: "116 WILANÓW", confidence: 1, height: 0.05),
+               TextObservation(text: "5918", confidence: 1, height: 0.025),
+               TextObservation(text: "5897", confidence: 1, height: 0.022)]
+    #expect(NumberExtractor.best(in: obs, mode: .auto, catalog: catalog) == 5918)
+    // On its own, a 3-digit fleet number still reads.
+    #expect(NumberExtractor.best(in: [TextObservation(text: "503", confidence: 1, height: 0.03)],
+                                 mode: .auto, catalog: catalog) == 503)
+}
+
+@Test func certainModelLeadsOverABusOrTram() {
+    // #2022 (a Solbus, and a 105N2k tram) a little bigger in the frame than #5941.
+    let obs = [TextObservation(text: "2022", confidence: 1, height: 0.0416),
+               TextObservation(text: "5941", confidence: 1, height: 0.0357)]
+    #expect(NumberExtractor.best(in: obs, mode: .auto, catalog: catalog) == 5941)
+    // In BUS mode 2022 is just the Solbus.
+    #expect(NumberExtractor.best(in: obs, mode: .bus, catalog: catalog) == 2022)
+}
+
 @Test func extractorIgnoresUnknownShortNumbers() {
     // A line number on its own must not be read as a fleet number.
     let obs = [TextObservation(text: "705", confidence: 1, height: 0.2)]
@@ -146,6 +184,31 @@ private func sampleModel() -> VehicleModel {
     #expect(NumberExtractor.best(in: obs, mode: .tram, catalog: catalog) == 1971)
     #expect(catalog.match(number: 1971, kind: .tram) == .unknown)
     #expect(catalog.match(number: 1971, preferring: .tram).suggested?.id == "bus-yutong-u12-b")
+}
+
+@Test func pesa120nFamilyIsSplitByNumber() throws {
+    let tramicus = try #require(catalog.model(id: "tram-pesa-120n-tramicus"))
+    let swing = try #require(catalog.model(id: "tram-pesa-120n"))
+    let duo = try #require(catalog.model(id: "tram-pesa-120naduo"))
+    #expect(tramicus.numbers == Array(3101...3115) && tramicus.tier == .gold)
+    #expect(swing.numbers == Array(3116...3295) && swing.tier == .common && swing.formerly.isEmpty)
+    #expect(duo.numbers == Array(3501...3506) && duo.tier == .legendary)
+    #expect(tramicus.formerly == ["tram-pesa-120n"] && duo.formerly == ["tram-pesa-120n"])
+    #expect(catalog.match(number: 3503, kind: .tram) == .certain(duo))
+}
+
+@Test func catchesFollowASplitModel() {
+    // Filed under the family's old id: the Tramicus and the Duo move, Swings stay.
+    #expect(catalog.moved(modelId: "tram-pesa-120n", number: 3105) == "tram-pesa-120n-tramicus")
+    #expect(catalog.moved(modelId: "tram-pesa-120n", number: 3501) == "tram-pesa-120naduo")
+    #expect(catalog.moved(modelId: "tram-pesa-120n", number: 3200) == nil)
+    #expect(catalog.moved(modelId: "tram-pesa-120n-tramicus", number: 3105) == nil)
+    // A number tied by hand to a model it isn't in, with no split behind it, stays put.
+    #expect(catalog.moved(modelId: "bus-solaris-urbino-18", number: 3105) == nil)
+    #expect(catalog.moved(modelId: "tram-pesa-120n", number: 99_999) == nil)
+    // The 105Ni cars ZTM filed as plain 105Na follow to the 105N2k; a real 105Na stays.
+    #expect(catalog.moved(modelId: "tram-konstal-105n", number: 1363) == "tram-alstom-konstal-105n")
+    #expect(catalog.moved(modelId: "tram-konstal-105n", number: 1393) == nil)
 }
 
 @Test func trialBusIsOnTestAndOutsideTheFleet() {
@@ -166,6 +229,9 @@ private func sampleModel() -> VehicleModel {
     #expect(catalog.match(number: 1983, kind: .bus).suggested?.id == "bus-yutong-u12-b")
     // Club-owned 105Na sets are split from the regular 105Na.
     #expect(catalog.match(number: 1001, kind: .tram).suggested?.id == "tram-konstal-105n-vintage")
+    // MZA's Urbino 12 #1400, renumbered as heritage bus #6900.
+    let heritage = catalog.match(number: 6900, kind: .bus).suggested
+    #expect(heritage?.id == "bus-solaris-urbino-12-vintage" && heritage?.tier == .vintage)
 }
 
 @Test func voterNeedsAgreement() {
@@ -274,6 +340,28 @@ private func badge(_ id: String, _ sightings: [SightingRecord]) -> Achievement {
     #expect(badge("every-district", Array(all.prefix(3))).progress == 3)
 }
 
+/// Issue #35: Apple names these points "Praga", "Grochów", "Saska Kępa", "Tarchomin", "Raków".
+@Test func districtsFromCoordinates() {
+    #expect(Districts.at(52.2525, 21.0400) == "Praga-Północ")
+    #expect(Districts.at(52.2440, 21.0900) == "Praga-Południe")
+    #expect(Districts.at(52.2330, 21.0560) == "Praga-Południe")
+    #expect(Districts.at(52.3150, 20.9600) == "Białołęka")
+    #expect(Districts.at(52.1950, 20.9450) == "Włochy")
+    #expect(Districts.at(52.2297, 21.0122) == "Śródmieście")
+    #expect(Districts.at(52.0730, 21.0260) == nil)  // Piaseczno
+    #expect(Districts.at(52.3340, 20.8870) == nil)  // Łomianki
+    #expect(Set(Achievements.districts) == Set(Districts.encoded.map(\.name)))
+
+    // The coordinates win over the geocoder's name; the name still counts without them.
+    let grochow = SightingRecord(number: 1, modelId: "x", date: .now, district: "Grochów", latitude: 52.2440, longitude: 21.0900)
+    let named = SightingRecord(number: 2, modelId: "x", date: .now, district: "Stary Mokotów")
+    #expect(badge("every-district", [grochow, named]).proof.compactMap(\.note) == ["MOKOTÓW", "PRAGA-POŁUDNIE"])
+    // What's left, in the districts' own order (#35).
+    let left = badge("every-district", [grochow, named]).missing.map(\.label)
+    #expect(left.count == 16 && left.first == "Bemowo" && !left.contains("Praga-Południe"))
+    #expect(left.allSatisfy { Achievements.districts.contains($0) })
+}
+
 @Test func tramDayCountsDistinctTramsOnOneDay() {
     var cal = Calendar(identifier: .gregorian)
     cal.timeZone = TimeZone(identifier: "Europe/Warsaw")!
@@ -328,6 +416,11 @@ private func fleet(_ fetched: String?) -> FleetCatalog {
     #expect(FleetCatalog.preferred(bundled: nil, downloaded: fleet("2026-09-01"))?.fetched == "2026-09-01")
     #expect(FleetCatalog.preferred(bundled: nil, downloaded: nil) == nil)
     #expect(!fleet(nil).isNewer(than: bundled))
+    // Stamps carry the time since 2026-10-03, so a second push on one day still wins, and
+    // they beat the date-only stamps phones already have.
+    #expect(fleet("2026-10-03 13:12 UTC").isNewer(than: fleet("2026-10-03")))
+    #expect(fleet("2026-10-03 15:40 UTC").isNewer(than: fleet("2026-10-03 13:12 UTC")))
+    #expect(!fleet("2026-10-03 13:12 UTC").isNewer(than: fleet("2026-10-04")))
 }
 
 @Test func validationRejectsBrokenFleetFiles() throws {
@@ -421,6 +514,8 @@ private func any(_ modelId: String? = nil, number: Int? = nil, date: Date = day(
     let collector = eval(caught)["collector"]!
     #expect(collector.level == 2 && collector.levels == 4 && collector.goal == 500 && collector.medal == .silver)
     #expect(collector.detail == "500 different vehicles")
+    #expect(collector.reached == "100 different vehicles")
+    #expect(eval(Array(caught.prefix(9)))["collector"]!.reached == "10 different vehicles")
     #expect(eval(Array(caught.prefix(9)))["collector"]!.level == 0)
     let share = eval(caught)["fleet-share"]!
     #expect(share.level == 1 && share.detail == "10% of Warsaw's fleet")
@@ -507,6 +602,47 @@ private func any(_ modelId: String? = nil, number: Int? = nil, date: Date = day(
     #expect(eval((0..<10).map { _ in any(sticker: true) })["photographer"]!.level == 1)
     let ops = eval([any()])["all-operators"]!
     #expect(ops.goal > 3 && ops.progress == 1)
+}
+
+/// Issue #35: a model several operators run counts for the operator of the vehicle caught.
+@Test func depotBadgesListTheModelsLeft() {
+    let depot = Achievements.evaluate([], catalog: catalog).first { $0.isDepot && $0.goal >= 3 }!
+    #expect(depot.missing.count == depot.goal)
+    #expect(depot.missing.allSatisfy { m in catalog.model(id: m.modelId!)?.name == m.label })
+    // Catching one takes it off the list.
+    let id = depot.missing[0].modelId!
+    let atDepot = catalog.model(id: id)!.batches.first { b in
+        "depot-\(catalog.model(id: id)!.kind.rawValue)-\(b.depotCode)-\(b.depotName)" == depot.id
+    }!
+    let after = Achievements.evaluate([SightingRecord(number: atDepot.numbers[0], modelId: id, date: .now)], catalog: catalog)
+        .first { $0.id == depot.id }!
+    #expect(after.missing.count == depot.goal - 1 && !after.missing.contains { $0.modelId == id })
+    // Models that share a name get their years.
+    let kleszczowa = Achievements.evaluate([], catalog: catalog).first { $0.id == "depot-BUS-R-2-Kleszczowa" }!
+    let conectos = kleszczowa.missing.map(\.label).filter { $0.hasPrefix("Mercedes-Benz Conecto G") }
+    #expect(conectos == ["Mercedes-Benz Conecto G 2012", "Mercedes-Benz Conecto G 2016—2017"])
+}
+
+@Test func operatorsByTheVehiclesOwnBatch() {
+    let cng = catalog.models.first { $0.id == "bus-solaris-urbino-18cng" }!
+    let conecto = catalog.models.first { $0.id == "bus-mercedes-benz-628b02" }!
+    let relobus = SightingRecord(number: 9925, modelId: cng.id, date: .now)
+    let mza = SightingRecord(number: 6218, modelId: conecto.id, date: .now)
+    let ops = badge("all-operators", [relobus, mza])
+    #expect(ops.proof.compactMap(\.note) == ["MZA", "RELOBUS"])
+    // Operators that are never a model's main one (Grygiel, Średnicki) are in the goal.
+    #expect(ops.goal == 10)
+    // The other eight are left to find, in Polish order: Średnicki after ReloBus, not after Z.
+    let left = ops.missing.map(\.label)
+    #expect(left.count == 8 && !left.contains("MZA") && !left.contains("ReloBus"))
+    #expect(left.firstIndex(of: "Średnicki")! < left.firstIndex(of: "Tramwaje Warszawskie")!)
+    #expect(ops.missing.allSatisfy { $0.modelId == nil })
+
+    // #6306 is KMKM's, not part of MZA's 1993 Ikarus 260s at Stalowa (#36).
+    let ikarus = catalog.models.first { $0.id == "bus-ikarus-260" }!
+    #expect(ikarus.batch(containing: 6306)?.operator == "KMKM")
+    #expect(ikarus.batch(containing: 6306)?.placeDisplay == "KMKM")
+    #expect(ikarus.batch(containing: 6930)?.placeDisplay == "R-4 STALOWA")
 }
 
 // MARK: - Weather lookup
@@ -785,6 +921,68 @@ private func nearby(_ vehicles: [LiveVehicle]) -> [NearbyVehicle] {
     #expect(HuntTargets(rawValue: "kind:BOAT") == HuntTargets())
 }
 
+@Test func huntTargetsSpecsAndLineNarrow() {
+    let lionG = catalog.model(id: "bus-man-a23")!
+    let swing = catalog.model(id: "tram-pesa-120n")!
+    // The 2019–20 Lion's City Gs are CNG, the 2010 ones diesel: drive goes by the vehicle.
+    let cng = HuntTargets(drives: [.cng])
+    #expect(cng.matches(lionG, number: 7200, line: "190") && !cng.matches(lionG, number: 3400, line: "190"))
+    // Trams have no drive in the city's data, so a drive picked means buses.
+    #expect(!HuntTargets(drives: [.electric]).matches(swing, number: swing.numbers[0], line: "17"))
+    // Bands of one kind add up; kinds of spec narrow each other.
+    let long = HuntTargets(lengths: [.to20, .over30])
+    #expect(long.matches(lionG, number: 7200, line: "1") && long.matches(swing, number: swing.numbers[0], line: "1"))
+    #expect(!HuntTargets(lengths: [.over30], floors: [.high]).matches(swing, number: swing.numbers[0], line: "1"))
+    #expect(HuntTargets.LengthBand.of(12_000) == .to13 && HuntTargets.LengthBand.of(30_120) == .over30)
+    // A line narrows too, however it's written.
+    let line = HuntTargets(line: "L-4")
+    #expect(line.matches(lionG, number: 7200, line: "L4") && !line.matches(lionG, number: 7200, line: "L40"))
+    // All of these hunt across the city; a type alone doesn't.
+    #expect(cng.isCityWide && line.isCityWide && !cng.hasPicks && !HuntTargets(kind: .bus).isCityWide)
+    // Round-trips, and older builds' tokens still read.
+    let all = HuntTargets(tiers: [.gold], kind: .bus, line: "N83", lengths: [.to20], drives: [.cng, .lng], floors: [.low])
+    #expect(all.count == 7)
+    #expect(all.rawValue == "kind:BUS,tier:GOLD,line:N83,length:13-20,drive:cng,drive:lng,floor:LF")
+    #expect(HuntTargets(rawValue: all.rawValue) == all)
+    #expect(HuntTargets(rawValue: "drive:steam,length:99,line:,floor:XF") == HuntTargets())
+}
+
+@Test func huntTargetsAddingAModelKeepsItInView() {
+    let lionG = catalog.model(id: "bus-man-a23")!
+    let swing = catalog.model(id: "tram-pesa-120n")!
+    // Other picks stay: the model adds to them.
+    let gold = HuntTargets(tiers: [.gold]).adding(swing)
+    #expect(gold.tiers == [.gold] && gold.models == [swing.id])
+    // A line or the other type would hide it, so they go; a matching type stays.
+    #expect(HuntTargets(line: "523").adding(swing) == HuntTargets(models: [swing.id]))
+    #expect(HuntTargets(kind: .bus).adding(swing).kind == nil)
+    #expect(HuntTargets(kind: .tram).adding(swing).kind == .tram)
+    // Specs go only when none of its vehicles have them: some Lion's City Gs are CNG.
+    #expect(HuntTargets(drives: [.cng]).adding(lionG).drives == [.cng])
+    #expect(HuntTargets(drives: [.cng]).adding(swing).drives.isEmpty)
+    let added = HuntTargets(tiers: [.gold], lengths: [.under10]).adding(lionG)
+    #expect(added.lengths.isEmpty && added.matches(lionG, number: 7200, line: "190"))
+    // Adding twice changes nothing.
+    #expect(gold.adding(swing) == gold)
+}
+
+@Test func huntSearchFindsLinesAndNumbers() {
+    let snap = LiveSnapshot(vehicles: [live(4235, .tram, line: "33"), live(4236, .tram, line: "33"),
+                                       live(8592, .bus, line: "523"), live(1000, .bus, line: "L-4"),
+                                       live(5100, .bus, line: "523")], fetched: fixtureNow)
+    // Lines starting with what you typed, the exact one first.
+    let r = HuntSearch.results(for: "52", snapshot: snap, catalog: catalog)
+    #expect(r.lines.map(\.line) == ["523"] && r.lines.first?.count == 2)
+    #expect(HuntSearch.results(for: "l4", snapshot: snap, catalog: catalog).lines.map(\.line) == ["L-4"])
+    // A fleet number: every model that has it, the running one first.
+    let n = HuntSearch.results(for: "1000", snapshot: snap, catalog: catalog)
+    #expect(n.vehicles.count == 2 && n.vehicles.first?.live?.kind == .bus)
+    #expect(n.vehicles.contains { $0.model.kind == .tram && $0.live == nil })
+    // Nothing running: still found, just not live.
+    #expect(HuntSearch.results(for: "4229", snapshot: nil, catalog: catalog).vehicles.first?.live == nil)
+    #expect(HuntSearch.results(for: " ", snapshot: snap, catalog: catalog).isEmpty)
+}
+
 // MARK: - Routes
 
 /// A straight street east along one latitude, a point every 0.0005° (about 34 m).
@@ -1002,6 +1200,9 @@ private func drive(from lon0: Double, step: Double, fixes: Int, lat: Double = ro
     #expect(catalog.model(id: "bus-mercus-syn2z")?.liveries?.values.allSatisfy { $0 == "suburbanBlue" } == true)
     // Trams are all electric: the city gives no drive for them.
     #expect(catalog.model(id: "tram-hrc-140n")?.specs?.drive == nil)
+    // Club buses ZTM doesn't list share numbers with regular ones: the KMKM's 1977 Jelcz 272 MEX
+    // #1983 isn't MZA's 2024 Yutong U12 #1983, so it doesn't get that bus's specs.
+    #expect(catalog.model(id: "bus-jelcz-272-mex")?.specs == nil)
 }
 
 @Test func vehiclesOfAnotherTypeKeepTheirOwnSpecs() {
@@ -1021,10 +1222,13 @@ private func drive(from lon0: Double, step: Double, fixes: Int, lat: Double = ro
     let e18 = catalog.model(id: "bus-solaris-urbino-18e")!
     #expect(e18.spread?.drives == [.electric])
     #expect(e18.drive(of: e18.batches[0]) == nil)
-    // A year that mixes types names no drive: the 2017 Ursus CS2s are 10 electric, 2 diesel.
+    // A batch that mixes types names no drive: MZA's 2015 Solbus SM18s are LNG and diesel.
+    let sm18 = catalog.model(id: "bus-solbus-sm18")!
+    #expect(sm18.drive(of: sm18.batches.first { $0.year == 2015 }!) == nil)
+    // The 2017 Ursus CS2s are two operators' batches: MZA's 10 electric, KM Łomianki's 2 diesel.
     let cs2 = catalog.model(id: "bus-ursus-cs2")!
     #expect(cs2.spread?.drives == [.electric, .diesel])
-    #expect(cs2.batches.contains { cs2.drive(of: $0) == nil })
+    #expect(cs2.drive(of: cs2.batch(containing: 762)!) == .diesel)
 }
 
 @Test func spreadMixesAirConAndKeepsOldFilesWorking() throws {
@@ -1188,10 +1392,10 @@ private let n13 = catalog.model(id: "tram-konstal-13n")!
         // Still offered, below the read.
         #expect(out.map(\.number) == [read, near])
     }
-    // 1390 is a 105Na, 1391 a 105N2k: not the same set, and both real, so 1390 stands.
-    let other = LiveHints.adjust([(1390, 1.2)], nearby: nearby([live(1391, .tram, metres: 60)]), catalog: catalog)
+    // 1393 is a 105Na, 1392 a 105N2k: not the same set, and both real, so 1393 stands.
+    let other = LiveHints.adjust([(1393, 1.2)], nearby: nearby([live(1392, .tram, metres: 60)]), catalog: catalog)
     #expect(other.adjustment.rescued.isEmpty && other.adjustment.partners.isEmpty)
-    #expect(other.candidates.max { $0.score < $1.score }?.number == 1390)
+    #expect(other.candidates.max { $0.score < $1.score }?.number == 1393)
     // A number no tram has is still rescued: 4729 by the 4229 right there.
     let stranger = LiveHints.adjust([(4729, 1.0)], nearby: nearby([live(4229, .tram, metres: 28)]), catalog: catalog)
     #expect(stranger.adjustment.rescued == [LiveHints.Rescue(from: 4729, to: 4229)])
@@ -1226,31 +1430,34 @@ private let n13 = catalog.model(id: "tram-konstal-13n")!
 }
 
 @Test func partnerSuggestionsInOrder() {
-    let s = CoupledSet.suggestions(for: 1283, model: n105, photoNumbers: [1286], nearby: nearby([live(1282, .tram)]))
+    let s = CoupledSet.suggestions(for: 1283, model: n105, photoNumbers: [1286], nearby: nearby([live(1282, .tram)]), catalog: catalog)
     #expect(s.map(\.number) == [1286, 1282, 1284])
     #expect(s.map(\.source) == [.photo, .feed, .neighbour])
-    let fixed = CoupledSet.suggestions(for: 1252, model: n105Vintage, photoNumbers: [1000], nearby: nearby([live(1001, .tram)]))
+    let fixed = CoupledSet.suggestions(for: 1252, model: n105Vintage, photoNumbers: [1000], nearby: nearby([live(1001, .tram)]), catalog: catalog)
     #expect(fixed.map(\.number) == [1251, 1000, 1001])
     #expect(fixed.first?.source == .fixed)
     // The caught number and numbers not in the model are skipped, and three is the most.
-    let capped = CoupledSet.suggestions(for: 1283, model: n105, photoNumbers: [1283, 99_999, 1286, 1289, 1290], nearby: [])
+    let capped = CoupledSet.suggestions(for: 1283, model: n105, photoNumbers: [1283, 99_999, 1286, 1289, 1290], nearby: [], catalog: catalog)
     #expect(capped.map(\.number) == [1286, 1289, 1290])
 }
 
 @Test func partnerSuggestionsStayInTheModel() {
-    // 1390 is a 105Na: never offered for a 105N2k.
-    let s = CoupledSet.suggestions(for: 1391, model: n2k, photoNumbers: [1390], nearby: nearby([live(1390, .tram)]))
-    #expect(!s.map(\.number).contains(1390))
-    #expect(s.map(\.number) == [1392])
-    #expect(CoupledSet.suggestions(for: 821, model: n13, photoNumbers: [], nearby: []).map(\.number) == [818])
-    #expect(CoupledSet.suggestions(for: 795, model: n13, photoNumbers: [796], nearby: []).isEmpty)
+    // 1393 is a 105Na: never offered for a 105N2k.
+    let s = CoupledSet.suggestions(for: 1392, model: n2k, photoNumbers: [1393], nearby: nearby([live(1393, .tram)]), catalog: catalog)
+    #expect(!s.map(\.number).contains(1393))
+    #expect(s.map(\.number) == [1391])
+    #expect(CoupledSet.suggestions(for: 821, model: n13, photoNumbers: [], nearby: [], catalog: catalog).map(\.number) == [818])
+    #expect(CoupledSet.suggestions(for: 795, model: n13, photoNumbers: [796], nearby: [], catalog: catalog).isEmpty)
     let swing = catalog.model(id: "tram-pesa-120n")!
-    #expect(CoupledSet.suggestions(for: swing.numbers[1], model: swing, photoNumbers: [], nearby: []).isEmpty)
+    #expect(CoupledSet.suggestions(for: swing.numbers[1], model: swing, photoNumbers: [], nearby: [], catalog: catalog).isEmpty)
 }
 
 @Test func coupledFleetData() throws {
     let coupled = Set(catalog.models.filter(\.coupled).map(\.id))
-    #expect(coupled == ["tram-konstal-105n", "tram-alstom-konstal-105n", "tram-hcp-123n", "tram-konstal-105n-vintage"])
+    #expect(coupled == ["tram-konstal-105n", "tram-alstom-konstal-105n", "tram-hcp-123n"])
+    // The KMKM's vintage sets stay coupled through `sets`; #1006, the promotional car, runs alone.
+    #expect(n105Vintage.isCoupled(1000) && n105Vintage.fixedPartner(of: 1000) == 1001)
+    #expect(n105Vintage.has(1006) && !n105Vintage.isCoupled(1006) && !n105.has(1006))
     #expect(!n13.coupled && n13.isCoupled(821) && n13.isCoupled(818) && !n13.isCoupled(795))
     #expect(n13.fixedPartner(of: 821) == 818)
     #expect(n105Vintage.fixedPartner(of: 1252) == 1251)
@@ -1260,7 +1467,63 @@ private let n13 = catalog.model(id: "tram-konstal-13n")!
     // Fleet files from before coupling decode as single cars.
     let old = Data(#"{"id":"x","name":"X","make":"X","kind":"TRAM","operators":[],"fleet":1,"batches":[]}"#.utf8)
     let m = try JSONDecoder().decode(VehicleModel.self, from: old)
-    #expect(!m.coupled && m.sets.isEmpty)
+    #expect(!m.coupled && m.sets.isEmpty && m.trailers.isEmpty && !m.tows)
+}
+
+// MARK: - Vintage trailers (#33)
+
+private let nModel = catalog.model(id: "tram-konstal-n")!
+private let n4 = catalog.model(id: "tram-konstal-4n")!
+private let kModel = catalog.model(id: "tram-gdanska-fabryka-wagonow-wiwk-k")!
+
+@Test func trailerFleetData() {
+    #expect(catalog.trailers == [1620, 1811])
+    #expect(nModel.isTrailer(1620) && nModel.isTrailer(1811) && !nModel.pullsTrailers(1620))
+    #expect(nModel.pullsTrailers(607) && n4.pullsTrailers(838) && kModel.pullsTrailers(445))
+    #expect(nModel.takesSecondCar(1620) && !n13.takesSecondCar(795) && n13.takesSecondCar(821))
+    // Works cars ZTM still lists are left out.
+    #expect(!kModel.has(2405) && !kModel.has(2400) && !nModel.has(1770) && !n13.has(534) && !n105.has(1315))
+}
+
+@Test func trailerPairsAcrossModels() {
+    #expect(catalog.secondCarModel(838, of: 1620, model: nModel)?.id == n4.id)
+    #expect(catalog.secondCarModel(1811, of: 445, model: kModel)?.id == nModel.id)
+    #expect(catalog.secondCarModel(607, of: 1620, model: nModel)?.id == nModel.id)
+    // 1811 is an Urbino 12's number too: next to a motor car it's the trailer.
+    #expect(catalog.secondCarModel(1811, of: 838, model: n4)?.id == nModel.id)
+    // Two motor cars, two trailers, or a car that pulls none: not a pair.
+    #expect(catalog.secondCarModel(838, of: 873, model: n4) == nil)
+    #expect(catalog.secondCarModel(1811, of: 1620, model: nModel) == nil)
+    #expect(catalog.secondCarModel(1620, of: 795, model: n13) == nil)
+    #expect(Set(catalog.secondCarModels(of: 1620, model: nModel).map(\.id)) == [nModel.id, n4.id, kModel.id])
+    #expect(catalog.secondCarModels(of: 838, model: n4).map(\.id) == [nModel.id])
+}
+
+@Test func trailerSuggestions() {
+    // A motor car: a trailer read in the photo first, then the other one.
+    let motor = CoupledSet.suggestions(for: 838, model: n4, photoNumbers: [1811], nearby: [], catalog: catalog)
+    #expect(motor.map(\.number) == [1811, 1620])
+    #expect(motor.map(\.source) == [.photo, .trailer])
+    // A trailer: the one motor car running right there.
+    let trailer = CoupledSet.suggestions(for: 1620, model: nModel, photoNumbers: [], nearby: nearby([live(838, .tram)]),
+                                         catalog: catalog)
+    #expect(trailer.map(\.number) == [838])
+    #expect(trailer.first?.source == .feed)
+}
+
+@Test func trailerRunsWithItsMotorCar() {
+    let snap = LiveSnapshot(vehicles: [live(838, .tram, line: "T", metres: 40)], fetched: fixtureNow)
+    let near = nearby([live(838, .tram, line: "T", metres: 40)])
+    #expect(LiveHints.line(for: 1620, kind: .tram, snapshot: snap, at: fixtureNow, model: nModel, nearby: near,
+                           catalog: catalog) == "T")
+    // Two motor cars right there: no telling which pulls it.
+    let two = nearby([live(838, .tram, line: "T"), live(607, .tram, line: "W", metres: 80)])
+    #expect(CoupledSet.partner(of: 1620, model: nModel, nearby: two, catalog: catalog) == nil)
+    // A motor car running right there settles 1811 as the trailer, not the Urbino.
+    #expect(LiveHints.resolve(catalog.match(number: 1811), number: 1811, nearby: near, catalog: catalog) == .certain(nModel))
+    // In the shot with the motor car you caught, it's the second car, not another catch.
+    #expect(AlsoInShot.isPartner(1620, of: 838, model: n4, catalog: catalog))
+    #expect(!AlsoInShot.isPartner(873, of: 838, model: n4, catalog: catalog))
 }
 
 @Test func secondCarCountsForTheBookNotTheDayOut() {
@@ -1314,4 +1577,260 @@ private func mask(_ rows: [String]) -> [UInt8] { rows.joined().map { $0 == "#" ?
     let after = mask(["..########", "..########", "..########", "..########", "..########", ".........."])
     let person = CGRect(x: 0, y: 0, width: 0.2, height: 1)
     #expect(Notch.shares(before: before, after: after, width: 10, height: 6, boxes: [person]) == [0])
+}
+
+// MARK: - Also in shot (#30)
+
+private let tramicus = catalog.model(id: "tram-pesa-120n-tramicus")!
+private func read(_ n: Int, _ score: Double, x: Double, y: Double = 0.5) -> AlsoInShot.Read {
+    AlsoInShot.Read(number: n, score: score, boxes: [CGRect(x: x, y: y, width: 0.08, height: 0.03)])
+}
+
+@Test func passingVehicleIsOffered() {
+    let reads = [read(3105, 4, x: 0.2), read(3200, 3.5, x: 0.7)]
+    let found = AlsoInShot.vehicles(in: reads, caught: 3105, model: tramicus, partner: nil, catalog: catalog, nearby: [])
+    #expect(found.map(\.number) == [3200])
+    #expect(found.first?.model.id == "tram-pesa-120n")
+    #expect(found.first?.box.minX == 0.7)
+}
+
+@Test func alsoInShotSkipsMisreadsAndGuesses() {
+    func found(_ reads: [AlsoInShot.Read], caught: Int = 3105, model: VehicleModel = tramicus,
+               nearby: [NearbyVehicle] = []) -> [Int] {
+        AlsoInShot.vehicles(in: reads, caught: caught, model: model, partner: nil, catalog: catalog, nearby: nearby)
+            .map(\.number)
+    }
+    // Vision's second reading of the caught number's own text.
+    #expect(found([read(3105, 4, x: 0.2), read(3150, 3, x: 0.21)]).isEmpty)
+    // Neighbours park side by side (9353 and 9355); the app checks it's another object.
+    let urbino12 = catalog.model(id: "bus-solaris-urbino-12")!
+    #expect(found([read(9353, 4, x: 0.3), read(9355, 3.8, x: 0.8)], caught: 9353, model: urbino12) == [9355])
+    #expect(AlsoInShot.couldBeMisread(9355, of: 9353) && !AlsoInShot.couldBeMisread(9320, of: 9556))
+    // Without the feed a 3-digit number could be a line on the display.
+    #expect(found([read(3105, 4, x: 0.2), read(821, 3, x: 0.7)]).isEmpty)
+    // The line on a bus's display, which is also a 13N tram's number.
+    let urbino = catalog.model(id: "bus-solaris-urbino-18e")!
+    #expect(found([read(5918, 4, x: 0.6), read(503, 3.5, x: 0.6, y: 0.3)], caught: 5918, model: urbino).isEmpty)
+    // With the feed, it has to be running right there.
+    #expect(found([read(3105, 4, x: 0.2), read(3200, 3, x: 0.7)], nearby: nearby([live(3105, .tram, line: "9")])).isEmpty)
+    // Not written in the photo: a feed neighbour offered for a misread.
+    #expect(found([read(3105, 4, x: 0.2), AlsoInShot.Read(number: 3200, score: 3, boxes: [])]).isEmpty)
+    // The caught tram's own second car belongs to the SECOND CAR chip.
+    #expect(found([read(1282, 4, x: 0.2), read(1281, 3, x: 0.7)], caught: 1282, model: n105).isEmpty)
+}
+
+@Test func numberOnABusAndATramGoesWithTheCaughtKind() {
+    let urbino = catalog.model(id: "bus-solaris-urbino-18e")!
+    func model(_ caught: Int, _ m: VehicleModel, nearby: [NearbyVehicle] = []) -> String? {
+        AlsoInShot.vehicles(in: [read(caught, 4, x: 0.2), read(2022, 3, x: 0.7)], caught: caught, model: m,
+                            partner: nil, catalog: catalog, nearby: nearby).first?.model.id
+    }
+    #expect(model(5941, urbino) == "bus-solbus-sm18")
+    #expect(model(3105, tramicus) == "tram-alstom-konstal-105n")
+    // The feed knows better: the tram 2022 is the one right there.
+    #expect(model(5941, urbino, nearby: nearby([live(5941), live(2022, .tram, line: "17")])) == "tram-alstom-konstal-105n")
+}
+
+@Test func alsoInShotKeepsToTheLikeliestFew() {
+    let reads = [read(3105, 4, x: 0.1), read(3200, 2, x: 0.3), read(3250, 3, x: 0.5), read(3290, 2.5, x: 0.7)]
+    let found = AlsoInShot.vehicles(in: reads, caught: 3105, model: tramicus, partner: nil, catalog: catalog, nearby: [])
+    #expect(found.map(\.number) == [3250, 3290])
+}
+
+@Test func displayLineGetsACloserLookAndLosesToTheBumper() {
+    // A MAN on line 716 (TestFlight feedback): the board's "716" is a vintage Konstal N's
+    // number, and the whole-photo read saw nothing else.
+    let full = [TextObservation(text: "716", confidence: 1, height: 0.04),
+                TextObservation(text: "CM.WOLSKI", confidence: 1, height: 0.04)]
+    let first = NumberExtractor.candidates(in: full, mode: .auto, catalog: catalog)
+    #expect(first.map(\.number) == [716])
+    #expect(NumberExtractor.wantsCloserLook(first))
+    // The tiles find the small fleet number on the front.
+    let tiles = [TextObservation(text: "7205", confidence: 1, height: 0.015)]
+    #expect(NumberExtractor.best(in: full + tiles, mode: .auto, catalog: catalog) == 7205)
+    #expect(!NumberExtractor.wantsCloserLook([(7205, 3)]))
+}
+
+@Test func aPickedLineShowsAllOfItWhereverItIs() {
+    // #37: the search said "4 out now", the map then showed nothing.
+    let hrc = catalog.model(id: "tram-hrc-140n")!
+    let caught = CollectionStats(sightings: [SightingRecord(number: hrc.numbers[0], modelId: hrc.id, date: .now)])
+    let snap = LiveSnapshot(vehicles: [
+        live(hrc.numbers[0], .tram, line: "4", metres: 300),         // already caught
+        live(hrc.numbers[1], .tram, line: "4", metres: 90_000),      // past the 60 km a filter looks
+        live(hrc.numbers[2], .tram, line: "4", metres: 1000),
+        live(hrc.numbers[3], .tram, line: "14", metres: 100),        // another line
+        live(hrc.numbers[4], .tram, line: "l-4", metres: 200),       // the L-4, not the 4
+    ], fetched: fixtureNow)
+    let pins = Wanted.onLine("4", snapshot: snap, catalog: catalog, caught: caught, lat: here.lat, lon: here.lon)
+    #expect(pins.map(\.vehicle.number) == [hrc.numbers[0], hrc.numbers[2], hrc.numbers[1]])
+    #expect(pins.first?.kind == .caught)
+    // Written either way, the L-4 is the same line.
+    #expect(Wanted.onLine("L4", snapshot: snap, catalog: catalog, caught: caught, lat: here.lat, lon: here.lon)
+        .map(\.vehicle.number) == [hrc.numbers[4]])
+}
+
+@Test func catchLogMarksFirstsAndGroupsByDay() {
+    let day: TimeInterval = 86_400
+    let t0 = Date(timeIntervalSince1970: 1_790_000_000)
+    // Out of order, as a query might hand them over.
+    let records = [
+        SightingRecord(number: 7205, modelId: "man", date: t0 + day + 60),   // seen again, next day
+        SightingRecord(number: 7205, modelId: "man", date: t0),              // first MAN
+        SightingRecord(number: 7240, modelId: "man", date: t0 + 120),        // a new MAN
+        SightingRecord(number: 3105, modelId: "tramicus", date: t0 + day),   // first Tramicus
+    ]
+    #expect(CatchLog.marks(records) == [.again, .newModel, .newVehicle, .newModel])
+    var utc = Calendar(identifier: .gregorian)
+    utc.timeZone = TimeZone(identifier: "UTC")!
+    let days = CatchLog.days(records.map(\.date), calendar: utc)
+    #expect(days.map(\.indices) == [[0, 3], [2, 1]])
+}
+
+@Test func aFilteredHuntReachesWarsawFromAnywhere() {
+    // #38: from Bydgoszcz, every filter counted 0.
+    let hrc = catalog.model(id: "tram-hrc-140n")!
+    let snap = LiveSnapshot(vehicles: [
+        live(hrc.numbers[0], .tram, metres: 230_000),
+        live(hrc.numbers[1], .tram, metres: 1_000),
+    ], fetched: fixtureNow)
+    let pins = Wanted.anywhere(snapshot: snap, catalog: catalog, caught: CollectionStats(sightings: []),
+                               lat: here.lat, lon: here.lon)
+    #expect(Set(pins.map(\.vehicle.number)) == [hrc.numbers[0], hrc.numbers[1]])
+}
+
+// MARK: - Stats
+
+private func at(_ s: String) -> Date {
+    let f = DateFormatter()
+    f.locale = Locale(identifier: "en_US_POSIX")
+    f.timeZone = TimeZone(identifier: "Europe/Warsaw")
+    f.dateFormat = "yyyy-MM-dd HH:mm"
+    return f.date(from: s)!
+}
+
+private var warsaw: Calendar {
+    var c = Calendar(identifier: .gregorian)
+    c.timeZone = TimeZone(identifier: "Europe/Warsaw")!
+    c.firstWeekday = 2
+    return c
+}
+
+@Test func periodStatsSplitNewFromSeenAgain() {
+    let yutong = catalog.model(id: "bus-yutong-u12-b")!
+    let urbino = catalog.model(id: "bus-solaris-urbino-18")!
+    let y = yutong.numbers[0], u = urbino.numbers[0]
+    let records = [
+        SightingRecord(number: y, modelId: yutong.id, date: at("2026-09-27 16:10"), line: "229", district: "Wilanów", temperature: 18),
+        SightingRecord(number: y, modelId: yutong.id, date: at("2026-10-01 08:05"), line: "229", district: "Wilanów", temperature: 9),
+        SightingRecord(number: u, modelId: urbino.id, date: at("2026-10-01 16:40"), line: "519", district: "Powsin", temperature: 14),
+    ]
+    let october = PeriodStats(records, period: .month(year: 2026, month: 10), catalog: catalog, now: at("2026-10-04 12:00"), calendar: warsaw)
+    #expect(october.catches == 2)
+    #expect(october.vehicles == 2)
+    #expect(october.newVehicles == 1) // the Yutong went in in September
+    #expect(october.newModels == 1)
+    #expect(october.daysOut == 1)
+    #expect(october.hours[8] == 1 && october.hours[16] == 1)
+    #expect(october.weekdays[4] == 2) // 1 Oct 2026 is a Thursday
+    #expect(october.fleetShare == 1 / Double(catalog.totalFleet))
+    #expect(october.records.coldest?.temperature == 9)
+    #expect(october.records.rarest?.modelId == yutong.id)
+
+    let all = PeriodStats(records, period: .all, catalog: catalog, now: at("2026-10-04 12:00"), calendar: warsaw)
+    #expect(all.catches == 3 && all.vehicles == 2 && all.newVehicles == 2)
+    #expect(all.topLines.first == RankedItem(name: "229", count: 2))
+    #expect(all.topPlaces.first?.name == "Wilanów")
+    #expect(all.records.mostSeen == VehicleCount(number: y, modelId: yutong.id, times: 2))
+    #expect(all.fleetShare == 2 / Double(catalog.totalFleet))
+}
+
+@Test func secondCarsAreVehiclesButNotCatches() {
+    let tram = catalog.models.first { $0.coupled }!
+    let records = [
+        SightingRecord(number: tram.numbers[0], modelId: tram.id, date: at("2026-09-28 12:00"), line: "16"),
+        SightingRecord(number: tram.numbers[1], modelId: tram.id, date: at("2026-09-28 11:59"), line: "16", pairedWith: tram.numbers[0]),
+    ]
+    let s = PeriodStats(records, period: .all, catalog: catalog, calendar: warsaw)
+    #expect(s.catches == 1)
+    #expect(s.vehicles == 2)
+    #expect(s.trams == 2)
+    #expect(s.topLines == [RankedItem(name: "16", count: 1)])
+}
+
+@Test func bestStreakFindsTheLongestRun() {
+    let dates = ["2026-09-23 08:00", "2026-09-25 09:00", "2026-09-26 10:00", "2026-09-26 18:00",
+                 "2026-09-27 07:00", "2026-09-29 12:00"].map(at)
+    let run = Streak.best(dates, calendar: warsaw)
+    #expect(run?.days == 3)
+    #expect(run?.start == warsaw.startOfDay(for: at("2026-09-25 12:00")))
+    #expect(run?.end == warsaw.startOfDay(for: at("2026-09-27 12:00")))
+    #expect(Streak.best([], calendar: warsaw) == nil)
+}
+
+@Test func periodsListNewestFirst() {
+    let dates = ["2025-12-30 10:00", "2026-09-23 08:00", "2026-10-01 09:00"].map(at)
+    #expect(StatsPeriod.available(dates, calendar: warsaw) == [
+        .all, .year(2026), .year(2025), .month(year: 2026, month: 10), .month(year: 2026, month: 9), .month(year: 2025, month: 12),
+    ])
+}
+
+@Test func memoryPrefersTheOldestAnniversary() {
+    let today = at("2026-10-04 09:00")
+    let caught: Set<Date> = [warsaw.startOfDay(for: at("2026-09-27 12:00")), warsaw.startOfDay(for: at("2026-09-04 12:00"))]
+    let pick = Memory.pick(for: today, hasCatches: { caught.contains($0) }, randomCount: 3, calendar: warsaw)
+    #expect(pick?.kind == .monthAgo)
+    let nothing = Memory.pick(for: today, hasCatches: { _ in false }, randomCount: 3, calendar: warsaw)
+    #expect(nothing?.kind == .first || nothing?.kind == .random)
+}
+
+// MARK: - Tracking
+
+@Test func trackPlanRunsToYourStop() throws {
+    let m = RouteMatch(shape: eastbound, along: 100, speed: 8)
+    // Waiting just off the street by the third stop.
+    let plan = try #require(TrackPlan.make(match: m, lat: routeLat + 0.0004, lon: 21.0151))
+    let stop = try #require(eastbound.stops.first { $0.name == "east30" })
+    #expect(plan.stop == "east30")
+    #expect(plan.stops == 3)
+    #expect(abs(plan.distance - (stop.along - 100)) < 1)
+    #expect(plan.at == nil)
+    // The path covers the vehicle and your stop, with some room either side.
+    #expect(eastbound.project((plan.path.first!.latitude, plan.path.first!.longitude))!.along < 1)
+    #expect(eastbound.project((plan.path.last!.latitude, plan.path.last!.longitude))!.along > stop.along + 300)
+    #expect(plan.pathStops.map(\.name).prefix(3) == ["east10", "east20", "east30"])
+}
+
+@Test func trackPlanNeedsTheRouteToComePastYou() {
+    let m = RouteMatch(shape: eastbound, along: 700, speed: 8)
+    // Far off the street, and behind the vehicle: neither is coming your way.
+    #expect(TrackPlan.make(match: m, lat: routeLat + 0.005, lon: 21.02) == nil)
+    #expect(TrackPlan.make(match: m, lat: routeLat, lon: 21.002) == nil)
+    let moving = TrackPlan.make(match: m, lat: routeLat, lon: 21.025)
+    #expect(moving?.at == "east20")
+}
+
+// MARK: - Correction sheet's line
+
+@Test func aTypedLineListsWhatRunsItNow() {
+    let urbino18 = catalog.match(number: 8592, kind: .bus).suggested!
+    let sibling = urbino18.numbers.first { $0 != 8592 }!
+    let snap = LiveSnapshot(vehicles: [
+        live(8592, line: "523", metres: 400), live(sibling, line: "523", metres: 100),
+        live(4235, .tram, line: "33"), live(1000, line: "L-8"),
+    ], fetched: fixtureNow)
+    let r = LineLookup.lookup(" 523", snapshot: snap, routes: nil, near: here, catalog: catalog)
+    #expect(r.running.map(\.vehicle.number) == [sibling, 8592])
+    #expect(r.models == [urbino18])
+    #expect(r.kind == .bus)
+    #expect(LineLookup.lookup("33", snapshot: snap, routes: nil, near: nil, catalog: catalog).kind == .tram)
+    // Typed the way people write it: "l8" is L-8.
+    #expect(LineLookup.lookup("l8", snapshot: snap, routes: nil, near: nil, catalog: catalog).running.count == 1)
+    #expect(LineLookup.lookup("", snapshot: snap, routes: nil, near: nil, catalog: catalog).running.isEmpty)
+
+    // Nothing on it now: the timetable still says what kind it is.
+    let book = RouteBook(shapes: [RouteBook.key(.bus, "166"): [shape("a", trips: 1, street(lat: 52.2, from: 21.0, to: 21.01))]])
+    let quiet = LineLookup.lookup("166", snapshot: snap, routes: book, near: here, catalog: catalog)
+    #expect(quiet.running.isEmpty && quiet.models.isEmpty && quiet.kind == .bus)
+    #expect(LineLookup.lookup("167", snapshot: snap, routes: book, near: here, catalog: catalog).kind == nil)
 }
