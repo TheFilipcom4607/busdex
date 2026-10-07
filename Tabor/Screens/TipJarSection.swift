@@ -1,7 +1,8 @@
 import StoreKit
 import SwiftUI
 
-/// Settings › Support TABOR: three tips, nothing locked behind them.
+/// Settings › Support TABOR: three tips. Any tip unlocks two extra app icons (#62); badges and
+/// everything else stay free.
 struct TipJarSection: View {
     private var jar: TipJar { .shared }
     @State private var message: String?
@@ -33,7 +34,7 @@ struct TipJarSection: View {
         } header: {
             Text("Support TABOR")
         } footer: {
-            Text("TABOR is free, with no ads. Tips pay for the server behind HUNT's live map and the Apple developer fee. Any tip puts a heart next to ME; nothing else is locked.")
+            Text("TABOR is free, with no ads. Tips pay for the server behind HUNT's live map and the Apple developer fee. Any tip puts a heart next to ME and unlocks two extra app icons; badges and everything else stay free.")
         }
         .task { await jar.load() }
         .alert("Thank you", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {

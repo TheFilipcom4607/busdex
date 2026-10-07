@@ -1493,6 +1493,16 @@
         }
       }
     },
+    "Any tip in Support TABOR unlocks these.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Każdy napiwek w sekcji Wesprzyj TABOR je odblokowuje."
+          }
+        }
+      }
+    },
     "App icon": {
       "localizations": {
         "pl": {
@@ -1569,6 +1579,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Każdy model ma w albumie swoją stronę, a każdy pojazd swoje miejsce. O rzadkości decyduje liczba egzemplarzy: model legendarny ma ich najwyżej dwanaście. Po drodze zdobywasz odznaki."
+          }
+        }
+      }
+    },
+    "FOR SUPPORTERS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DLA WSPIERAJĄCYCH"
           }
         }
       }
@@ -5748,12 +5768,12 @@
         }
       }
     },
-    "TABOR is free, with no ads. Tips pay for the server behind HUNT's live map and the Apple developer fee. Any tip puts a heart next to ME; nothing else is locked.": {
+    "TABOR is free, with no ads. Tips pay for the server behind HUNT's live map and the Apple developer fee. Any tip puts a heart next to ME and unlocks two extra app icons; badges and everything else stay free.": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "TABOR jest darmowy i bez reklam. Napiwki opłacają serwer, z którego HUNT bierze pojazdy na żywo, i opłatę dla Apple. Każdy napiwek dodaje serduszko przy ME, a poza tym nic nie jest zablokowane."
+            "value": "TABOR jest darmowy i bez reklam. Napiwki opłacają serwer, z którego HUNT bierze pojazdy na żywo, i opłatę dla Apple. Każdy napiwek dodaje serduszko przy ME i odblokowuje dwie dodatkowe ikony aplikacji, a odznaki i cała reszta zostają za darmo."
           }
         }
       }
