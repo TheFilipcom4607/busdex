@@ -29,6 +29,8 @@ enum Palette {
     static let brass = Color(hex: 0xD2A064)
     /// ON TEST: a visitor, not part of the fleet's rarity scale.
     static let violet = Color(hex: 0xB79BFF)
+    /// WORKS: hi-vis orange, like the track crews.
+    static let hiVis = Color(hex: 0xFF8A3D)
 
     // Sticker (white die-cut) internals
     static let paper = Color.white
@@ -69,6 +71,7 @@ extension Tier {
         case .common: Palette.dim
         case .vintage: Palette.brass
         case .onTest: Palette.violet
+        case .works: Palette.hiVis
         }
     }
 
@@ -81,6 +84,7 @@ extension Tier {
         case .common: Palette.sub
         case .vintage: Palette.brass
         case .onTest: Palette.violet
+        case .works: Palette.hiVis
         }
     }
 

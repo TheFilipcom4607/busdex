@@ -115,7 +115,7 @@ public struct FleetCatalog: Sendable {
     /// Every vintage trailer, by number.
     public var trailers: [Int] { models.flatMap(\.trailers).sorted() }
 
-    /// Vehicles on regular routes; vintage and test stock don't count toward the fleet.
+    /// Vehicles on regular routes; vintage, test and works stock don't count toward the fleet.
     public var totalFleet: Int { models.filter { $0.regular }.reduce(0) { $0 + $1.fleet } }
 
     /// Manual assignments win, then the ZTM database.

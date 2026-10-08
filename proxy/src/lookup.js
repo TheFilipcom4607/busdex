@@ -90,7 +90,7 @@ export function find(fleet, number, kind) {
     const batch = m.batches.find((b) => b.numbers.includes(number));
     if (batch) hits.push(describe(m, batch, number));
   }
-  const special = (h) => (h.tier === 'VINTAGE' || h.tier === 'ON TEST' ? 1 : 0);
+  const special = (h) => (h.tier === 'VINTAGE' || h.tier === 'ON TEST' || h.tier === 'WORKS' ? 1 : 0);
   return hits.sort((a, b) => special(a) - special(b) || b.fleetSize - a.fleetSize);
 }
 
@@ -120,7 +120,9 @@ function describe(m, b, number) {
     // The other car of a fixed pair (KMKM's 105Na 1000+1001, 13N 821+818).
     partner: m.sets?.find((pair) => pair.includes(number))?.find((n) => n !== number) ?? null,
     // Museum and club stock, out on tourist lines and at events.
-    vintage: m.vintage === true,
+    vintage: m.vintage === true && m.works !== true,
+    // Tramwaje Warszawskie's own works cars: measurement, transport, welding.
+    works: m.works === true,
     trial: m.onTest === true,
     // When it's on trial, until when, e.g. "ON TRIAL SEP–OCT 2026".
     trialLabel: m.onTest ? (m.trial ?? null) : null,
@@ -130,6 +132,7 @@ function describe(m, b, number) {
 
 // The app's Tier: by fleet size, except preserved and test vehicles.
 function tier(m) {
+  if (m.works) return 'WORKS';
   if (m.vintage) return 'VINTAGE';
   if (m.onTest) return 'ON TEST';
   return m.fleet <= 12 ? 'LEGENDARY' : m.fleet <= 48 ? 'GOLD' : m.fleet <= 80 ? 'RARE' : 'COMMON';

@@ -370,10 +370,10 @@ public enum Wanted {
                         from: user, includeCaught: true).sorted { $0.distance < $1.distance }
     }
 
-    /// Vintage and test stock sort last in the book, but one that's actually out running
-    /// is as rare a sight as anything: rank it with the legendaries.
+    /// Vintage, test and works stock sort last in the book, but one that's actually out
+    /// running is as rare a sight as anything: rank it with the legendaries.
     static func huntRank(_ tier: Tier) -> Int {
-        tier == .vintage || tier == .onTest ? Tier.legendary.rank : tier.rank
+        tier == .vintage || tier == .onTest || tier == .works ? Tier.legendary.rank : tier.rank
     }
 }
 

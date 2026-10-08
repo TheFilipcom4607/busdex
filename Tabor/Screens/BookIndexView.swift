@@ -46,7 +46,7 @@ struct BookIndexView: View {
             TopBar {
                 Mono("YOUR BOOK", size: 12, spacing: 0.16)
             } trailing: {
-                // Same count as the widget: the total leaves vintage and test stock out, so the count must too.
+                // Same count as the widget: the total leaves vintage, test and works stock out, so the count must too.
                 Mono("\(stats.fleetCaught(catalog: catalog).grouped) / \(catalog.totalFleet.grouped)", size: 12)
             }
             ScreenTitle(text: String(localized: "Warsaw rolling stock"))
@@ -68,8 +68,8 @@ struct BookIndexView: View {
             ScrollView {
                 LazyVStack(spacing: 9) {
                     ForEach(rows.filter(\.regular)) { m in row(m, stats: stats) }
-                    // Test and tourist-line stock live in sections of their own: they're
-                    // passing through or seasonal, not rare.
+                    // Test, tourist-line and works stock live in sections of their own: they're
+                    // passing through, seasonal or not for passengers, not rare.
                     let onTest = rows.filter(\.onTest)
                     if !onTest.isEmpty {
                         sectionHeader(.onTest, note: String(localized: "BUSES ON TRIAL · NOT PART OF THE FLEET %"))
@@ -79,6 +79,11 @@ struct BookIndexView: View {
                     if !vintage.isEmpty {
                         sectionHeader(.vintage, note: String(localized: "TOURIST LINES ON SUMMER WEEKENDS · NOT PART OF THE FLEET %"))
                         ForEach(vintage) { m in row(m, stats: stats) }
+                    }
+                    let works = rows.filter(\.works)
+                    if !works.isEmpty {
+                        sectionHeader(.works, note: String(localized: "TRAMWAJE WARSZAWSKIE'S OWN CARS · NOT PART OF THE FLEET %"))
+                        ForEach(works) { m in row(m, stats: stats) }
                     }
                     Mono(catalog.sourceDisplay.uppercased(), size: 9, spacing: 0.06, color: Palette.faint)
                         .multilineTextAlignment(.center)

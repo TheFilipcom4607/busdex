@@ -8,7 +8,7 @@ struct WidgetSnapshot: Codable, Equatable {
     /// Every widget that shows the book, reloaded together when it changes.
     static let bookKinds = [widgetKind, "tabor.recent", "tabor.rarity", "tabor.shuffle", "tabor.stats", "tabor.memories"]
 
-    /// Distinct vehicles caught that count toward the fleet (vintage and test stock don't).
+    /// Distinct vehicles caught that count toward the fleet (vintage, test and works stock don't).
     var caught: Int
     var fleet: Int
     /// The streak as of `lastCatch`'s day.

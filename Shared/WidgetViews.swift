@@ -16,6 +16,7 @@ enum WidgetPalette {
     static let green = Color(red: 0.137, green: 0.898, blue: 0.627)
     static let brass = Color(red: 0.824, green: 0.627, blue: 0.392)
     static let violet = Color(red: 0.718, green: 0.608, blue: 1)
+    static let hiVis = Color(red: 1, green: 0.541, blue: 0.239)
     static let card = Color(red: 0.078, green: 0.086, blue: 0.102)
     static let thumb = Color(red: 0.106, green: 0.118, blue: 0.137)
     static let routeInk = Color(red: 0.788, green: 0.804, blue: 0.827)
@@ -28,6 +29,7 @@ enum WidgetPalette {
         case "RARE": green
         case "VINTAGE": brass
         case "ON TEST": violet
+        case "WORKS": hiVis
         default: .white
         }
     }
@@ -43,6 +45,7 @@ enum WidgetPalette {
         case "COMMON": String(localized: "COMMON", comment: "Rarity tier")
         case "VINTAGE": String(localized: "VINTAGE", comment: "Rarity tier: tourist/museum vehicles")
         case "ON TEST": String(localized: "ON TEST", comment: "Rarity tier: vehicles on a trial run")
+        case "WORKS": String(localized: "WORKS", comment: "Rarity tier: the tram company's own works cars")
         default: raw
         }
     }

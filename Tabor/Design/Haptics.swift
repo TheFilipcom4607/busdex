@@ -135,6 +135,12 @@ final class Haptics {
             events.append(hum(0, build - 0.06, intensity: 1, sharpness: 0.3))
             curves.append(curve(.hapticIntensityControl, [(0, 0.2), (build - 0.06, 0.8)]))
             curves.append(curve(.hapticSharpnessControl, [(0, -0.3), (build - 0.06, 0.4)]))
+        case .works:
+            // A track gang's hammer on a rail spike: three hard, sharp knocks.
+            build = 0.62
+            for (t, i) in [(0.0, 0.5), (0.22, 0.6), (0.44, 0.75)] as [(TimeInterval, Float)] {
+                events.append(tap(t, i, 0.9))
+            }
         case .legendary:
             // A drumroll: ticks that accelerate and sharpen, over a swell that cuts out
             // right before the drop so nothing masks it.

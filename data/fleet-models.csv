@@ -1,7 +1,11 @@
 number range,model and make,year,count,rarity,ztm code,type,depot,operator,coupled
 5,Konstal 102N,1969,1,VINTAGE,Konstal 102N,tram,R-4 Żoliborz,Tramwaje Warszawskie,
+12,Konstal 13N,1962,1,WORKS,Konstal 13N,tram,R-2 Praga,Tramwaje Warszawskie,
 43,Falkenried A,1906,1,VINTAGE,Falkenried A,tram,R-3 Mokotów,Tramwaje Warszawskie,
+53,Konstal 13N,1964,1,WORKS,Konstal 13N,tram,R-4 Żoliborz,Tramwaje Warszawskie,
 257,Lilpop C,1925,1,VINTAGE,Lilpop C,tram,R-3 Mokotów,Tramwaje Warszawskie,
+388,Konstal 13N,1967,1,WORKS,Konstal 13N,tram,T-1 ZETiT,Tramwaje Warszawskie,
+402,Konstal 13N,1968,1,WORKS,Konstal 13N,tram,R-1 Wola,Tramwaje Warszawskie,
 403,Gdańsk type K,1940,1,VINTAGE,Gdańska Fabryka Wagonów / WIwK K,tram,R-3 Mokotów,Tramwaje Warszawskie,
 407,Konstal 13N,1967,1,VINTAGE,Konstal 13N,tram,R-4 Żoliborz,Tramwaje Warszawskie,
 445-446,Gdańsk type K,1940,2,VINTAGE,Gdańska Fabryka Wagonów / WIwK K,tram,R-3 Mokotów,Tramwaje Warszawskie,
@@ -18,6 +22,7 @@ number range,model and make,year,count,rarity,ztm code,type,depot,operator,coupl
 873,Konstal 4N,1961,1,VINTAGE,Konstal 4N,tram,R-3 Mokotów,Tramwaje Warszawskie,
 1000-1001,Konstal 105Na,1975,2,VINTAGE,Konstal 105N,tram,R-1 Wola,Tramwaje Warszawskie,yes
 1006,Konstal 105Na,1990,1,VINTAGE,Konstal 105N,tram,R-1 Wola,Tramwaje Warszawskie,
+1022,Konstal 105Na,1975,1,WORKS,Konstal 105N,tram,CLET,Tramwaje Warszawskie,
 1251-1252,Konstal 105Na,1988,2,VINTAGE,Konstal 105N,tram,R-4 Żoliborz,Tramwaje Warszawskie,yes
 1275-1276,Konstal 105Na,1989,2,COMMON,Konstal 105N,tram,R-4 Żoliborz,Tramwaje Warszawskie,yes
 1281-1286,Konstal 105Na,1989,6,COMMON,Konstal 105N,tram,R-4 Żoliborz,Tramwaje Warszawskie,yes
@@ -28,6 +33,7 @@ number range,model and make,year,count,rarity,ztm code,type,depot,operator,coupl
 1307-1310,Konstal 105Na,1990,4,COMMON,Konstal 105N,tram,R-4 Żoliborz,Tramwaje Warszawskie,yes
 1311-1312,Konstal 105Na,1990,2,COMMON,Konstal 105N,tram,R-2 Praga,Tramwaje Warszawskie,yes
 1313-1314,Konstal 105Na,1990,2,COMMON,Konstal 105N,tram,R-4 Żoliborz,Tramwaje Warszawskie,yes
+1315,Konstal 105Na,1990,1,WORKS,Konstal 105N,tram,R-5 Annopol,Tramwaje Warszawskie,
 1317-1322,Konstal 105Na,1990,6,COMMON,Konstal 105N,tram,R-4 Żoliborz,Tramwaje Warszawskie,yes
 1323-1328,Konstal 105Na,1990,6,COMMON,Konstal 105N,tram,R-2 Praga,Tramwaje Warszawskie,yes
 1329-1330,Konstal 105Na,1990,2,COMMON,Konstal 105N,tram,R-4 Żoliborz,Tramwaje Warszawskie,yes
@@ -73,6 +79,7 @@ number range,model and make,year,count,rarity,ztm code,type,depot,operator,coupl
 1469-1470,Konstal 105Na,1997,2,COMMON,Konstal 105N,tram,R-3 Mokotów,Tramwaje Warszawskie,yes
 1620,Konstal N,1951,1,VINTAGE,Konstal N,tram,R-3 Mokotów,Tramwaje Warszawskie,
 1811,Konstal N,1961,1,VINTAGE,Konstal N,tram,R-3 Mokotów,Tramwaje Warszawskie,
+2002,Gdańsk type K,1940,1,WORKS,Gdańska Fabryka Wagonów / WIwK K,tram,R-1 Wola,Tramwaje Warszawskie,
 2006-2007,Konstal 105N2k,1989,2,COMMON,Alstom Konstal 105N,tram,R-1 Wola,Tramwaje Warszawskie,yes
 2008-2009,Konstal 105N2k,1992,2,COMMON,Alstom Konstal 105N,tram,R-1 Wola,Tramwaje Warszawskie,yes
 2010-2013,Konstal 105N2k,1995,4,COMMON,Alstom Konstal 105N,tram,R-1 Wola,Tramwaje Warszawskie,yes
@@ -84,9 +91,13 @@ number range,model and make,year,count,rarity,ztm code,type,depot,operator,coupl
 2062-2064,Konstal 105N2k,2000,3,COMMON,Alstom Konstal 105N,tram,R-1 Wola,Tramwaje Warszawskie,yes
 2066-2073,Konstal 105N2k,2000,8,COMMON,Alstom Konstal 105N,tram,R-1 Wola,Tramwaje Warszawskie,yes
 2074-2135,Konstal 105N2k,2001,62,COMMON,Alstom Konstal 105N,tram,R-3 Mokotów,Tramwaje Warszawskie,yes
+2112-2113,Gdańsk type K,1940,2,WORKS,Gdańska Fabryka Wagonów / WIwK K,tram,T-1 ZETiT,Tramwaje Warszawskie,
 2136-2138,Cegielski 123N,2006,3,GOLD,HCP 123N,tram,R-5 Annopol,Tramwaje Warszawskie,yes
 2139-2165,Cegielski 123N,2007,27,GOLD,HCP 123N,tram,R-5 Annopol,Tramwaje Warszawskie,yes
 2204,Warsztaty Główne W,1928,1,VINTAGE,Warsztaty Główne W,tram,,Tramwaje Warszawskie,
+2400,Gdańsk type K,1940,1,WORKS,Gdańska Fabryka Wagonów / WIwK K,tram,R-4 Żoliborz,Tramwaje Warszawskie,
+2406-2407,Gdańsk type K,1940,2,WORKS,Gdańska Fabryka Wagonów / WIwK K,tram,T-3 ZNT,Tramwaje Warszawskie,
+2412,Konstal 13N,1969,1,WORKS,Konstal 13N,tram,R-3 Mokotów,Tramwaje Warszawskie,
 3001,Konstal 112N,1995,1,LEGENDARY,Konstal 112N,tram,R-1 Wola,Tramwaje Warszawskie,
 3002-3004,Alstom 116Na,1998,3,GOLD,Alstom Konstal 116N,tram,R-2 Praga,Tramwaje Warszawskie,
 3005-3024,Alstom 116Na,1999,20,GOLD,Alstom Konstal 116N,tram,R-2 Praga,Tramwaje Warszawskie,
@@ -240,6 +251,7 @@ number range,model and make,year,count,rarity,ztm code,type,depot,operator,coupl
 4273,Hyundai Rotem 140N,2022,1,COMMON,HRC 140N,tram,R-3 Mokotów,Tramwaje Warszawskie,
 4274-4282,Hyundai Rotem 140N,2022,9,COMMON,HRC 140N,tram,R-4 Żoliborz,Tramwaje Warszawskie,
 4283-4285,Hyundai Rotem 140N,2023,3,COMMON,HRC 140N,tram,R-4 Żoliborz,Tramwaje Warszawskie,
+9001-9006,ZPS Stargard 4NA-DT,2015,6,WORKS,ZPS Stargard 4NA-DT,tram,T-1 ZETiT,Tramwaje Warszawskie,
 95,Jelcz M11,1987,1,VINTAGE,Jelcz M11,bus,,KMKM,
 160,San H-100B,1973,1,VINTAGE,San H-100B,bus,,KMKM,
 289,Ikarus 260,1982,1,VINTAGE,Ikarus 260,bus,,KMKM,

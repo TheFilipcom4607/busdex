@@ -221,6 +221,26 @@ private func sampleModel() -> VehicleModel {
     #expect(Wanted.huntRank(.onTest) == Tier.legendary.rank)
 }
 
+@Test func worksCarsAreTheirOwnTierOutsideTheFleet() {
+    // TW's overhead-line measurement car: a 13N, in neither of ZTM's lists.
+    let m = catalog.match(number: 388, kind: .tram).suggested
+    #expect(m?.id == "tram-konstal-13n-works" && m?.tier == .works)
+    #expect(m?.works == true && m?.vintage == false && m?.regular == false && m?.whereToFind != nil)
+    // fleet.json marks them vintage as well, for older apps; the tourist-line 13Ns stay vintage.
+    #expect(catalog.model(id: "tram-konstal-13n")?.tier == .vintage)
+    #expect(!catalog.models.filter(\.regular).contains { $0.works })
+    // Welding car 2112 shares its number with a 105N2k: the passenger car comes first.
+    let both = catalog.match(number: 2112, kind: .tram).candidates.map(\.id)
+    #expect(both == ["tram-alstom-konstal-105n", "tram-gdanska-fabryka-wagonow-wiwk-k-works"])
+    #expect(Wanted.huntRank(.works) == Tier.legendary.rank)
+}
+
+@Test func worksOverridesVintageWhenDecoding() throws {
+    let json = #"{"id":"w","name":"W","make":"M","kind":"TRAM","operators":[],"fleet":1,"batches":[],"vintage":true,"works":true}"#
+    let m = try JSONDecoder().decode(VehicleModel.self, from: Data(json.utf8))
+    #expect(m.works && !m.vintage && m.tier == .works)
+}
+
 @Test func preservedBusesOutsideZtmAreVintage() {
     // KMKM's Solaris Urbino 15 #8731 isn't in the ZTM database.
     let m = catalog.match(number: 8731, kind: .bus).suggested

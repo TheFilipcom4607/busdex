@@ -231,11 +231,12 @@ now.
 | **COMMON** | Everything bigger |
 | **VINTAGE** | Tourist and museum vehicles, only out on summer weekends and at events |
 | **ON TEST** | Trial vehicles on loan to an operator, here for a few weeks |
+| **WORKS** | Tramwaje Warszawskie's own works cars: measurement, transport and welding cars, out on no timetable |
 
 Rarity is fleet size and nothing else. There's no guessing at how often a model
-runs. VINTAGE and ON TEST are tiers of their own, whatever their size, and
-neither counts toward the fleet percentage or the "complete a tier" badges.
-They aren't rare, they're seasonal or passing through.
+runs. VINTAGE, ON TEST and WORKS are tiers of their own, whatever their size,
+and none counts toward the fleet percentage or the "complete a tier" badges.
+They aren't rare, they're seasonal, passing through, or not for passengers.
 
 A vehicle's page has its age, when you first saw it, how many times you've
 seen it, any special livery, and every sighting: when, where (district and street),
@@ -300,8 +301,9 @@ deleted sighting can be brought back with UNDO for a few seconds.
 sources: the ZTM vehicle database, and the city's open-data vehicle list, which
 adds numbers ZTM hasn't listed yet and each model's specs. On top of that come
 hand-kept lists for what neither has yet or has wrong: new deliveries already
-running, buses on trial, club-owned vintage buses, retired vehicles still listed,
-vehicles filed under the wrong model, coupled trams, and special liveries
+running, buses on trial, club-owned vintage buses, Tramwaje Warszawskie's works
+cars, retired vehicles still listed, vehicles filed under the wrong model,
+coupled trams, and special liveries
 (confirmed from photos, since the city's paint data misses repaints). The
 script's header explains each list.
 

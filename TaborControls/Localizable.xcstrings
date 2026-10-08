@@ -1508,6 +1508,17 @@
           }
         }
       }
+    },
+    "WORKS": {
+      "comment": "Rarity tier: the tram company's own works cars",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TECHNICZNY"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

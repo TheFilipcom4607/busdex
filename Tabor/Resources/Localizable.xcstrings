@@ -8913,6 +8913,47 @@
           }
         }
       }
+    },
+    "WORKS": {
+      "comment": "Rarity tier: the tram company's own works cars",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TECHNICZNY"
+          }
+        }
+      }
+    },
+    "TRACK AND WIRE WORK · NO TIMETABLE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PRACE NA TORACH I SIECI · BEZ ROZKŁADU"
+          }
+        }
+      }
+    },
+    "A works car — it carries no passengers and runs to no timetable. Good eye.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tramwaj techniczny — nie wozi pasażerów i nie jeździ według rozkładu. Dobre oko."
+          }
+        }
+      }
+    },
+    "TRAMWAJE WARSZAWSKIE'S OWN CARS · NOT PART OF THE FLEET %": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WŁASNE WAGONY TRAMWAJÓW WARSZAWSKICH · NIE LICZĄ SIĘ DO % TABORU"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

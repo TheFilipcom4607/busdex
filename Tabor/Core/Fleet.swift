@@ -61,6 +61,10 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     public let vintage: Bool
     /// On loan for a trial run: out for a few weeks, then gone.
     public let onTest: Bool
+    /// Tramwaje Warszawskie's own works cars (measurement, transport, welding): never carry
+    /// passengers, out on no timetable. fleet.json marks them `vintage` too, for app versions
+    /// from before this existed; here `works` wins and `vintage` is false.
+    public let works: Bool
     /// Where a test vehicle runs, e.g. "LINE 106 · ALSO 122, 123 · TRIAL UNTIL 30 SEP 2026".
     public let runs: String?
     /// When a test vehicle is here, e.g. "ON TRIAL SEP 2026": shown where the build year
@@ -93,8 +97,9 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
 
     public init(id: String, name: String, make: String, code: String? = nil, kind: VehicleKind,
                 operators: [String], fleet: Int, firstYear: Int?, lastYear: Int?, batches: [Batch],
-                vintage: Bool = false, onTest: Bool = false, runs: String? = nil, trial: String? = nil,
-                runsPl: String? = nil, trialPl: String? = nil, specs: ModelSpecs? = nil, variants: [SpecVariant] = [],
+                vintage: Bool = false, onTest: Bool = false, works: Bool = false, runs: String? = nil,
+                trial: String? = nil, runsPl: String? = nil, trialPl: String? = nil, specs: ModelSpecs? = nil,
+                variants: [SpecVariant] = [],
                 liveries: [String: String]? = nil, coupled: Bool = false, sets: [[Int]] = [],
                 trailers: [Int] = [], tows: Bool = false, formerly: [String] = []) {
         self.id = id
@@ -107,8 +112,9 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         self.firstYear = firstYear
         self.lastYear = lastYear
         self.batches = batches
-        self.vintage = vintage
+        self.vintage = vintage && !works
         self.onTest = onTest
+        self.works = works
         self.runs = runs
         self.trial = trial
         self.runsPl = runsPl
@@ -124,7 +130,7 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, make, code, kind, operators, fleet, firstYear, lastYear, batches, vintage, onTest, runs, trial,
+        case id, name, make, code, kind, operators, fleet, firstYear, lastYear, batches, vintage, onTest, works, runs, trial,
              runsPl, trialPl, specs, variants, liveries, coupled, sets, trailers, tows, formerly
     }
 
@@ -140,7 +146,8 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
         firstYear = try c.decodeIfPresent(Int.self, forKey: .firstYear)
         lastYear = try c.decodeIfPresent(Int.self, forKey: .lastYear)
         batches = try c.decode([Batch].self, forKey: .batches)
-        vintage = try c.decodeIfPresent(Bool.self, forKey: .vintage) ?? false
+        works = (try? c.decodeIfPresent(Bool.self, forKey: .works)) ?? false
+        vintage = try (c.decodeIfPresent(Bool.self, forKey: .vintage) ?? false) && !works
         onTest = try c.decodeIfPresent(Bool.self, forKey: .onTest) ?? false
         runs = try c.decodeIfPresent(String.self, forKey: .runs)
         trial = try c.decodeIfPresent(String.self, forKey: .trial)
@@ -174,15 +181,16 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     public var rangeDisplay: String { NumberSpan.display(numbers) }
 
     /// Regular service stock: what the fleet %, the set badges and the rarity tiers are
-    /// about. Vintage and test vehicles are extras on the side.
-    public var regular: Bool { !vintage && !onTest }
+    /// about. Vintage, test and works vehicles are extras on the side.
+    public var regular: Bool { !vintage && !onTest && !works }
 
-    /// Vintage and test stock get their own tier whatever their size: they aren't rare,
-    /// they're seasonal or passing through.
-    public var tier: Tier { vintage ? .vintage : onTest ? .onTest : Tier.of(fleet: fleet) }
+    /// Vintage, test and works stock get their own tier whatever their size: they aren't rare,
+    /// they're seasonal, passing through, or not for passengers.
+    public var tier: Tier { works ? .works : vintage ? .vintage : onTest ? .onTest : Tier.of(fleet: fleet) }
 
-    /// Where to find a vintage or test vehicle, e.g. "TOURIST LINES T & 36 · SUMMER WEEKENDS".
+    /// Where to find a vintage, test or works vehicle, e.g. "TOURIST LINES T & 36 · SUMMER WEEKENDS".
     public var whereToFind: String? {
+        if works { return String(localized: "TRACK AND WIRE WORK · NO TIMETABLE") }
         if vintage {
             return kind == .tram ? String(localized: "TOURIST LINES T & 36 · SUMMER WEEKENDS")
                 : String(localized: "TOURIST LINE 100 & EVENTS · SUMMER WEEKENDS")
@@ -399,6 +407,7 @@ public enum Tier: String, Sendable, CaseIterable {
     case common = "COMMON"
     case vintage = "VINTAGE"
     case onTest = "ON TEST"
+    case works = "WORKS"
 
     /// Thresholds from the design prototype's `tierOf`.
     public static func of(fleet: Int) -> Tier {
@@ -412,7 +421,7 @@ public enum Tier: String, Sendable, CaseIterable {
         case .legendary: 12
         case .gold: 48
         case .rare: 80
-        case .common, .vintage, .onTest: nil
+        case .common, .vintage, .onTest, .works: nil
         }
     }
 
@@ -425,6 +434,7 @@ public enum Tier: String, Sendable, CaseIterable {
         case .common: String(localized: "COMMON", comment: "Rarity tier")
         case .vintage: String(localized: "VINTAGE", comment: "Rarity tier: tourist/museum vehicles")
         case .onTest: String(localized: "ON TEST", comment: "Rarity tier: vehicles on a trial run")
+        case .works: String(localized: "WORKS", comment: "Rarity tier: the tram company's own works cars")
         }
     }
 
@@ -437,6 +447,7 @@ public enum Tier: String, Sendable, CaseIterable {
         case .common: 3
         case .vintage: 4
         case .onTest: 5
+        case .works: 6
         }
     }
 }

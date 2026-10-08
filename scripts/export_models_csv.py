@@ -37,6 +37,8 @@ def spans(numbers):
 
 def tier(m):
     """Same tiers as Tier in Tabor/Core/Fleet.swift."""
+    if m.get("works"):
+        return "WORKS"
     if m.get("vintage"):
         return "VINTAGE"
     if m.get("onTest"):
