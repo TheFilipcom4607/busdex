@@ -73,12 +73,21 @@ final class Router {
 
     /// The number just stuck in: its model page scrolls to it, then clears it (#51).
     var landing: Int?
+    /// Held while the reveal is still up, so the page scrolls once it's on screen rather than
+    /// after a guessed delay.
+    private var pendingLanding: Int?
 
-    /// A model's page in the book; after sticking a catch in, scrolled to where it went.
+    /// A model's page in the book; after sticking a catch in, scrolled to where it went once
+    /// the reveal has gone (`revealGone`, from the reveal's onDisappear).
     func openModel(_ id: String, landing: Int? = nil) {
         tab = .book
         bookPath = [.model(id)]
-        self.landing = landing
+        pendingLanding = landing
+    }
+
+    func revealGone() {
+        landing = pendingLanding
+        pendingLanding = nil
     }
 
     /// Its vehicles on HUNT's map. The filter is already set; the book keeps its place.

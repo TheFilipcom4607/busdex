@@ -265,6 +265,9 @@ struct RevealView: View {
         // One key, so fixing number and model together replays the reveal once.
         .onChange(of: "\(draft.number ?? -1)|\(draft.modelId ?? "")") { _, _ in edited() }
         .onChange(of: draft.partner) { _, _ in refreshAlso() }
+        // Only now may the book scroll to the catch: CATCH (and this cover with it) goes as the
+        // tab switches, so the cover's own onDismiss never runs.
+        .onDisappear { router.revealGone() }
         .task {
             Haptics.shared.warmUp()
             await playReveal(run: 0)

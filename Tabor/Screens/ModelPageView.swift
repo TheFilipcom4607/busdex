@@ -27,8 +27,6 @@ struct ModelPageView: View {
     @Environment(\.modelContext) private var context
     @Environment(Router.self) private var router
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 11), count: 3)
-
     var body: some View {
         if let model = Fleet.catalog.model(id: modelId) {
             content(model)
@@ -122,9 +120,12 @@ struct ModelPageView: View {
             // The scroll's soft top edge makes up the rest of the gap.
             .padding(.bottom, 4)
 
-            ScrollViewReader { scroll in
+            ScrollViewReader { reader in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
+                    // One lazy stack of rows, not a lazy grid per batch: scrolled to a catch far down,
+                    // the nested grids guessed their heights, and a sticker redrawn mid-way (its bounce)
+                    // threw the page back up or to the bottom (TestFlight, 123N #2158).
+                    LazyVStack(alignment: .leading, spacing: 0) {
                         // At the top of the scroll rather than above it, so the stickers keep the room.
                         // Starts below the soft top edge, which should only fade what's scrolled up.
                         if let spread = model.spread {
@@ -142,27 +143,11 @@ struct ModelPageView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .overlay(alignment: .top) { Rectangle().fill(Color.white.opacity(0.08)).frame(height: 1) }
                                 .padding(.top, i == 0 ? 0 : 14)
-                            LazyVGrid(columns: columns, spacing: 11) {
-                                ForEach(ordered(batch.numbers, owned: ownedByNumber), id: \.self) { n in
-                                    if let v = ownedByNumber[n] {
-                                        // A button, not a NavigationLink: a link steals the long press
-                                        // the debug delete menu needs.
-                                        Button { router.bookPath.append(.vehicle(modelId: model.id, number: n)) } label: {
-                                            DieCut(number: n, sticker: sightings.sticker(number: n, modelId: model.id),
-                                                   photo: sightings.photo(number: n, modelId: model.id)) {
-                                                if v.timesSeen > 1 {
-                                                    Mono("×\(v.timesSeen)", size: 9.5, spacing: 0, color: Palette.stickerCount)
-                                                }
-                                            }
-                                            .frame(height: 104)
-                                            .scaleEffect(landed == n ? 1.12 : 1)
-                                        }
-                                        .buttonStyle(StickerPressStyle(tilt: stickerTilt(n)))
-                                        .contextMenu { debugMenu(n) }
-                                        .id(n)
-                                    } else {
-                                        EmptySlot(label: String(n)).frame(height: 104)
-                                    }
+                            stickerRows(ordered(batch.numbers, owned: ownedByNumber), grid: i) { n in
+                                if let v = ownedByNumber[n] {
+                                    sticker(n, model: model, timesSeen: v.timesSeen)
+                                } else {
+                                    EmptySlot(label: String(n)).frame(height: Self.cell)
                                 }
                             }
                         }
@@ -171,19 +156,7 @@ struct ModelPageView: View {
                             Mono("NOT IN ZTM DATABASE · ADDED BY YOU", size: 10, spacing: 0.14, color: Palette.faint)
                                 .padding(.top, 32)
                                 .padding(.bottom, 10)
-                            LazyVGrid(columns: columns, spacing: 11) {
-                                ForEach(strays, id: \.number) { v in
-                                    Button { router.bookPath.append(.vehicle(modelId: model.id, number: v.number)) } label: {
-                                        DieCut(number: v.number, sticker: sightings.sticker(number: v.number, modelId: model.id),
-                                               photo: sightings.photo(number: v.number, modelId: model.id))
-                                            .frame(height: 104)
-                                            .scaleEffect(landed == v.number ? 1.12 : 1)
-                                    }
-                                    .buttonStyle(StickerPressStyle(tilt: stickerTilt(v.number)))
-                                    .contextMenu { debugMenu(v.number) }
-                                    .id(v.number)
-                                }
-                            }
+                            stickerRows(strays.map(\.number), grid: Self.strays) { n in sticker(n, model: model, timesSeen: 1) }
                         }
                     }
                     .padding(.horizontal, 22)
@@ -194,13 +167,13 @@ struct ModelPageView: View {
                 .softTopEdge(Self.softEdge)
                 // A catch just stuck in: down to it, wherever its batch is, rather than the top (#51).
                 .task(id: router.landing) {
-                    guard let n = router.landing, owned.contains(where: { $0.number == n }) else { return }
+                    guard let n = router.landing, let row = row(of: n, model: model, owned: owned) else { return }
                     // Cleared so coming back from a vehicle page doesn't scroll again, but only at the
                     // end: it's the task's id, and changing it cancels the task.
                     defer { router.landing = nil }
-                    // Once the reveal has gone and the page is laid out.
-                    try? await Task.sleep(for: .milliseconds(350))
-                    withAnimation(.easeInOut(duration: 0.45)) { scroll.scrollTo(n, anchor: .center) }
+                    // The reveal has gone by now (`Router.revealGone`); a beat for the page to settle.
+                    try? await Task.sleep(for: .milliseconds(150))
+                    withAnimation(.easeInOut(duration: 0.45)) { reader.scrollTo(row, anchor: .center) }
                     try? await Task.sleep(for: .milliseconds(450))
                     withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) { landed = n }
                     try? await Task.sleep(for: .milliseconds(250))
@@ -244,6 +217,59 @@ struct ModelPageView: View {
     }
 
     private static let softEdge: CGFloat = 16
+    private static let cell: CGFloat = 104, columns = 3
+    /// The strays' grid, after the batches.
+    private static let strays = -1
+
+    /// One row of stickers, the scroll's target for a catch in it.
+    private struct Row: Hashable {
+        let grid: Int, index: Int
+    }
+
+    /// Numbers three to a row, each row its own item in the lazy stack.
+    private func stickerRows(_ numbers: [Int], grid: Int, @ViewBuilder cell: @escaping (Int) -> some View) -> some View {
+        let rows = stride(from: 0, to: numbers.count, by: Self.columns).map { Array(numbers[$0..<min($0 + Self.columns, numbers.count)]) }
+        return ForEach(Array(rows.enumerated()), id: \.offset) { r, row in
+            HStack(spacing: 11) {
+                ForEach(0..<Self.columns, id: \.self) { c in
+                    Group {
+                        if c < row.count { cell(row[c]) } else { Color.clear.frame(height: Self.cell) }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.top, r == 0 ? 0 : 11)
+            .id(Row(grid: grid, index: r))
+        }
+    }
+
+    private func sticker(_ n: Int, model: VehicleModel, timesSeen: Int) -> some View {
+        // A button, not a NavigationLink: a link steals the long press the debug delete menu needs.
+        Button { router.bookPath.append(.vehicle(modelId: model.id, number: n)) } label: {
+            DieCut(number: n, sticker: sightings.sticker(number: n, modelId: model.id),
+                   photo: sightings.photo(number: n, modelId: model.id)) {
+                if timesSeen > 1 {
+                    Mono("×\(timesSeen)", size: 9.5, spacing: 0, color: Palette.stickerCount)
+                }
+            }
+            .frame(height: Self.cell)
+            .scaleEffect(landed == n ? 1.12 : 1)
+        }
+        .buttonStyle(StickerPressStyle(tilt: stickerTilt(n)))
+        .contextMenu { debugMenu(n) }
+    }
+
+    /// The row a caught number's sticker is in, laid out as the page draws it.
+    private func row(of n: Int, model: VehicleModel, owned: [OwnedVehicle]) -> Row? {
+        guard owned.contains(where: { $0.number == n }) else { return nil }
+        if let i = model.batches.firstIndex(where: { $0.numbers.contains(n) }) {
+            let byNumber = Dictionary(uniqueKeysWithValues: owned.map { ($0.number, $0) })
+            return ordered(model.batches[i].numbers, owned: byNumber).firstIndex(of: n).map { Row(grid: i, index: $0 / Self.columns) }
+        }
+        // In the order the strays' rows draw them.
+        return owned.filter { !model.numbers.contains($0.number) }.firstIndex { $0.number == n }
+            .map { Row(grid: Self.strays, index: $0 / Self.columns) }
+    }
 
     /// Length, drive and room, from the city's open data; each tile only if it's known. A model
     /// the city lists under several types shows each drive and the range of the rest.
