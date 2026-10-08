@@ -224,18 +224,39 @@ private func sampleModel() -> VehicleModel {
 @Test func worksCarsAreTheirOwnTierOutsideTheFleet() {
     // TW's overhead-line measurement car: a 13N, in neither of ZTM's lists.
     let m = catalog.match(number: 388, kind: .tram).suggested
-    #expect(m?.id == "tram-works-measuring" && m?.name == "Wire measuring car" && m?.tier == .works)
-    #expect(m?.namePl == "Wagon pomiarowy sieci" && m?.code == "Konstal 13N")
+    #expect(m?.id == "tram-works-measuring-konstal-13n" && m?.name == "Konstal 13N overhead line measuring car")
+    #expect(m?.tier == .works && m?.namePl == "Konstal 13N wagon pomiarowy sieci trakcyjnej" && m?.code == "Konstal 13N")
     #expect(m?.works == true && m?.vintage == false && m?.regular == false && m?.whereToFind != nil)
     // fleet.json marks them vintage as well, for older apps; the tourist-line 13Ns stay vintage.
     #expect(catalog.model(id: "tram-konstal-13n")?.tier == .vintage)
     #expect(!catalog.models.filter(\.regular).contains { $0.works })
     // Welding car 2112 shares its number with a 105N2k: the passenger car comes first.
     let both = catalog.match(number: 2112, kind: .tram).candidates.map(\.id)
-    #expect(both == ["tram-alstom-konstal-105n", "tram-works-welding"])
-    // One model per job, whatever it was built from: the transport cars are 13Ns and Ks.
-    #expect(catalog.model(id: "tram-works-transport")?.numbers == [12, 53, 402, 2400, 2407, 2412])
+    #expect(both == ["tram-alstom-konstal-105n", "tram-works-welding-gdansk-type-k"])
+    // One model per job and type: the transport cars are 13Ns and Ks.
+    #expect(catalog.model(id: "tram-works-transport-konstal-13n")?.numbers == [12, 53, 402, 2412])
+    #expect(catalog.model(id: "tram-works-transport-gdansk-type-k")?.numbers == [2400, 2407])
     #expect(Wanted.huntRank(.works) == Tier.legendary.rank)
+}
+
+@Test func firstWorksCarSaysItOpenedTheBookSection() {
+    let m = catalog.model(id: "tram-works-measuring-konstal-13n")!
+    let first = RevealHint.text(model: m, number: 388, owned: [388], isNewVehicle: true, timesSeen: 1, firstWorks: true)
+    let later = RevealHint.text(model: m, number: 388, owned: [388], isNewVehicle: true, timesSeen: 1)
+    #expect(first.contains("first works car") && first.contains("section"))
+    #expect(later.hasPrefix("A works car"))
+}
+
+@Test func olderAppsDontSeeWorksCars() throws {
+    // Builds from before works cars read only "models"; the works cars sit in "worksModels".
+    let url = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        .appendingPathComponent("Tabor/Resources/fleet.json")
+    let json = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as! [String: Any]
+    let models = json["models"] as! [[String: Any]], works = json["worksModels"] as! [[String: Any]]
+    #expect(!models.contains { $0["works"] as? Bool == true })
+    #expect(works.count == 8 && works.allSatisfy { $0["works"] as? Bool == true && $0["vintage"] as? Bool == false })
+    #expect(catalog.models.filter(\.works).count == 8)
 }
 
 @Test func worksOverridesVintageWhenDecoding() throws {

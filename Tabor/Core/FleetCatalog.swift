@@ -36,14 +36,15 @@ public struct FleetCatalog: Sendable {
     private let byNumber: [Int: [VehicleModel]]
 
     public init(data: FleetData) {
-        models = data.models
+        let all = data.models + (data.worksModels ?? [])
+        models = all
         depots = data.depots
         source = data.source
         sourcePl = data.sourcePl
         fetched = data.fetched
-        byId = Dictionary(uniqueKeysWithValues: data.models.map { ($0.id, $0) })
+        byId = Dictionary(uniqueKeysWithValues: all.map { ($0.id, $0) })
         var index: [Int: [VehicleModel]] = [:]
-        for m in data.models {
+        for m in all {
             for n in m.numbers { index[n, default: []].append(m) }
         }
         byNumber = index

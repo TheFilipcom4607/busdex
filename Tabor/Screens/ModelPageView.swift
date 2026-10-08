@@ -119,8 +119,8 @@ struct ModelPageView: View {
                 OwnedCount(owned: owned.count, fleet: model.fleet)
             }
             .padding(.horizontal, 22)
-            // With specs, the scroll's own top margin makes up the gap.
-            .padding(.bottom, model.specs == nil ? 14 : 4)
+            // The scroll's soft top edge makes up the rest of the gap.
+            .padding(.bottom, 4)
 
             ScrollViewReader { scroll in
                 ScrollView {
@@ -135,7 +135,9 @@ struct ModelPageView: View {
                         ForEach(Array(model.batches.enumerated()), id: \.offset) { i, batch in
                             batchHeader(batch, have: batch.numbers.filter { ownedByNumber[$0] != nil }.count, trial: model.trialDisplay,
                                         drive: model.drive(of: batch))
-                                .padding(.top, i == 0 ? 6 : 18)
+                                // The first one clears the soft top edge itself when there's no specs
+                                // row above it (works cars, older vintage): otherwise it starts faded.
+                                .padding(.top, i == 0 ? (model.spread == nil ? Self.softEdge : 6) : 18)
                                 .padding(.bottom, 10)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .overlay(alignment: .top) { Rectangle().fill(Color.white.opacity(0.08)).frame(height: 1) }

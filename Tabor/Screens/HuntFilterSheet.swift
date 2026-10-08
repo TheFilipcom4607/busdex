@@ -55,7 +55,8 @@ struct HuntFilterSheet: View {
                         .padding(.top, 24)
                         .padding(.bottom, 9)
                     FlowRow(spacing: 7) {
-                        ForEach(Tier.allCases, id: \.self) { t in
+                        // Works cars aren't on the live feed, so HUNT never has one to show.
+                        ForEach(Tier.allCases.filter { $0 != .works }, id: \.self) { t in
                             tierChip(t, count: byTier[t]?.count ?? 0, on: picked.tiers.contains(t))
                         }
                     }
@@ -267,7 +268,7 @@ struct HuntFilterSheet: View {
     private func shownModels(kind: VehicleKind?) -> [VehicleModel] {
         let words = search.split(whereSeparator: \.isWhitespace).map(String.init)
         return order.compactMap(catalog.model(id:)).filter { m in
-            (kind == nil || m.kind == kind) && words.allSatisfy { w in m.name.localizedStandardContains(w) || (m.code ?? "").localizedStandardContains(w) }
+            !m.works && (kind == nil || m.kind == kind) && words.allSatisfy { w in m.name.localizedStandardContains(w) || (m.code ?? "").localizedStandardContains(w) }
         }
     }
 

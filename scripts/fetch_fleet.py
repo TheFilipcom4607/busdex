@@ -455,8 +455,10 @@ EXTRA_VINTAGE_BUSES = [
 # and #2400 are still listed as passenger cars, RETIRED below; #2112 and #2113 are also 105N2k
 # numbers), so they're all added by hand from tramwar.pl/twgosp.html (checked 2026-10-08). The
 # app tags them WORKS: catchable and in the book, but outside the fleet % and the rarity tiers.
-# Each job is a model of its own, named for the job ("Welding car"), whatever trams it was built
-# from: what a spotter wants to know is what the car does. Its code lists the types.
+# They go under fleet.json's "worksModels", not "models": app builds from before works cars
+# read only "models", so they don't see them at all (rather than as something they'd mislabel).
+# Each job and type is a model of its own, named spotter-style: the type, then the job
+# ("Gdańsk type K welding car"), so the name says both what it was built from and what it does.
 # Left out: the two shunters (#1, #2), which never leave the T-1 yard; the tamper P1, grinder S1
 # and S-9/S-11, whose numbers aren't numbers; and the motorless trailers. #407 stays VINTAGE and
 # #1006 in the vintage 105Na, as both run for the public. "402" and "2412" are the second cars
@@ -482,14 +484,15 @@ WORKS_TRAMS = [
     # Built new by ZPS Stargard in 2015, snowploughs in winter (tramwar.pl/tw-uniwersalne.html).
     *[("ZPS Stargard", "4NA-DT", n, 2015, 'T-1 "ZETiT"', "universal") for n in range(9001, 9007)],
 ]
-# Job -> the model's name, in English and Polish (tramwar.pl's own words for the Polish).
+# Job -> what follows the type in the model's name, in English and Polish (tramwar.pl's own
+# words for the Polish; 388 has its job painted on its side).
 WORKS_JOBS = {
-    "measuring": ("Wire measuring car", "Wagon pomiarowy sieci"),
-    "transport": ("Transport car", "Wagon transportowy"),
-    "welding": ("Welding car", "Wagon spawalniczy"),
-    "work": ("Work car", "Wagon roboczy"),
-    "laboratory": ("Laboratory car", "Wagon-laboratorium"),
-    "universal": ("Universal works car", "Wagon uniwersalny"),
+    "measuring": ("overhead line measuring car", "wagon pomiarowy sieci trakcyjnej"),
+    "transport": ("transport car", "wagon transportowy"),
+    "welding": ("welding car", "wagon spawalniczy"),
+    "work": ("work car", "wagon roboczy"),
+    "laboratory": ("laboratory car", "wagon-laboratorium"),
+    "universal": ("universal works car", "wagon uniwersalny"),
 }
 
 
@@ -638,13 +641,9 @@ def with_vintage_extras(vehicles):
         out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
                     "carrier": owner, "depot": "", "kind": "BUS", "year": year, "vintage": True,
                     "unlisted": True})
-    # Filed as make "" and the job's types as the model, so the model's code is those types.
-    types = defaultdict(list)
-    for make, model, *_, job in WORKS_TRAMS:
-        if display_name(make, model) not in types[job]:
-            types[job].append(display_name(make, model))
+    # Filed as make "" and the type's display name as the model, so the model's code is the type.
     for make, model, number, year, depot, job in WORKS_TRAMS:
-        out.append({"ztmId": "", "number": str(number), "make": "", "model": " / ".join(types[job]),
+        out.append({"ztmId": "", "number": str(number), "make": "", "model": display_name(make, model),
                     "carrier": "Tramwaje Warszawskie", "depot": depot, "kind": "TRAM", "year": year,
                     "vintage": False, "works": job, "unlisted": True})
     return out
@@ -701,7 +700,7 @@ def build(vehicles, city=None):
                 "numbers": sorted(int(v["number"]) for v in bvs),
             })
         years = [v["year"] for v in vs if v["year"]]
-        model_id = (f"tram-works-{works}" if works else
+        model_id = (slug(f"tram-works-{works}-{model}") if works else
                     vs[0].get("id") or slug(f"{kind}-{make}-{model}") + ("-vintage" if split else ""))
         if len({v.get("id") for v in vs}) != 1:
             raise ValueError(f"{make} {model}: some numbers aren't in any SPLIT part")
@@ -724,8 +723,9 @@ def build(vehicles, city=None):
         liveries |= {v["number"]: LIVERIES[(kind, int(v["number"]))] for v in vs if (kind, int(v["number"])) in LIVERIES}
         models.append({
             "id": model_id,
-            "name": WORKS_JOBS[works][0] if works else display_name(make, model),
-            **({"namePl": WORKS_JOBS[works][1]} if works else {}),
+            "name": f"{model} {WORKS_JOBS[works][0]}" if works else display_name(make, model),
+            # The type's name is English ("Gdańsk type K"); in Polish it's "typ K".
+            **({"namePl": f"{model.replace(' type ', ' typ ')} {WORKS_JOBS[works][1]}"} if works else {}),
             "make": "Tramwaje Warszawskie" if works else make,
             "code": f"{make} {model}".strip(),
             "kind": kind,
@@ -735,9 +735,7 @@ def build(vehicles, city=None):
             "lastYear": max(years) if years else None,
             "batches": batches,
             # Curated models, split-out sets, and models that exist only as preserved buses.
-            # Works cars are "vintage" too, for app versions before WORKS: those keep them out of
-            # the fleet % and the rarity tiers. Newer apps go by "works" and ignore it.
-            "vintage": model_id in VINTAGE or split or bool(works) or all(v["vintage"] for v in vs),
+            "vintage": model_id in VINTAGE or split or all(v["vintage"] for v in vs),
             "onTest": all(v.get("onTest", False) for v in vs),
             **({"works": True} if works else {}),
             **(dict(zip(("runs", "trial", "runsPl", "trialPl"), TRIALS[(make, model)]))
@@ -776,11 +774,15 @@ def build(vehicles, city=None):
     raw = json.loads(RAW.read_text())
     depots = [{"code": c, "name": n, "kind": k} for c, n, k in depots]
     previous = json.loads(OUT.read_text()) if OUT.exists() else None
+    # Works cars apart: only apps that know them read "worksModels" (see WORKS_TRAMS).
+    works = [m for m in models if m.get("works")]
+    models = [m for m in models if not m.get("works")]
     # Phones download fleet.json when this beats theirs (a plain string comparison), so it's
     # when the content last changed, to the minute: a second push on the same day still
     # reaches them. A rebuild that changes nothing keeps the old one, so it leaves no diff;
     # --touch stamps it anyway (for a file whose old stamp phones already have).
-    if previous and previous["models"] == models and previous["depots"] == depots and "--touch" not in sys.argv:
+    if (previous and previous["models"] == models and previous.get("worksModels", []) == works
+            and previous["depots"] == depots and "--touch" not in sys.argv):
         fetched = previous["fetched"]
     else:
         fetched = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -788,7 +790,8 @@ def build(vehicles, city=None):
     city_pl = f" i otwarte dane miasta (stan z {city['fetched']})" if city else ""
     # Phones show only the models fleet.json has, so a vanished id hides people's catches.
     if previous and "--allow-drop" not in sys.argv:
-        gone = {m["id"] for m in previous["models"]} - {m["id"] for m in models}
+        gone = ({m["id"] for m in previous["models"] + previous.get("worksModels", [])}
+                - {m["id"] for m in models + works})
         if gone:
             print(f"refusing to write: model ids would disappear: {', '.join(sorted(gone))}\n"
                   "(rerun with --allow-drop if that's on purpose)", file=sys.stderr)
@@ -802,10 +805,12 @@ def build(vehicles, city=None):
                     "klub KMKM, TransInfo, phototrans.eu i GPS na żywo",
         "fetched": fetched,
         "models": models,
+        "worksModels": works,
         "depots": depots,
     }, ensure_ascii=False, separators=(",", ":")))
     total = sum(m["fleet"] for m in models)
-    print(f"wrote {OUT.relative_to(ROOT)}: {len(models)} models, {total} vehicles, {len(depots)} depots")
+    print(f"wrote {OUT.relative_to(ROOT)}: {len(models)} models, {total} vehicles, {len(depots)} depots"
+          f" (+ {len(works)} works models, {sum(m['fleet'] for m in works)} cars)")
 
 
 if __name__ == "__main__":

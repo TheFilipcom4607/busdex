@@ -11,14 +11,14 @@ struct OnboardingView: View {
     @State private var askedLocation = false
     private let location = LocationService.shared
 
-    enum Page: Int, CaseIterable { case welcome, book, rarity, camera, buttons, hunt }
+    enum Page: Int, CaseIterable { case welcome, book, rarity, camera, buttons, hunt, specials }
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
                 Mono("TABOR", size: 12, weight: 600, spacing: 0.3, color: Palette.ink)
                 Spacer()
-                if page != .hunt {
+                if page != .specials {
                     Button("SKIP") { finish() }
                         .font(TaborFont.mono(12, 500))
                         .foregroundStyle(Palette.dim)
@@ -35,6 +35,7 @@ struct OnboardingView: View {
                 CameraPage().tag(Page.camera)
                 ButtonsPage().tag(Page.buttons)
                 HuntPage().tag(Page.hunt)
+                SpecialsPage(active: page == .specials).tag(Page.specials)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .onChange(of: page) { Haptics.shared.tick() }
@@ -49,20 +50,30 @@ struct OnboardingView: View {
             }
             .buttonStyle(StickerPressStyle())
             .padding(.horizontal, 24)
-            // Room for "Not now" on the permission pages, so the button doesn't jump.
-            Button("Not now") { advance() }
-                .font(TaborFont.grotesk(15, 500))
-                .foregroundStyle(Palette.dim)
-                .frame(height: 44)
-                .opacity(needsPermission ? 1 : 0)
-                .disabled(!needsPermission)
-                .padding(.bottom, 6)
+            // Room for "Not now" on the permission pages, so the button doesn't jump. The last
+            // page puts its photo credit there instead.
+            ZStack {
+                Button("Not now") { advance() }
+                    .font(TaborFont.grotesk(15, 500))
+                    .foregroundStyle(Palette.dim)
+                    .opacity(needsPermission ? 1 : 0)
+                    .disabled(!needsPermission)
+                Text("Konstal 13N #795 photo: Janusz Jakubowski, CC BY 2.0, cut out as a sticker.")
+                    .font(TaborFont.grotesk(10))
+                    .foregroundStyle(Palette.faint)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+                    .opacity(page == .specials ? 1 : 0)
+                    .animation(.easeOut(duration: 0.3), value: page)
+            }
+            .frame(height: 44)
+            .padding(.bottom, 6)
         }
         .background(Palette.bg.ignoresSafeArea())
         .foregroundStyle(Palette.ink)
         // Location asks asynchronously; go on once the user has answered.
         .onChange(of: location.authorization) { _, status in
-            if askedLocation, status != .notDetermined { finish() }
+            if askedLocation, status != .notDetermined { askedLocation = false; advance() }
         }
     }
 
@@ -82,7 +93,7 @@ struct OnboardingView: View {
     /// The permission this page is about hasn't been asked for yet.
     private var needsPermission: Bool {
         switch page {
-        case .welcome, .book, .rarity, .buttons: false
+        case .welcome, .book, .rarity, .specials, .buttons: false
         case .camera: AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined
         case .hunt: location.authorization == .notDetermined
         }
@@ -93,7 +104,8 @@ struct OnboardingView: View {
         case .welcome: String(localized: "LET'S GO")
         case .book, .rarity, .buttons: String(localized: "NEXT")
         case .camera: needsPermission ? String(localized: "ALLOW CAMERA") : String(localized: "NEXT")
-        case .hunt: needsPermission ? String(localized: "ALLOW LOCATION") : String(localized: "START CATCHING")
+        case .hunt: needsPermission ? String(localized: "ALLOW LOCATION") : String(localized: "NEXT")
+        case .specials: String(localized: "START CATCHING")
         }
     }
 
@@ -108,9 +120,11 @@ struct OnboardingView: View {
                 advance()
             }
         case .hunt:
-            guard needsPermission else { return finish() }
+            guard needsPermission else { return advance() }
             askedLocation = true
             location.requestPermission()
+        case .specials:
+            finish()
         }
     }
 
@@ -132,6 +146,8 @@ private struct PageLayout<Art: View>: View {
     let kicker: String
     let title: String
     let text: String
+    /// False holds the kicker and text back, so a page can reveal its art first.
+    var wordsShown = true
     @ViewBuilder var art: () -> Art
 
     var body: some View {
@@ -139,6 +155,7 @@ private struct PageLayout<Art: View>: View {
             art()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             Mono(kicker, size: 11, weight: 600, spacing: 0.16, color: Palette.yellow)
+                .opacity(wordsShown ? 1 : 0)
             Text(title)
                 .font(TaborFont.grotesk(30, 700))
                 .em(-0.03, size: 30)
@@ -150,6 +167,8 @@ private struct PageLayout<Art: View>: View {
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 12)
+                .opacity(wordsShown ? 1 : 0)
+                .offset(y: wordsShown ? 0 : 8)
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 26)
@@ -270,7 +289,7 @@ private struct RarityPage: View {
     var body: some View {
         PageLayout(kicker: String(localized: "RARITY"),
                    title: String(localized: "The fewer there are, the rarer."),
-                   text: String(localized: "Rarity is how many of a model run in Warsaw, not how old or unusual it is. A legendary has 12 or fewer, so each one is a find. Museum and trial vehicles are \(Tier.vintage.name) and \(Tier.onTest.name), out only now and then.")) {
+                   text: String(localized: "Rarity is how many of a model run in Warsaw, not how old or unusual it is. A legendary has 12 or fewer, so each one is a find.")) {
             VStack(alignment: .leading, spacing: 16) {
                 ForEach(Array(Self.ladder.enumerated()), id: \.offset) { i, tier in
                     VStack(alignment: .leading, spacing: 7) {
@@ -316,6 +335,79 @@ private struct RarityPage: View {
                 Color.black
             }
         }
+    }
+}
+
+/// The last page, a "one more thing": the stock outside the rarity scale. Works cars most of
+/// all: most people don't know they exist, and they're off the live map, so without this
+/// you'd see one and think it can't be caught. Their book section only opens once you do.
+/// The title stands alone for a beat, then a real sticker of each lands, tier by tier, then
+/// the words.
+private struct SpecialsPage: View {
+    let active: Bool
+    @State private var stuck = 0
+    @State private var told = false
+
+    /// Laid out on a 340 × 290 board, scaled down to whatever room the page leaves.
+    private static let board = CGSize(width: 340, height: 290)
+    private static let stickers: [(image: String, tier: Tier, width: CGFloat, at: CGPoint, tilt: Double)] = [
+        ("IntroStickerVintage", .vintage, 150, CGPoint(x: 88, y: 72), -7),
+        ("IntroStickerTest", .onTest, 180, CGPoint(x: 246, y: 66), 5),
+        ("IntroStickerWorks", .works, 270, CGPoint(x: 178, y: 200), -2),
+    ]
+
+    var body: some View {
+        PageLayout(kicker: String(localized: "SPECIALS"),
+                   title: String(localized: "One more thing…"),
+                   text: String(localized: "Museum buses and trams on summer weekends, buses here on trial, and the tram company's own works cars: measuring, welding and transport cars with no timetable and no spot on the live map. Spot one, catch it. None of them count toward the fleet %."),
+                   wordsShown: told) {
+            GeometryReader { g in
+                let scale = min(1, g.size.width / Self.board.width, g.size.height / Self.board.height)
+                ZStack(alignment: .topLeading) {
+                    ForEach(Array(Self.stickers.enumerated()), id: \.offset) { i, s in
+                        sticker(s.image, tier: s.tier, width: s.width, shown: stuck > i)
+                            .rotationEffect(.degrees(s.tilt))
+                            .position(s.at)
+                    }
+                }
+                .frame(width: Self.board.width, height: Self.board.height)
+                .scaleEffect(scale)
+                .frame(width: g.size.width, height: g.size.height)
+            }
+        }
+        // Only once it's the page on screen: a TabView builds its neighbours early.
+        .task(id: active) {
+            guard active, stuck == 0 else { return }
+            try? await Task.sleep(for: .milliseconds(1300))
+            for i in Self.stickers.indices {
+                guard !Task.isCancelled else { return }
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.55)) { stuck = i + 1 }
+                try? await Task.sleep(for: .milliseconds(110))
+                Haptics.shared.stick()
+                try? await Task.sleep(for: .milliseconds(i == Self.stickers.count - 1 ? 400 : 480))
+            }
+            withAnimation(.easeOut(duration: 0.45)) { told = true }
+        }
+    }
+
+    /// A sticker slapping down onto the page, its tier on a tag at the corner.
+    private func sticker(_ image: String, tier: Tier, width: CGFloat, shown: Bool) -> some View {
+        Image(image)
+            .resizable()
+            .scaledToFit()
+            .frame(width: width)
+            .shadow(color: .black.opacity(0.45), radius: 6, y: 3)
+            .overlay(alignment: .bottomLeading) {
+                Mono(tier.name, size: 10, weight: 700, spacing: 0.12, color: tier.color)
+                    .padding(.vertical, 5)
+                    .padding(.horizontal, 9)
+                    .background(Palette.chip, in: Capsule())
+                    .overlay(Capsule().stroke(tier.color.opacity(0.5)))
+                    .offset(x: 6, y: 8)
+            }
+            .scaleEffect(shown ? 1 : 1.6)
+            .rotationEffect(.degrees(shown ? 0 : -12))
+            .opacity(shown ? 1 : 0)
     }
 }
 

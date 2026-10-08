@@ -15,6 +15,15 @@ struct VehicleView: View {
     @State private var editing: Sighting?
     @Environment(SightingUndo.self) private var undo
 
+    /// The depot, or the owner when there's none. A works car adds how rare it is: most are
+    /// the only one of their kind, which a WORKS tier alone doesn't say.
+    private func place(_ model: VehicleModel?, _ batch: Batch?) -> String {
+        let base = batch?.placeDisplay.nonEmpty ?? model?.operators.first?.uppercased() ?? ""
+        guard let model, model.works else { return base }
+        let count = model.fleet == 1 ? String(localized: "ONE OF A KIND") : String(localized: "1 OF \(model.fleet)")
+        return base.isEmpty ? count : "\(base) · \(count)"
+    }
+
     var body: some View {
         let model = Fleet.catalog.model(id: modelId)
         let mine = sightings.filter { $0.number == number && $0.modelId == modelId }
@@ -51,8 +60,9 @@ struct VehicleView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         Text(model?.name ?? String(localized: "Unknown model"))
                             .font(TaborFont.grotesk(14, 600))
-                            .lineLimit(1)
-                        Mono(batch?.placeDisplay.nonEmpty ?? model?.operators.first?.uppercased() ?? "", size: 11, color: Palette.sub)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Mono(place(model, batch), size: 11, color: Palette.sub)
                             .lineLimit(1)
                         if let livery = model?.livery(of: number) {
                             HStack(spacing: 5) {

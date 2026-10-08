@@ -46,8 +46,9 @@ public struct Batch: Codable, Hashable, Sendable {
 
 public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     public let id: String
-    /// In the app's language: works cars are named for their job ("Welding car"), so they
-    /// come with a Polish name (`namePl` in fleet.json). Every other name is the same in both.
+    /// In the app's language: works cars are named for their type and job ("Gdańsk type K
+    /// welding car"), so they come with a Polish name (`namePl` in fleet.json). Every other
+    /// name is the same in both.
     public let name: String
     public let namePl: String?
     public let make: String
@@ -65,8 +66,7 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     /// On loan for a trial run: out for a few weeks, then gone.
     public let onTest: Bool
     /// Tramwaje Warszawskie's own works cars (measurement, transport, welding): never carry
-    /// passengers, out on no timetable. fleet.json marks them `vintage` too, for app versions
-    /// from before this existed; here `works` wins and `vintage` is false.
+    /// passengers, out on no timetable. Never `vintage` as well: `works` wins.
     public let works: Bool
     /// Where a test vehicle runs, e.g. "LINE 106 · ALSO 122, 123 · TRIAL UNTIL 30 SEP 2026".
     public let runs: String?
@@ -463,13 +463,18 @@ public struct FleetData: Codable, Sendable {
     public var sourcePl: String? = nil
     public let fetched: String?
     public let models: [VehicleModel]
+    /// Tramwaje Warszawskie's works cars, kept out of `models` so app builds from before them
+    /// don't see them at all. The catalog puts them back in with the rest.
+    public var worksModels: [VehicleModel]? = nil
     public let depots: [Depot]
 
-    public init(source: String, sourcePl: String? = nil, fetched: String?, models: [VehicleModel], depots: [Depot]) {
+    public init(source: String, sourcePl: String? = nil, fetched: String?, models: [VehicleModel],
+                worksModels: [VehicleModel]? = nil, depots: [Depot]) {
         self.source = source
         self.sourcePl = sourcePl
         self.fetched = fetched
         self.models = models
+        self.worksModels = worksModels
         self.depots = depots
     }
 }

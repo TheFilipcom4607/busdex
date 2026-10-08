@@ -7162,12 +7162,82 @@
         }
       }
     },
-    "Rarity is how many of a model run in Warsaw, not how old or unusual it is. A legendary has 12 or fewer, so each one is a find. Museum and trial vehicles are %@ and %@, out only now and then.": {
+    "Rarity is how many of a model run in Warsaw, not how old or unusual it is. A legendary has 12 or fewer, so each one is a find.": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rzadkość to liczba pojazdów danego modelu w Warszawie, a nie ich wiek czy nietypowy wygląd. Model legendarny ma ich najwyżej 12, więc każdy to gratka. Pojazdy muzealne i testowe mają własne kategorie, %1$@ i %2$@, i wyjeżdżają tylko od czasu do czasu."
+            "value": "Rzadkość to liczba pojazdów danego modelu w Warszawie, a nie ich wiek czy nietypowy wygląd. Model legendarny ma ich najwyżej 12, więc każdy to gratka."
+          }
+        }
+      }
+    },
+    "SPECIALS": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WYJĄTKOWE"
+          }
+        }
+      }
+    },
+    "Konstal 13N #795 photo: Janusz Jakubowski, CC BY 2.0, cut out as a sticker.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zdjęcie Konstala 13N #795: Janusz Jakubowski, CC BY 2.0, wycięte w formie naklejki."
+          }
+        }
+      }
+    },
+    "ONE OF A KIND": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JEDYNY TAKI"
+          }
+        }
+      }
+    },
+    "1 OF %lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 Z %lld"
+          }
+        }
+      }
+    },
+    "One more thing…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I jeszcze jedno…"
+          }
+        }
+      }
+    },
+    "Museum buses and trams on summer weekends, buses here on trial, and the tram company's own works cars: measuring, welding and transport cars with no timetable and no spot on the live map. Spot one, catch it. None of them count toward the fleet %.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zabytkowe autobusy i tramwaje w letnie weekendy, autobusy na testach i tramwaje techniczne Tramwajów Warszawskich: wagony pomiarowe, spawalnicze i transportowe, bez rozkładu i bez miejsca na mapie na żywo. Zobaczysz, to łap. Żadne nie liczą się do % taboru."
+          }
+        }
+      }
+    },
+    "Your first works car! It carries no passengers and runs to no timetable. Works cars now have a section at the end of your book.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twój pierwszy tramwaj techniczny! Nie wozi pasażerów i nie jeździ według rozkładu. Tramwaje techniczne mają teraz swój dział na końcu albumu."
           }
         }
       }

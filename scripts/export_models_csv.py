@@ -60,7 +60,8 @@ def vehicles():
 
 
 def main():
-    models = json.loads(SRC.read_text())["models"]
+    data = json.loads(SRC.read_text())
+    models = data["models"] + data.get("worksModels", [])
     where = vehicles()
     rows = []
     for m in models:

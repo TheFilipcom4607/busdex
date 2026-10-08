@@ -85,7 +85,8 @@ function vehicle(fleet, number, kind) {
 /// before preserved and test vehicles, then the bigger fleet.
 export function find(fleet, number, kind) {
   const hits = [];
-  for (const m of fleet.models) {
+  // Works cars sit apart, where app builds from before them don't look.
+  for (const m of [...fleet.models, ...(fleet.worksModels ?? [])]) {
     if (kind && m.kind !== kind) continue;
     const batch = m.batches.find((b) => b.numbers.includes(number));
     if (batch) hits.push(describe(m, batch, number));

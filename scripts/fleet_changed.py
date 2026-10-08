@@ -29,11 +29,12 @@ if not new.get("fetched") or len(new["models"]) < 40 or total(new) < 0.9 * total
     print(f"refusing: {len(new['models'])} models, {total(new)} vehicles (was {total(old)})", file=sys.stderr)
     sys.exit(2)
 # A model id that vanishes takes everyone's catches of it out of the book.
-gone = {m["id"] for m in old["models"]} - {m["id"] for m in new["models"]}
+every = lambda d: d["models"] + d.get("worksModels", [])
+gone = {m["id"] for m in every(old)} - {m["id"] for m in every(new)}
 if gone:
     print(f"refusing: model ids gone: {', '.join(sorted(gone))}", file=sys.stderr)
     sys.exit(2)
-if any(m["fleet"] != sum(len(b["numbers"]) for b in m["batches"]) for m in new["models"]):
+if any(m["fleet"] != sum(len(b["numbers"]) for b in m["batches"]) for m in every(new)):
     print("refusing: a model's fleet doesn't match its batches", file=sys.stderr)
     sys.exit(2)
 

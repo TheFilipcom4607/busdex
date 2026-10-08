@@ -80,8 +80,10 @@ struct BookIndexView: View {
                         sectionHeader(.vintage, note: String(localized: "TOURIST LINES ON SUMMER WEEKENDS · NOT PART OF THE FLEET %"))
                         ForEach(vintage) { m in row(m, stats: stats) }
                     }
+                    // Hidden until the first one is caught: most people don't know works cars
+                    // exist, so the intro mentions them and the section opens as a surprise.
                     let works = rows.filter(\.works)
-                    if !works.isEmpty {
+                    if works.contains(where: { stats.ownedCount(modelId: $0.id) > 0 }) {
                         sectionHeader(.works, note: String(localized: "TRAMWAJE WARSZAWSKIE'S OWN CARS · NOT PART OF THE FLEET %"))
                         ForEach(works) { m in row(m, stats: stats) }
                     }
@@ -152,13 +154,14 @@ struct DexRow: View {
         VStack(spacing: 9) {
             HStack(spacing: 10) {
                 KindTag(kind: model.kind)
-                Text(model.name)
-                    .font(TaborFont.grotesk(15, 600))
-                    .em(-0.015, size: 15)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                // One line, shrinking a little if it must; a name too long even then (the works
+                // cars: "Konstal 13N overhead line measuring car") wraps instead of losing its end.
+                ViewThatFits(in: .horizontal) {
+                    name(15).lineLimit(1)
+                    name(12).lineLimit(1)
+                    name(15).lineLimit(2)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 OwnedCount(owned: owned, fleet: model.fleet, size: 13)
             }
             ProgressBar(fraction: Double(owned) / Double(max(model.fleet, 1)), color: model.tier.bar, height: 5)
@@ -183,6 +186,13 @@ struct DexRow: View {
             }
         }
         .contentShape(Rectangle())
+    }
+
+    private func name(_ size: CGFloat) -> some View {
+        Text(model.name)
+            .font(TaborFont.grotesk(size, 600))
+            .em(-0.015, size: size)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     /// "2005—2016 · 9 BATCHES", or the number span for single-batch models.

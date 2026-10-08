@@ -175,8 +175,9 @@ struct RevealView: View {
                     // A trailer is another model's: it doesn't count toward this one.
                     let sameModel = partner.flatMap { $0.model.id == model.id ? [$0.number] : nil } ?? []
                     let owned = Set(stats.owned(modelId: model.id).map(\.number)).union([number] + sameModel)
-                    Text(RevealHint.text(model: model, number: number, owned: owned,
-                                         isNewVehicle: isNewVehicle, timesSeen: (existing?.timesSeen ?? 0) + 1))
+                    let firstWorks = model.works && !stats.vehicles.contains { catalog.model(id: $0.modelId)?.works == true }
+                    Text(RevealHint.text(model: model, number: number, owned: owned, isNewVehicle: isNewVehicle,
+                                         timesSeen: (existing?.timesSeen ?? 0) + 1, firstWorks: firstWorks))
                         .font(TaborFont.grotesk(13))
                         .foregroundStyle(Palette.greenInk)
                         .lineSpacing(3)
