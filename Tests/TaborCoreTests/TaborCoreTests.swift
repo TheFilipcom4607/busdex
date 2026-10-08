@@ -224,14 +224,17 @@ private func sampleModel() -> VehicleModel {
 @Test func worksCarsAreTheirOwnTierOutsideTheFleet() {
     // TW's overhead-line measurement car: a 13N, in neither of ZTM's lists.
     let m = catalog.match(number: 388, kind: .tram).suggested
-    #expect(m?.id == "tram-konstal-13n-works" && m?.tier == .works)
+    #expect(m?.id == "tram-works-measuring" && m?.name == "Wire measuring car" && m?.tier == .works)
+    #expect(m?.namePl == "Wagon pomiarowy sieci" && m?.code == "Konstal 13N")
     #expect(m?.works == true && m?.vintage == false && m?.regular == false && m?.whereToFind != nil)
     // fleet.json marks them vintage as well, for older apps; the tourist-line 13Ns stay vintage.
     #expect(catalog.model(id: "tram-konstal-13n")?.tier == .vintage)
     #expect(!catalog.models.filter(\.regular).contains { $0.works })
     // Welding car 2112 shares its number with a 105N2k: the passenger car comes first.
     let both = catalog.match(number: 2112, kind: .tram).candidates.map(\.id)
-    #expect(both == ["tram-alstom-konstal-105n", "tram-gdanska-fabryka-wagonow-wiwk-k-works"])
+    #expect(both == ["tram-alstom-konstal-105n", "tram-works-welding"])
+    // One model per job, whatever it was built from: the transport cars are 13Ns and Ks.
+    #expect(catalog.model(id: "tram-works-transport")?.numbers == [12, 53, 402, 2400, 2407, 2412])
     #expect(Wanted.huntRank(.works) == Tier.legendary.rank)
 }
 

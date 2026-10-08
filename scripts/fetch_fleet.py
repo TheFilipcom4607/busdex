@@ -455,30 +455,42 @@ EXTRA_VINTAGE_BUSES = [
 # and #2400 are still listed as passenger cars, RETIRED below; #2112 and #2113 are also 105N2k
 # numbers), so they're all added by hand from tramwar.pl/twgosp.html (checked 2026-10-08). The
 # app tags them WORKS: catchable and in the book, but outside the fleet % and the rarity tiers.
+# Each job is a model of its own, named for the job ("Welding car"), whatever trams it was built
+# from: what a spotter wants to know is what the car does. Its code lists the types.
 # Left out: the two shunters (#1, #2), which never leave the T-1 yard; the tamper P1, grinder S1
 # and S-9/S-11, whose numbers aren't numbers; and the motorless trailers. #407 stays VINTAGE and
 # #1006 in the vintage 105Na, as both run for the public. "402" and "2412" are the second cars
 # to carry those numbers (402" on the page).
 # (make, model, number, build year, depot: R- depots as the city writes them, T-1 the traction
-# power and track unit, T-3 the tram repair works, CLET TW's electrical lab.)
+# power and track unit, T-3 the tram repair works, CLET TW's electrical lab; then the job, a key
+# of WORKS_JOBS.)
 WORKS_TRAMS = [
-    ("Konstal", "13N", 12, 1962, 'R-2 "Praga"'),
-    ("Konstal", "13N", 53, 1964, 'R-4 "Żoliborz"'),
-    ("Konstal", "13N", 388, 1967, 'T-1 "ZETiT"'),  # overhead-line measurement car
-    ("Konstal", "13N", 402, 1968, 'R-1 "Wola"'),
-    ("Konstal", "13N", 2412, 1969, 'R-3 "Mokotów"'),
-    ("Konstal", "105N", 1022, 1975, "CLET"),  # 105N/LAB, the rolling laboratory (tramwar.pl/tw-laboratorium.html)
-    ("Konstal", "105N", 1315, 1990, 'R-5 "Annopol"'),
-    ("Gdańska Fabryka Wagonów / WIwK", "K", 2002, 1940, 'R-1 "Wola"'),
-    ("Gdańska Fabryka Wagonów / WIwK", "K", 2112, 1940, 'T-1 "ZETiT"'),
-    ("Gdańska Fabryka Wagonów / WIwK", "K", 2113, 1940, 'T-1 "ZETiT"'),
-    ("Gdańska Fabryka Wagonów / WIwK", "K", 2400, 1940, 'R-4 "Żoliborz"'),
-    ("Gdańska Fabryka Wagonów / WIwK", "K", 2406, 1940, 'T-3 "ZNT"'),
-    ("Gdańska Fabryka Wagonów / WIwK", "K", 2407, 1940, 'T-3 "ZNT"'),
-    # Built new as universal works cars (and snowploughs) by ZPS Stargard in 2015
-    # (tramwar.pl/tw-uniwersalne.html).
-    *[("ZPS Stargard", "4NA-DT", n, 2015, 'T-1 "ZETiT"') for n in range(9001, 9007)],
+    ("Konstal", "13N", 388, 1967, 'T-1 "ZETiT"', "measuring"),
+    ("Konstal", "13N", 12, 1962, 'R-2 "Praga"', "transport"),
+    ("Konstal", "13N", 53, 1964, 'R-4 "Żoliborz"', "transport"),
+    ("Konstal", "13N", 402, 1968, 'R-1 "Wola"', "transport"),
+    ("Konstal", "13N", 2412, 1969, 'R-3 "Mokotów"', "transport"),
+    ("Gdańska Fabryka Wagonów / WIwK", "K", 2400, 1940, 'R-4 "Żoliborz"', "transport"),
+    ("Gdańska Fabryka Wagonów / WIwK", "K", 2407, 1940, 'T-3 "ZNT"', "transport"),
+    ("Gdańska Fabryka Wagonów / WIwK", "K", 2112, 1940, 'T-1 "ZETiT"', "welding"),
+    ("Gdańska Fabryka Wagonów / WIwK", "K", 2113, 1940, 'T-1 "ZETiT"', "welding"),
+    ("Gdańska Fabryka Wagonów / WIwK", "K", 2002, 1940, 'R-1 "Wola"', "work"),
+    ("Gdańska Fabryka Wagonów / WIwK", "K", 2406, 1940, 'T-3 "ZNT"', "work"),
+    ("Konstal", "105N", 1315, 1990, 'R-5 "Annopol"', "work"),
+    # The 105N/LAB (tramwar.pl/tw-laboratorium.html).
+    ("Konstal", "105N", 1022, 1975, "CLET", "laboratory"),
+    # Built new by ZPS Stargard in 2015, snowploughs in winter (tramwar.pl/tw-uniwersalne.html).
+    *[("ZPS Stargard", "4NA-DT", n, 2015, 'T-1 "ZETiT"', "universal") for n in range(9001, 9007)],
 ]
+# Job -> the model's name, in English and Polish (tramwar.pl's own words for the Polish).
+WORKS_JOBS = {
+    "measuring": ("Wire measuring car", "Wagon pomiarowy sieci"),
+    "transport": ("Transport car", "Wagon transportowy"),
+    "welding": ("Welding car", "Wagon spawalniczy"),
+    "work": ("Work car", "Wagon roboczy"),
+    "laboratory": ("Laboratory car", "Wagon-laboratorium"),
+    "universal": ("Universal works car", "Wagon uniwersalny"),
+}
 
 
 # ZTM files some vehicles of one type under a different make/model string; live tracking
@@ -626,10 +638,15 @@ def with_vintage_extras(vehicles):
         out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
                     "carrier": owner, "depot": "", "kind": "BUS", "year": year, "vintage": True,
                     "unlisted": True})
-    for make, model, number, year, depot in WORKS_TRAMS:
-        out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
+    # Filed as make "" and the job's types as the model, so the model's code is those types.
+    types = defaultdict(list)
+    for make, model, *_, job in WORKS_TRAMS:
+        if display_name(make, model) not in types[job]:
+            types[job].append(display_name(make, model))
+    for make, model, number, year, depot, job in WORKS_TRAMS:
+        out.append({"ztmId": "", "number": str(number), "make": "", "model": " / ".join(types[job]),
                     "carrier": "Tramwaje Warszawskie", "depot": depot, "kind": "TRAM", "year": year,
-                    "vintage": False, "works": True, "unlisted": True})
+                    "vintage": False, "works": job, "unlisted": True})
     return out
 
 
@@ -662,7 +679,7 @@ def build(vehicles, city=None):
         if not v["number"].isdigit():
             continue  # a suffixed number RENUMBER doesn't know yet
         split = v["vintage"] and (v["kind"], v["make"], v["model"]) in VINTAGE_NUMBERS
-        groups[(v["kind"], v["make"], v["model"], split, v.get("works", False))].append(v)
+        groups[(v["kind"], v["make"], v["model"], split, v.get("works"))].append(v)
 
     models = []
     for (kind, make, model, split, works), vs in groups.items():
@@ -684,7 +701,8 @@ def build(vehicles, city=None):
                 "numbers": sorted(int(v["number"]) for v in bvs),
             })
         years = [v["year"] for v in vs if v["year"]]
-        model_id = vs[0].get("id") or slug(f"{kind}-{make}-{model}") + ("-vintage" if split else "-works" if works else "")
+        model_id = (f"tram-works-{works}" if works else
+                    vs[0].get("id") or slug(f"{kind}-{make}-{model}") + ("-vintage" if split else ""))
         if len({v.get("id") for v in vs}) != 1:
             raise ValueError(f"{make} {model}: some numbers aren't in any SPLIT part")
         formerly = sorted({v["formerly"] for v in vs if v.get("formerly")} - {model_id})
@@ -706,8 +724,9 @@ def build(vehicles, city=None):
         liveries |= {v["number"]: LIVERIES[(kind, int(v["number"]))] for v in vs if (kind, int(v["number"])) in LIVERIES}
         models.append({
             "id": model_id,
-            "name": display_name(make, model),
-            "make": make,
+            "name": WORKS_JOBS[works][0] if works else display_name(make, model),
+            **({"namePl": WORKS_JOBS[works][1]} if works else {}),
+            "make": "Tramwaje Warszawskie" if works else make,
             "code": f"{make} {model}".strip(),
             "kind": kind,
             "operators": [c for c, _ in Counter(short_carrier(v["carrier"]) for v in vs).most_common()],
@@ -718,7 +737,7 @@ def build(vehicles, city=None):
             # Curated models, split-out sets, and models that exist only as preserved buses.
             # Works cars are "vintage" too, for app versions before WORKS: those keep them out of
             # the fleet % and the rarity tiers. Newer apps go by "works" and ignore it.
-            "vintage": model_id in VINTAGE or split or works or all(v["vintage"] for v in vs),
+            "vintage": model_id in VINTAGE or split or bool(works) or all(v["vintage"] for v in vs),
             "onTest": all(v.get("onTest", False) for v in vs),
             **({"works": True} if works else {}),
             **(dict(zip(("runs", "trial", "runsPl", "trialPl"), TRIALS[(make, model)]))

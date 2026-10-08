@@ -46,7 +46,10 @@ public struct Batch: Codable, Hashable, Sendable {
 
 public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     public let id: String
+    /// In the app's language: works cars are named for their job ("Welding car"), so they
+    /// come with a Polish name (`namePl` in fleet.json). Every other name is the same in both.
     public let name: String
+    public let namePl: String?
     public let make: String
     /// ZTM's own "make type" string, e.g. "MAN A23" for the Lion's City G.
     public let code: String?
@@ -95,7 +98,7 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     /// `tram-pesa-120n`: catches filed under one of them move here (`FleetCatalog.moved`).
     public let formerly: [String]
 
-    public init(id: String, name: String, make: String, code: String? = nil, kind: VehicleKind,
+    public init(id: String, name: String, namePl: String? = nil, make: String, code: String? = nil, kind: VehicleKind,
                 operators: [String], fleet: Int, firstYear: Int?, lastYear: Int?, batches: [Batch],
                 vintage: Bool = false, onTest: Bool = false, works: Bool = false, runs: String? = nil,
                 trial: String? = nil, runsPl: String? = nil, trialPl: String? = nil, specs: ModelSpecs? = nil,
@@ -104,6 +107,7 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
                 trailers: [Int] = [], tows: Bool = false, formerly: [String] = []) {
         self.id = id
         self.name = name
+        self.namePl = namePl
         self.make = make
         self.code = code
         self.kind = kind
@@ -130,14 +134,16 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, make, code, kind, operators, fleet, firstYear, lastYear, batches, vintage, onTest, works, runs, trial,
+        case id, name, namePl, make, code, kind, operators, fleet, firstYear, lastYear, batches, vintage, onTest, works, runs, trial,
              runsPl, trialPl, specs, variants, liveries, coupled, sets, trailers, tows, formerly
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(String.self, forKey: .id)
-        name = try c.decode(String.self, forKey: .name)
+        let english = try c.decode(String.self, forKey: .name)
+        namePl = try? c.decodeIfPresent(String.self, forKey: .namePl)
+        name = AppLanguage.polish ? namePl ?? english : english
         make = try c.decode(String.self, forKey: .make)
         code = try c.decodeIfPresent(String.self, forKey: .code)
         kind = try c.decode(VehicleKind.self, forKey: .kind)
