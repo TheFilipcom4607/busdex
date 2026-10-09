@@ -635,8 +635,11 @@ extension SettingsSheet {
             Text("Thank you for testing TABOR 💛")
                 .font(TaborFont.grotesk(15, 600))
                 .foregroundStyle(Palette.ink)
-            Text("Something broken, or a bus it got wrong? Take a screenshot and tap Share Beta Feedback, or just tell me.")
+            Text("Something broken, or a bus it got wrong? Take a screenshot and tap Share Beta Feedback, or write to me:")
                 .multilineTextAlignment(.center)
+            Link("tabor@thefilip.com", destination: URL(string: "mailto:tabor@thefilip.com")!)
+                .font(TaborFont.grotesk(14, 600))
+                .foregroundStyle(Palette.yellow)
             Mono(debugUnlocked ? "BETA · \(version) (\(build)) · DEBUG" : "BETA · \(version) (\(build))",
                  size: 10, spacing: 0.12, color: debugUnlocked ? Palette.yellow : Palette.faint)
                 .padding(.top, 4)

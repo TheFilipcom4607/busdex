@@ -5428,16 +5428,6 @@
         }
       }
     },
-    "Something broken, or a bus it got wrong? Take a screenshot and tap Share Beta Feedback, or just tell me.": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coś nie działa albo autobus rozpoznany źle? Zrób zrzut ekranu i wyślij opinię przez TestFlight albo po prostu mi napisz."
-          }
-        }
-      }
-    },
     "Special livery: %@": {
       "localizations": {
         "pl": {
@@ -9010,6 +9000,19 @@
           }
         }
       }
+    },
+    "Something broken, or a bus it got wrong? Take a screenshot and tap Share Beta Feedback, or write to me:": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coś nie działa albo autobus rozpoznany źle? Zrób zrzut ekranu i wyślij opinię przez TestFlight albo napisz do mnie:"
+          }
+        }
+      }
+    },
+    "tabor@thefilip.com": {
+      "shouldTranslate": false
     }
   },
   "version": "1.0"
