@@ -445,7 +445,7 @@ private struct CameraPage: View {
                 .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 HStack(spacing: 7) {
                     Circle().fill(Palette.green).frame(width: 6, height: 6)
-                    Mono("1972 · YUTONG U12 · TAP TO CATCH", size: 11, weight: 600, spacing: 0.1, color: Palette.ink)
+                    Mono("1972 · YUTONG U12", size: 11, weight: 600, spacing: 0.1, color: Palette.ink)
                 }
                 .padding(.vertical, 9)
                 .padding(.horizontal, 14)
@@ -455,7 +455,7 @@ private struct CameraPage: View {
             }
         }
         .task {
-            // Framed, then a beat later the number is picked out, like the live camera does.
+            // Framed, then a beat later the number is picked out, as the shot's read does.
             try? await Task.sleep(for: .milliseconds(700))
             withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { found = true }
         }

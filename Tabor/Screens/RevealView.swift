@@ -271,7 +271,7 @@ struct RevealView: View {
         .task {
             Haptics.shared.warmUp()
             await playReveal(run: 0)
-            // A live lock's still read may still be going: its numbers sharpen the suggestions.
+            // Every number in the photo sharpens the suggestions.
             if let read = draft.photoNumbers {
                 photoNumbers = await read.value
                 refreshPartner()

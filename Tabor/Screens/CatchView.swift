@@ -33,8 +33,7 @@ struct CatchDraft: Identifiable {
     var partnerSuggestions: [CoupledSet.Suggestion] = []
     /// Live vehicles around you at the shutter (fresh camera shots only).
     var nearby: [NearbyVehicle] = []
-    /// Every number read in the photo, best first. A live lock skips the still read, so this
-    /// may finish after the reveal opens.
+    /// Every number read in the photo, best first.
     var photoNumbers: Task<[Int], Never>?
     /// The whole read of the photo: where each number is written, for other vehicles in it.
     var photoRead: Task<TextReader.Report, Never>?
@@ -84,9 +83,6 @@ struct CatchView: View {
     private let catalog = Fleet.catalog
 
     var body: some View {
-        let stats = sightings.stats
-        let match = camera.reading.map { lookup($0, nearby: live.nearby) }
-
         ZStack {
             // Full bleed: the camera runs up under the Dynamic Island, like the Camera app.
             viewfinder
@@ -101,10 +97,7 @@ struct CatchView: View {
                     }
                 }
                 .clipped()
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
-                    finderFrame = $0
-                    updateOCRFrame()
-                }
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { finderFrame = $0 }
                 .ignoresSafeArea(edges: .top)
 
             Color.black.opacity(frozen == nil ? 0 : 0.6)
@@ -126,27 +119,24 @@ struct CatchView: View {
                     .padding(.top, 6)
                     .padding(.horizontal, 20)
 
-                hintPill(match)
+                hintPill
                     .padding(.top, 14)
 
                 Spacer(minLength: 12)
 
                 // A 3:2 landscape frame, like a photo: the shot is cropped to it.
-                ViewfinderBrackets(locked: camera.reading != nil)
+                ViewfinderBrackets()
                     .opacity(camera.status == .running ? 1 : 0)
                     .overlay { frozenShot }
                     .aspectRatio(3 / 2, contentMode: .fit)
-                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
-                        bracketGlobal = $0
-                        updateOCRFrame()
-                    }
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { bracketGlobal = $0 }
                     .padding(.horizontal, 20)
                     .allowsHitTesting(false)
 
                 Spacer(minLength: 12)
 
-                // Fixed slot, so the brackets don't jump when a number locks.
-                readChip(match: match, stats: stats)
+                // Fixed slot, so the brackets don't jump when the tip comes and goes.
+                controlTip
                     .frame(maxWidth: .infinity, maxHeight: 78, alignment: .bottomLeading)
                     .padding(.horizontal, 20)
 
@@ -196,15 +186,7 @@ struct CatchView: View {
                 live.stop("camera")
             }
         }
-        // Live OCR leans towards what's physically around you.
-        .onChange(of: live.nearby, initial: true) { _, nearby in camera.nearby = nearby }
         .onChange(of: LocationService.shared.latest) { live.locationMoved() }
-        .onChange(of: camera.reading) { _, n in
-            guard let n else { return }
-            let m = lookup(n, nearby: live.nearby)
-            let isNew = m.suggested.map { stats.vehicle(number: n, modelId: $0.id) == nil } ?? false
-            Haptics.shared.numberLocked(isNew: isNew)
-        }
         // A photo shared from another app (Photos, Lightroom…): caught like an imported one.
         .onChange(of: router.sharedPhotos, initial: true) { takeShared() }
         .onChange(of: pickerItem) { _, item in
@@ -216,7 +198,7 @@ struct CatchView: View {
                 capturing = true
                 defer { capturing = false }
                 if let data = try? await item.loadTransferable(type: Data.self) {
-                    await begin(with: data, live: nil, fromCamera: false, presentAfter: pickerGone)
+                    await begin(with: data, fromCamera: false, presentAfter: pickerGone)
                 } else {
                     Haptics.shared.nope()
                     DebugRecord.begin(source: "import", mode: mode)?.update { $0.error = "couldn't load the picked photo" }
@@ -227,7 +209,6 @@ struct CatchView: View {
         .sheet(isPresented: $showControlHowTo) { CatchControlHowTo() }
         .fullScreenCover(item: $draft, onDismiss: {
             frozen = nil
-            camera.resetReading()
             if visible { Task { await camera.start() } }
             // Shared while this reveal was up.
             takeShared()
@@ -335,46 +316,8 @@ struct CatchView: View {
         }
     }
 
-    @ViewBuilder
-    private func readChip(match: ModelMatch?, stats: CollectionStats) -> some View {
-        if let n = camera.reading {
-            let model = match?.suggested
-            let isNew = model.map { stats.vehicle(number: n, modelId: $0.id) == nil } ?? true
-            VStack(alignment: .leading, spacing: 8) {
-                Button { Task { await shoot() } } label: {
-                HStack(spacing: 9) {
-                    Mono("READ", size: 9.5, weight: 700, spacing: 0.14, color: Palette.bg)
-                    Text(String(n))
-                        .font(TaborFont.mono(18, 700))
-                        .em(0.04, size: 18)
-                        .contentTransition(.numericText())
-                    Rectangle().fill(Palette.bg.opacity(0.25)).frame(width: 1, height: 16)
-                    Text(model?.name ?? String(localized: "Unknown model"))
-                        .font(TaborFont.grotesk(12.5, 600))
-                        .lineLimit(1)
-                    if model != nil, isNew {
-                        Mono("NEW", size: 9.5, weight: 700, spacing: 0.1, color: Palette.yellow)
-                            .padding(.vertical, 3)
-                            .padding(.horizontal, 6)
-                            .background(Palette.bg, in: RoundedRectangle(cornerRadius: 4))
-                    }
-                }
-                .foregroundStyle(Palette.bg)
-                .padding(.vertical, 8)
-                .padding(.horizontal, 11)
-                .background(Palette.yellow.opacity(0.94), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-                .shadow(color: .black.opacity(0.45), radius: 11, y: 8)
-                }
-                .buttonStyle(StickerPressStyle())
-
-                Mono(chipCaption(match), size: 10, color: .white.opacity(0.6))
-                    .padding(.leading, 4)
-            }
-            .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity),
-                                    removal: .opacity))
-            .id(n)
-            .animation(.spring(response: 0.45, dampingFraction: 0.72), value: n)
-        } else if !controlTipSeen, sightings.count >= CatchControlTip.afterCatches {
+    @ViewBuilder private var controlTip: some View {
+        if !controlTipSeen, sightings.count >= CatchControlTip.afterCatches {
             CatchControlTipCard {
                 showControlHowTo = true
                 controlTipSeen = true
@@ -422,17 +365,15 @@ struct CatchView: View {
         }
     }
 
-    private func hintPill(_ match: ModelMatch?) -> some View {
-        let locked = camera.reading != nil && toast == nil
-        let text = toast ?? hint(match)
+    private var hintPill: some View {
+        let text = toast ?? hint
         return HStack(spacing: 7) {
             // A symbol effect pulses on the render server; a SwiftUI loop here re-rendered
             // the view every frame for as long as the camera was open.
             Image(systemName: "circle.fill")
                 .font(.system(size: 5.5))
-                .foregroundStyle(locked ? Palette.yellow : .white)
-                .shadow(color: locked ? Palette.yellow : .clear, radius: 4)
-                .symbolEffect(.pulse, isActive: !locked)
+                .foregroundStyle(.white)
+                .symbolEffect(.pulse)
             Text(text)
                 .font(TaborFont.mono(10.5, 500))
                 .em(0.12, size: 10.5)
@@ -474,17 +415,14 @@ struct CatchView: View {
                 Button {
                     Task { await shoot() }
                 } label: {
-                    let locked = camera.reading != nil
                     ZStack {
-                        Circle().stroke(locked ? Palette.yellow : .white.opacity(0.92), lineWidth: 4)
+                        Circle().stroke(.white.opacity(0.92), lineWidth: 4)
                             .frame(width: 76, height: 76)
-                            .shadow(color: Palette.yellow.opacity(locked ? 0.55 : 0), radius: 12)
                         Circle().fill(Palette.red)
                             .frame(width: 60, height: 60)
                             .scaleEffect(shutterDown ? 0.86 : 1)
                     }
                     .animation(.spring(response: 0.25, dampingFraction: 0.5), value: shutterDown)
-                    .animation(.easeInOut(duration: 0.25), value: locked)
                     // Hit in a hurry without looking: a 100 pt target around the 76 pt ring.
                     .contentShape(Circle().inset(by: -12))
                 }
@@ -588,7 +526,7 @@ struct CatchView: View {
         }
     }
 
-    private func hint(_ match: ModelMatch?) -> String {
+    private var hint: String {
         // The full-res read (and tile pass) can take a second or two on device.
         if capturing { return String(localized: "READING THE NUMBER…") }
         switch camera.status {
@@ -597,21 +535,7 @@ struct CatchView: View {
         case .interrupted: return String(localized: "WAITING FOR THE CAMERA")
         default: return String(localized: "IMPORT A SHOT TO CATCH IT")
         }
-        guard camera.reading != nil else { return String(localized: "GET THE WHOLE VEHICLE IN FRAME") }
-        return String(localized: "GOT IT — HIT THE SHUTTER")
-    }
-
-    private func chipCaption(_ match: ModelMatch?) -> String {
-        switch match {
-        case .ambiguous(let ms): String(localized: "ALSO A \(ms.dropFirst().first?.name.uppercased() ?? "") · FIX IT AFTER THE SHOT")
-        case .unknown, nil: String(localized: "NOT IN THE ZTM DATABASE · PICK THE MODEL AFTER")
-        case .certain(let m) where mode.kind != nil && m.kind != mode.kind:
-            m.kind == .tram ? String(localized: "A TRAM NUMBER · YOU'RE IN BUS MODE") : String(localized: "A BUS NUMBER · YOU'RE IN TRAM MODE")
-        case .certain(let m):
-            [m.regular ? nil : m.tier.name, m.kind.name, liveLine(camera.reading, model: m).map { String(localized: "LINE \($0)") },
-             m.batch(containing: camera.reading ?? 0)?.year.map { String(localized: "BUILT \(String($0))") }, String(localized: "TAP TO CATCH")]
-                .compactMap { $0 }.joined(separator: " · ")
-        }
+        return String(localized: "GET THE WHOLE VEHICLE IN FRAME")
     }
 
     /// The database match, settled by the live feed when only one kind with that number is
@@ -620,21 +544,6 @@ struct CatchView: View {
         let m = catalog.match(number: n, preferring: mode.kind, manual: manual.map)
         guard manual.map[n] == nil else { return m }
         return LiveHints.resolve(m, number: n, nearby: nearby, catalog: catalog)
-    }
-
-    /// The line a vehicle right in front of you is running on. A coupled car the feed doesn't
-    /// report runs on its set's line.
-    private func liveLine(_ n: Int?, model: VehicleModel) -> String? {
-        guard let n else { return nil }
-        let v = live.nearby.first { $0.vehicle.number == n && $0.vehicle.kind == model.kind }?.vehicle
-            ?? CoupledSet.partner(of: n, model: model, nearby: live.nearby, catalog: catalog)
-        return v?.line.nonEmpty
-    }
-
-    private func updateOCRFrame() {
-        guard finderFrame.width > 0, bracketGlobal.width > 0 else { return }
-        camera.setOCRFrame(view: finderFrame.size,
-                           brackets: bracketGlobal.offsetBy(dx: -finderFrame.minX, dy: -finderFrame.minY))
     }
 
     // MARK: - Actions
@@ -647,18 +556,14 @@ struct CatchView: View {
         if live.fresh(maxAge: 20) == nil { Task { await live.refresh() } }
         Haptics.shared.shutter()
         withAnimation(.easeOut(duration: 0.06)) { flash = true }
-        let live = camera.reading
-        let frame = camera.lastFrame
         let data = await camera.capture()
         withAnimation(.easeOut(duration: 0.35)) { flash = false }
         let record = DebugRecord.begin(source: "camera", mode: mode)
-        let angle = Double(camera.captureAngle), torch = camera.torchOn, ocrInfo = camera.ocrInfo
+        let angle = Double(camera.captureAngle), torch = camera.torchOn, pressure = camera.pressure
         record?.update {
-            $0.liveReading = live
-            $0.liveFrame = DebugRecord.obs(frame)
             $0.captureAngle = angle
             $0.torch = torch
-            $0.liveOCR = ocrInfo
+            $0.pressure = pressure
         }
         guard var data else {
             let why = camera.lastCaptureError ?? "unknown"
@@ -681,18 +586,7 @@ struct CatchView: View {
                 record?.update { $0.crop = "brackets \(frame.integral) in \(size.width)×\(size.height) viewfinder" }
             }
         }
-        await begin(with: data, live: live, fromCamera: true, record: record)
-    }
-
-    /// A task's value, unless it takes longer than `seconds`.
-    private nonisolated static func value<T: Sendable>(of task: Task<T, Never>, within seconds: Double) async -> T? {
-        await withTaskGroup(of: T?.self) { group in
-            group.addTask { await task.value }
-            group.addTask { try? await Task.sleep(for: .seconds(seconds)); return nil }
-            let first = await group.next() ?? nil
-            group.cancelAll()
-            return first
-        }
+        await begin(with: data, fromCamera: true, record: record)
     }
 
     /// The photo waiting in the share inbox, if any and if nothing else is being caught.
@@ -701,11 +595,11 @@ struct CatchView: View {
         Task {
             capturing = true
             defer { capturing = false }
-            await begin(with: data, live: nil, fromCamera: false, record: DebugRecord.begin(source: "share", mode: mode))
+            await begin(with: data, fromCamera: false, record: DebugRecord.begin(source: "share", mode: mode))
         }
     }
 
-    private func begin(with data: Data, live: Int?, fromCamera: Bool, record: DebugRecord? = nil,
+    private func begin(with data: Data, fromCamera: Bool, record: DebugRecord? = nil,
                        presentAfter: ContinuousClock.Instant? = nil) async {
         let preview = await Task.detached(priority: .userInitiated) {
             PhotoStore.downsample(data, maxPixel: 900).map(UIImage.init(cgImage:))
@@ -716,10 +610,9 @@ struct CatchView: View {
         // An imported photo could be from anywhere, any day: only fresh shots use the feed.
         let nearby = fromCamera && self.live.fresh() != nil ? self.live.nearby : []
         let mode = mode
-        // Always read the photo: it says where the number is, so the sticker keeps the object
-        // the number is on. A live lock already has the number, so the quick full pass will do.
+        // The read also says where the number is, so the sticker keeps the object it's on.
         let ocr = Task.detached(priority: .userInitiated) {
-            await TextReader.read(data, mode: mode, nearby: nearby, tiles: live == nil)
+            await TextReader.read(data, mode: mode, nearby: nearby)
         }
         // Lift the subjects at once (quicker than OCR), then cut once the number's box is known.
         let sticker = Task.detached(priority: .userInitiated) { () -> StickerCut? in
@@ -733,12 +626,7 @@ struct CatchView: View {
             case .failure(let f):
                 result = .failure(f)
             case .success(let lift):
-                if let live {
-                    // Don't hold the reveal for it: past a second, cut without the box.
-                    box = await Self.value(of: ocr, within: 1.0)?.box(of: live)
-                } else {
-                    box = await ocr.value.numberBox
-                }
+                box = await ocr.value.numberBox
                 start = Date()
                 result = StickerCut.make(lift, numberBox: box)
                 spent += Date().timeIntervalSince(start)
@@ -758,35 +646,17 @@ struct CatchView: View {
         var liveInfo = DebugRecord.Live(status: "\(self.live.status)",
                                         snapshotAge: self.live.snapshot.map { Int(Date().timeIntervalSince($0.fetched)) },
                                         nearby: nearby.map { "\($0.vehicle.kind.rawValue) \($0.vehicle.number) · line \($0.vehicle.line) · \(Int($0.distance)) m" })
-        var number = live
-        var photoNumbers: [Int] = []
-        if number == nil {
-            let report = await ocr.value
-            number = report.number
-            photoNumbers = report.candidates.sorted { $0.score > $1.score }.map(\.number)
-            liveInfo.boosted = report.live.boosted
-            liveInfo.rescued = report.live.rescued
-            liveInfo.partners = report.live.partners
-            record?.update { $0.ocr = DebugRecord.ocr(report) }
-        } else {
-            // The live lock already leaned on the feed frame by frame.
-            if let n = number, nearby.contains(where: { $0.vehicle.number == n }) {
-                liveInfo.boosted = [n]
-            } else if let n = number, let set = CoupledSet.partner(of: n, catalog: catalog, nearby: nearby) {
-                liveInfo.partners = [LiveHints.Partner(number: n, lead: set.lead.number)]
-            }
-            if let record {
-                // Live lock skipped reading the number off the still; compare with what it says.
-                Task.detached(priority: .utility) {
-                    let report = await ocr.value
-                    record.update { $0.stillCheck = DebugRecord.ocr(report) }
-                }
-            }
-        }
+        let report = await ocr.value
+        let number = report.number
+        let photoNumbers = report.candidates.sorted { $0.score > $1.score }.map(\.number)
+        liveInfo.boosted = report.live.boosted
+        liveInfo.rescued = report.live.rescued
+        liveInfo.partners = report.live.partners
+        record?.update { $0.ocr = DebugRecord.ocr(report) }
         var d = CatchDraft(photo: data, number: number, fromCamera: fromCamera, sticker: sticker, preview: preview,
                            debug: record)
         d.nearby = nearby
-        d.photoNumbers = Task { await ocr.value.candidates.sorted { $0.score > $1.score }.map(\.number) }
+        d.photoNumbers = Task { photoNumbers }
         d.photoRead = ocr
         if let n = number {
             let plain = catalog.match(number: n, preferring: mode.kind, manual: manual.map)
@@ -858,31 +728,26 @@ private struct ShutterStyle: ButtonStyle {
     }
 }
 
-/// Corner brackets + thirds, tightening and turning yellow once a number locks.
+/// Corner brackets + thirds.
 struct ViewfinderBrackets: View {
-    var locked: Bool
-
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width, h = geo.size.height
-            let inset: CGFloat = locked ? 8 : 0
-            let color: Color = locked ? Palette.yellow : .white.opacity(0.85)
+            let color: Color = .white.opacity(0.85)
             ZStack {
                 ForEach(0..<4, id: \.self) { i in
                     Corner()
                         .stroke(color, style: StrokeStyle(lineWidth: 2, lineCap: .round))
                         .frame(width: 22, height: 22)
                         .rotationEffect(.degrees(Double(i) * 90))
-                        .position(x: i == 0 || i == 3 ? 11 + inset : w - 11 - inset,
-                                  y: i < 2 ? 11 + inset : h - 11 - inset)
+                        .position(x: i == 0 || i == 3 ? 11 : w - 11, y: i < 2 ? 11 : h - 11)
                 }
                 ForEach([1.0 / 3, 2.0 / 3], id: \.self) { f in
-                    Rectangle().fill(.white.opacity(locked ? 0 : 0.14))
+                    Rectangle().fill(.white.opacity(0.14))
                         .frame(width: 1, height: h * 0.84)
                         .position(x: w * f, y: h / 2)
                 }
             }
-            .animation(.spring(response: 0.4, dampingFraction: 0.6), value: locked)
         }
     }
 

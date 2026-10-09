@@ -978,12 +978,12 @@
         }
       }
     },
-    "1972 · YUTONG U12 · TAP TO CATCH": {
+    "1972 · YUTONG U12": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "1972 · YUTONG U12 · STUKNIJ I ZŁAP"
+            "value": "1972 · YUTONG U12"
           }
         }
       }
@@ -1008,16 +1008,6 @@
         }
       }
     },
-    "A BUS NUMBER · YOU'RE IN TRAM MODE": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "NUMER AUTOBUSU · TRYB: TRAMWAJ"
-          }
-        }
-      }
-    },
     "A COLLECTING GAME FOR WARSAW": {
       "localizations": {
         "pl": {
@@ -1034,16 +1024,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "LEGENDARNY, ZŁOTY, RZADKI i POSPOLITY jednego dnia"
-          }
-        }
-      }
-    },
-    "A TRAM NUMBER · YOU'RE IN BUS MODE": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "NUMER TRAMWAJU · TRYB: AUTOBUS"
           }
         }
       }
@@ -1294,16 +1274,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "DAJ DOSTĘP DO LOKALIZACJI"
-          }
-        }
-      }
-    },
-    "ALSO A %@ · FIX IT AFTER THE SHOT": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MOŻE TO TEŻ %@ · POPRAWISZ PO ZDJĘCIU"
           }
         }
       }
@@ -3184,16 +3154,6 @@
         }
       }
     },
-    "GOT IT — HIT THE SHUTTER": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MAM GO — ZRÓB ZDJĘCIE"
-          }
-        }
-      }
-    },
     "GREY & RED": {
       "localizations": {
         "pl": {
@@ -4129,16 +4089,6 @@
         }
       }
     },
-    "NOT IN THE ZTM DATABASE · PICK THE MODEL AFTER": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "NIE MA W BAZIE ZTM · WYBIERZESZ MODEL PO ZDJĘCIU"
-          }
-        }
-      }
-    },
     "NOT IN THE ZTM DATABASE — PICK THE MODEL YOURSELF": {
       "localizations": {
         "pl": {
@@ -4853,16 +4803,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "RZADKOŚĆ"
-          }
-        }
-      }
-    },
-    "READ": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ODCZYT"
           }
         }
       }

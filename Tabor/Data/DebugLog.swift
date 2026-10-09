@@ -86,20 +86,14 @@ final class DebugRecord: @unchecked Sendable {
         var system: String
         var error: String?
         var image: [String: String] = [:]
-        /// Number live OCR had locked when the shutter fired.
-        var liveReading: Int?
-        /// Raw text from the last live frame before the shutter.
-        var liveFrame: [Obs]?
         var captureAngle: Double?
-        /// Live OCR's frame size, the region it read (normalised) and the camera's heat level.
-        var liveOCR: String?
+        /// The camera's heat level.
+        var pressure: String?
         /// How the shot was cropped to the viewfinder brackets.
         var crop: String?
         var torch: Bool?
-        /// The read that decided the number ("live" skips it).
+        /// The read that decided the number.
         var ocr: OCR?
-        /// With a live lock, the still is re-read in the background to compare.
-        var stillCheck: OCR?
         var match: String?
         var suggestedModel: String?
         var sticker: Sticker?

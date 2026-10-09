@@ -278,14 +278,6 @@ private func sampleModel() -> VehicleModel {
     #expect(heritage?.id == "bus-solaris-urbino-12-vintage" && heritage?.tier == .vintage)
 }
 
-@Test func voterNeedsAgreement() {
-    var v = NumberVoter(window: 5, needed: 3)
-    #expect(v.push(1974) == nil)
-    #expect(v.push(1979) == nil)
-    #expect(v.push(1974) == nil)
-    #expect(v.push(1974) == 1974)
-}
-
 @Test func viewfinderRegionMatchesAspectFill() {
     // A 3:4 upright frame filling a phone screen: the sides are cut off.
     let view = CGSize(width: 402, height: 874), image = CGSize(width: 3024, height: 4032)

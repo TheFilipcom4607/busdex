@@ -188,25 +188,3 @@ public enum NumberExtractor {
         return j < 0 || !chars[j].isLetter
     }
 }
-
-/// Stabilises live OCR: a number is only "read" once it wins several recent frames.
-public struct NumberVoter: Sendable {
-    public let window: Int
-    public let needed: Int
-    private var recent: [Int?] = []
-
-    public init(window: Int = 5, needed: Int = 3) {
-        self.window = window
-        self.needed = needed
-    }
-
-    public mutating func push(_ n: Int?) -> Int? {
-        recent.append(n)
-        if recent.count > window { recent.removeFirst(recent.count - window) }
-        let counts = Dictionary(grouping: recent.compactMap { $0 }, by: { $0 }).mapValues(\.count)
-        guard let top = counts.max(by: { $0.value < $1.value }), top.value >= needed else { return nil }
-        return top.key
-    }
-
-    public mutating func reset() { recent.removeAll() }
-}

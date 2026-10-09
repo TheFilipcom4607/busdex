@@ -3,7 +3,8 @@ import os
 import SwiftUI
 import Vision
 
-/// Owns the capture session, runs live OCR on video frames and takes stills.
+/// Owns the capture session and takes stills. Numbers are read off the still, not the live
+/// preview: reading frames all the time cost battery and heat for a banner nobody needed.
 /// One shared instance, so hopping between tabs reuses the configured session.
 @Observable
 final class CameraModel: NSObject, @unchecked Sendable {
@@ -14,8 +15,6 @@ final class CameraModel: NSObject, @unchecked Sendable {
     enum Status { case idle, running, denied, unavailable, interrupted, failed }
 
     private(set) var status: Status = .idle
-    /// A fleet number that has been stable across several frames.
-    private(set) var reading: Int?
     private(set) var torchOn = false
     /// Zoom as the Camera app shows it: 1 = main lens, 0.5 = ultra-wide, 5 = telephoto.
     private(set) var zoom: CGFloat = 1
@@ -32,32 +31,17 @@ final class CameraModel: NSObject, @unchecked Sendable {
     /// The values Camera Control's zoom slider clicks through.
     @ObservationIgnored private var zoomDetents: [Float] = []
 
-    /// Read from the vision queue; guarded by `lock`.
+    /// For camera trouble's debug records. Guarded by `lock`.
     var mode: CatchMode {
         get { lock.withLock { _mode } }
-        set { lock.withLock { _mode = newValue }; visionQueue.async { self.voter.reset() } }
+        set { lock.withLock { _mode = newValue } }
     }
 
     @ObservationIgnored let session = AVCaptureSession()
     @ObservationIgnored private let photoOutput = AVCapturePhotoOutput()
-    @ObservationIgnored private let videoOutput = AVCaptureVideoDataOutput()
     @ObservationIgnored private let sessionQueue = DispatchQueue(label: "tabor.camera.session")
-    @ObservationIgnored private let visionQueue = DispatchQueue(label: "tabor.camera.vision")
     @ObservationIgnored private let lock = NSLock()
     @ObservationIgnored private var _mode: CatchMode = .auto
-    @ObservationIgnored private var voter = NumberVoter(window: 6, needed: 3)
-    @ObservationIgnored private var lastOCR = Date.distantPast
-    /// When live OCR last saw a plausible number; until then it reads at the idle rate.
-    @ObservationIgnored private var lastCandidate = Date.distantPast
-    @ObservationIgnored private var busy = false
-    /// Built once and reused frame after frame on the vision queue.
-    @ObservationIgnored private let textRequest: VNRecognizeTextRequest = {
-        let r = VNRecognizeTextRequest()
-        r.recognitionLevel = .fast
-        r.usesLanguageCorrection = false
-        r.minimumTextHeight = 0.02
-        return r
-    }()
     @ObservationIgnored private var configured = false
     /// CATCH is on screen and wants the camera; recovery only restarts it then. Guarded by `lock`.
     @ObservationIgnored private var _wantsRunning = false
@@ -65,41 +49,22 @@ final class CameraModel: NSObject, @unchecked Sendable {
     @ObservationIgnored private let log = Logger(subsystem: "com.filipmanikowski.tabor", category: "camera")
     @ObservationIgnored private var device: AVCaptureDevice?
     @ObservationIgnored private var photoContinuation: CheckedContinuation<Data?, Never>?
-    /// Tracks how the phone is held so stills and OCR stay upright even though the UI is portrait-only.
+    /// Tracks how the phone is held so stills stay upright even though the UI is portrait-only.
     @ObservationIgnored private var rotation: AVCaptureDevice.RotationCoordinator?
     @ObservationIgnored private var rotationObservation: NSKeyValueObservation?
     @ObservationIgnored private var _captureAngle: CGFloat = 90
     @ObservationIgnored private var pressureObservation: NSKeyValueObservation?
-    /// The phone is running hot: fewer frames, fewer reads. Guarded by `lock`.
+    /// The phone is running hot: fewer frames. Guarded by `lock`.
     @ObservationIgnored private var _hot = false
     @ObservationIgnored private var _pressure = "nominal"
-    /// The viewfinder and its brackets in screen points. Guarded by `lock`.
-    @ObservationIgnored private var _ocrFrame: (view: CGSize, brackets: CGRect)?
-    @ObservationIgnored private var _ocrInfo: String?
-
-    @ObservationIgnored private var _lastFrame: [TextObservation] = []
-    @ObservationIgnored private var _nearby: [NearbyVehicle] = []
     @ObservationIgnored private var _lastCaptureError: String?
 
     /// Horizon-level rotation for captured frames, in degrees. Guarded by `lock`.
     var captureAngle: CGFloat { lock.withLock { _captureAngle } }
-    /// What live OCR saw in the most recent frame it read (for debug mode).
-    var lastFrame: [TextObservation] { lock.withLock { _lastFrame } }
-    /// Live vehicles around you, from `LiveFleetService`; live OCR leans towards them.
-    var nearby: [NearbyVehicle] {
-        get { lock.withLock { _nearby } }
-        set { lock.withLock { _nearby = newValue } }
-    }
     /// Why the last `capture()` came back empty, if it did.
     var lastCaptureError: String? { lock.withLock { _lastCaptureError } }
-    /// Frame size and region the last live read used, plus the heat level (for debug mode).
-    var ocrInfo: String? { lock.withLock { _ocrInfo.map { "\($0) · pressure \(_pressure)" } } }
-
-    /// Held upright, live OCR reads only inside the brackets: the rest of the frame is
-    /// either cropped off screen or outside what you're aiming at, and reading it costs power.
-    func setOCRFrame(view: CGSize, brackets: CGRect) {
-        lock.withLock { _ocrFrame = (view, brackets) }
-    }
+    /// The camera's heat level (for debug mode).
+    var pressure: String { lock.withLock { _pressure } }
 
     // MARK: - Lifecycle
 
@@ -125,10 +90,7 @@ final class CameraModel: NSObject, @unchecked Sendable {
     func stop() {
         lock.withLock { _wantsRunning = false }
         sessionQueue.async { if self.session.isRunning { self.session.stopRunning() } }
-        Task { @MainActor in
-            self.reading = nil
-            self.torchOn = false
-        }
+        Task { @MainActor in self.torchOn = false }
     }
 
     /// Try again after the camera stopped: build the session from scratch.
@@ -182,10 +144,7 @@ final class CameraModel: NSObject, @unchecked Sendable {
         // A shot in flight won't finish now.
         photoContinuation?.resume(returning: nil)
         photoContinuation = nil
-        Task { @MainActor in
-            self.reading = nil
-            self.torchOn = false
-        }
+        Task { @MainActor in self.torchOn = false }
     }
 
     // MARK: - Recovery
@@ -265,18 +224,13 @@ final class CameraModel: NSObject, @unchecked Sendable {
 
         session.beginConfiguration()
         session.sessionPreset = .photo
-        guard session.canAddInput(input), session.canAddOutput(photoOutput), session.canAddOutput(videoOutput) else {
+        guard session.canAddInput(input), session.canAddOutput(photoOutput) else {
             session.commitConfiguration()
             return false
         }
         session.addInput(input)
         session.addOutput(photoOutput)
         photoOutput.maxPhotoQualityPrioritization = .quality
-
-        videoOutput.alwaysDiscardsLateVideoFrames = true
-        videoOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange]
-        videoOutput.setSampleBufferDelegate(self, queue: visionQueue)
-        session.addOutput(videoOutput)
         session.commitConfiguration()
 
         // A virtual (multi-lens) device hands off between the physical cameras by itself as
@@ -454,60 +408,6 @@ final class CameraModel: NSObject, @unchecked Sendable {
             }
         }
     }
-
-    /// Lets the user clear a stuck reading (e.g. after correcting it by hand).
-    func resetReading() {
-        visionQueue.async { self.voter.reset() }
-        reading = nil
-    }
-}
-
-// MARK: - Live OCR
-
-extension CameraModel: AVCaptureVideoDataOutputSampleBufferDelegate {
-    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        // ~5 reads a second while numbers are in view; 2 when there's nothing to read
-        // (a wall, the pavement) or the phone is hot. Plenty either way, and far cooler.
-        let now = Date()
-        let (angle, hot, frame) = lock.withLock { (_captureAngle, _hot, _ocrFrame) }
-        let active = !hot && now.timeIntervalSince(lastCandidate) < 2
-        guard !busy, now.timeIntervalSince(lastOCR) > (active ? 0.2 : 0.5),
-              let pixels = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        busy = true
-        lastOCR = now
-        defer { busy = false }
-
-        // The buffer is the sensor's landscape; upright, its width runs down the screen.
-        let upright = CGSize(width: CVPixelBufferGetHeight(pixels), height: CVPixelBufferGetWidth(pixels))
-        var region = CGRect(x: 0, y: 0, width: 1, height: 1)
-        if angle == 90, let frame {
-            let b = frame.brackets
-            // A little slack past the brackets, like the still crop.
-            if let r = Viewfinder.region(of: b.insetBy(dx: -b.width * 0.06, dy: -b.height * 0.1),
-                                         in: frame.view, imageSize: upright) {
-                region = r
-            }
-        }
-        // Vision's region is bottom-left based.
-        textRequest.regionOfInterest = CGRect(x: region.minX, y: 1 - region.maxY, width: region.width, height: region.height)
-        let handler = VNImageRequestHandler(cvPixelBuffer: pixels, orientation: .init(bufferAngle: angle))
-        try? handler.perform([textRequest])
-
-        let observations = TextReader.observations(from: textRequest.results ?? [], scale: region.height)
-        let info = String(format: "%d×%d, read %.2f,%.2f %.2f×%.2f", Int(upright.width), Int(upright.height),
-                          region.minX, region.minY, region.width, region.height)
-        lock.withLock {
-            _lastFrame = observations
-            _ocrInfo = info
-        }
-        let candidates = NumberExtractor.candidates(in: observations, mode: mode, catalog: Fleet.catalog)
-        if !candidates.isEmpty { lastCandidate = now }
-        let best = LiveHints.adjust(candidates, nearby: nearby, catalog: Fleet.catalog).candidates.max { $0.score < $1.score }?.number
-        let stable = voter.push(best)
-        Task { @MainActor in
-            if let stable, stable != self.reading { self.reading = stable }
-        }
-    }
 }
 
 extension CameraModel: AVCapturePhotoCaptureDelegate {
@@ -575,8 +475,7 @@ enum TextReader {
     /// line, re-read overlapping 3×3 tiles so small numbers on a whole-vehicle shot get enough
     /// pixels (e.g. yellow-on-black "4425"), and weigh both reads together.
     /// `nearby` (live vehicles around you) boosts and rescues candidates, see `LiveHints`.
-    /// Without `tiles` it's the full pass only: quick, for when only the number's box is wanted.
-    static func read(_ data: Data, mode: CatchMode, nearby: [NearbyVehicle], tiles: Bool = true) async -> Report {
+    static func read(_ data: Data, mode: CatchMode, nearby: [NearbyVehicle]) async -> Report {
         await Task.detached(priority: .userInitiated) {
             let start = Date()
             guard let image = UIImage(data: data), let cg = image.cgImage else { return Report(pass: "decode-failed") }
@@ -584,7 +483,7 @@ enum TextReader {
             var report = Report(pass: "full")
             report.full = read(cg, orientation: orientation, roi: nil)
             report.candidates = NumberExtractor.candidates(in: report.full, mode: mode, catalog: Fleet.catalog)
-            if tiles, NumberExtractor.wantsCloserLook(report.candidates) {
+            if NumberExtractor.wantsCloserLook(report.candidates) {
                 report.pass = report.candidates.isEmpty ? "tiles" : "full+tiles"
                 for y in [0.0, 0.3, 0.6] {
                     for x in [0.0, 0.3, 0.6] {
