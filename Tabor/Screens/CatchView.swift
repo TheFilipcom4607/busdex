@@ -13,6 +13,9 @@ struct CatchDraft: Identifiable {
     var line: String?
     /// The line the live feed filled in; re-filled after a correction unless you changed it.
     var autoLine: String?
+    /// Models that share the number when nothing could tell them apart: the reveal asks which
+    /// one it is instead of guessing (#66). Picking one from here isn't a manual assignment.
+    var choices: [VehicleModel] = []
     /// True when the user picked the model themselves — saved as a manual assignment.
     var modelPickedByHand = false
     /// Now for camera shots; the photo's own EXIF date for imports.
@@ -662,8 +665,12 @@ struct CatchView: View {
             let plain = catalog.match(number: n, preferring: mode.kind, manual: manual.map)
             let match = lookup(n, nearby: nearby)
             if match != plain { liveInfo.resolved = "\(DebugRecord.describe(plain)) → \(DebugRecord.describe(match))" }
-            d.modelId = match.suggested?.id
-            if fromCamera, let model = match.suggested {
+            // An import never has the feed to settle bus 2021 vs tram 2021, and a guess showed a
+            // bus as a tram with full confidence (#66).
+            if case .ambiguous(let ms) = match { d.choices = ms }
+            let picked = d.choices.isEmpty ? match.suggested : nil
+            d.modelId = picked?.id
+            if fromCamera, let model = picked {
                 let snapshot = self.live.snapshot
                 d.line = LiveHints.line(for: n, kind: model.kind, snapshot: snapshot, at: d.date, model: model, nearby: nearby,
                                         catalog: catalog)
@@ -671,7 +678,7 @@ struct CatchView: View {
                 // "set": borrowed from the coupled car the feed reports instead.
                 liveInfo.lineSource = d.line == nil ? "none" : snapshot?.vehicle(number: n, kind: model.kind) == nil ? "set" : "live"
             }
-            if let model = match.suggested {
+            if let model = picked {
                 d.partnerSuggestions = CoupledSet.suggestions(for: n, model: model, photoNumbers: photoNumbers, nearby: nearby,
                                                               catalog: catalog)
             }

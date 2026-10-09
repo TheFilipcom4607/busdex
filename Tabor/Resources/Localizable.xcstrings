@@ -9013,6 +9013,62 @@
     },
     "tabor@thefilip.com": {
       "shouldTranslate": false
+    },
+    "Which one is it?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Który to?"
+          }
+        }
+      }
+    },
+    "%@ IS ON A BUS AND A TRAM": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NUMER %@ MA AUTOBUS I TRAMWAJ"
+          }
+        }
+      }
+    },
+    "%lld MODELS SHARE %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld MODELS SHARE %2$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NUMER %2$@ MA KILKA MODELI"
+          }
+        }
+      }
+    },
+    "NOT IN THE DATABASE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NIE MA W BAZIE"
+          }
+        }
+      }
+    },
+    "PICK ONE BELOW": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WYBIERZ PONIŻEJ"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

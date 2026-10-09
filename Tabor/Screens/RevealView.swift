@@ -60,6 +60,14 @@ struct RevealView: View {
 
     private var model: VehicleModel? { draft.modelId.flatMap(catalog.model(id:)) }
 
+    /// The models to ask between while none is picked (#66). Only those still carrying the
+    /// number: a corrected number leaves the old choice behind.
+    private var choices: [VehicleModel] {
+        guard model == nil, let n = draft.number else { return [] }
+        let left = draft.choices.filter { $0.numbers.contains(n) }
+        return left.count > 1 ? left : []
+    }
+
     var body: some View {
         let stats = sightings.stats
         let model = model
@@ -75,6 +83,7 @@ struct RevealView: View {
         let isNewModel = modelOwned == 0
         let tier = model?.tier ?? .common
         let ready = model != nil && number != nil
+        let choices = choices
         let accent = tier == .common ? Palette.yellow : tier.color
 
         ZStack {
@@ -107,7 +116,8 @@ struct RevealView: View {
                 VStack(alignment: .leading, spacing: 7) {
                     Mono(kicker(isNewVehicle: isNewVehicle, isNewModel: isNewModel, modelOwned: modelOwned, added: added, existing: existing),
                          size: 12, spacing: 0.16, color: accent)
-                    Text(model?.name ?? (number == nil ? String(localized: "What did you catch?") : String(localized: "Which model is it?")))
+                    Text(model?.name ?? (number == nil ? String(localized: "What did you catch?")
+                        : choices.isEmpty ? String(localized: "Which model is it?") : String(localized: "Which one is it?")))
                         .font(TaborFont.grotesk(30, 700))
                         .em(-0.03, size: 30)
                         .lineLimit(2)
@@ -198,6 +208,8 @@ struct RevealView: View {
                 VStack(spacing: 10) {
                     if ready {
                         holdButton
+                    } else if !choices.isEmpty {
+                        ForEach(choices) { choiceButton($0) }
                     } else {
                         Button {
                             editing = true
@@ -430,6 +442,37 @@ struct RevealView: View {
         }
     }
 
+    /// One of the models a shared number is on. Picking it plays the reveal; it isn't saved as
+    /// a manual assignment, so the next 2021 asks again.
+    private func choiceButton(_ m: VehicleModel) -> some View {
+        Button {
+            Haptics.shared.detent()
+            draft.modelId = m.id
+        } label: {
+            HStack(spacing: 12) {
+                KindTag(kind: m.kind)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(m.name).font(TaborFont.grotesk(17, 700)).lineLimit(1).minimumScaleFactor(0.8)
+                    // Years first: on a narrow phone it's "TRAMWAJE WARSZAWSKIE" that should get cut.
+                    Mono([m.yearsDisplay, m.operators.first?.uppercased()].compactMap { $0 }.joined(separator: " · "),
+                         size: 10, color: Palette.sub)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Palette.faint)
+            }
+            .foregroundStyle(Palette.ink)
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .background(Palette.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Palette.yellow.opacity(0.35)))
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(StickerPressStyle())
+    }
+
     private func secondaryLabel(_ text: String) -> some View {
         Mono(text, size: 12.5, color: Palette.sub)
             .lineLimit(1)
@@ -561,11 +604,18 @@ struct RevealView: View {
                 .shadow(color: .black.opacity(0.4), radius: 4, y: 3)
             VStack(alignment: .leading, spacing: 4) {
                 Mono([batch?.placeDisplay.nonEmpty, batch?.year.map(String.init)].compactMap { $0 }.joined(separator: " · ")
-                     .nonEmpty ?? (model?.kind.name ?? String(localized: "NUMBER NOT READ")), size: 10.5, spacing: 0.12, color: Palette.sub)
+                     .nonEmpty ?? model?.kind.name ?? missingCaption(number: number), size: 10.5, spacing: 0.12, color: Palette.sub)
                     .lineLimit(1)
                 if let model { TierPill(tier: tier, fleet: model.fleet, solid: false) }
             }
         }
+    }
+
+    /// Under the number tag while there's no model: a number read but shared, or not listed,
+    /// isn't "not read".
+    private func missingCaption(number: Int?) -> String {
+        guard number != nil else { return String(localized: "NUMBER NOT READ") }
+        return choices.isEmpty ? String(localized: "NOT IN THE DATABASE") : String(localized: "PICK ONE BELOW")
     }
 
     // MARK: - Hold to stick
@@ -661,6 +711,8 @@ struct RevealView: View {
         guard let model, draft.number != nil else {
             // Nothing to celebrate yet: show the sticker and ask.
             withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) { developing = false; charge = 1; landed = true }
+            // A shared number asks right here, with the choices on screen; no buzz, nothing's wrong.
+            guard choices.isEmpty else { return Haptics.shared.tick() }
             Haptics.shared.nope()
             try? await Task.sleep(for: .milliseconds(350))
             editing = true
@@ -837,7 +889,12 @@ struct RevealView: View {
     }
 
     private func kicker(isNewVehicle: Bool, isNewModel: Bool, modelOwned: Int, added: Int, existing: OwnedVehicle?) -> String {
-        guard let model, draft.number != nil else { return String(localized: "NUMBER NEEDED") }
+        guard let model, draft.number != nil else {
+            let choices = choices
+            guard let n = draft.number, !choices.isEmpty else { return String(localized: "NUMBER NEEDED") }
+            return Set(choices.map(\.kind)).count > 1 ? String(localized: "\(String(n)) IS ON A BUS AND A TRAM")
+                : String(localized: "\(choices.count) MODELS SHARE \(String(n))")
+        }
         if !landed { return String(localized: "CUTTING IT OUT…") }
         if !isNewVehicle { return String(localized: "SEEN AGAIN · SIGHTING #\((existing?.timesSeen ?? 0) + 1)") }
         // Both cars of a coupled tram are new.
