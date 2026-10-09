@@ -8964,6 +8964,52 @@
           }
         }
       }
+    },
+    "I got %@ in the %@ badge!": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "I got %1$@ in the %2$@ badge!"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mam %1$@ w odznace „%2$@”!"
+          }
+        }
+      }
+    },
+    "I got the %@ badge!": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mam odznakę „%@”!"
+          }
+        }
+      }
+    },
+    "+%lld MORE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%lld WIĘCEJ"
+          }
+        }
+      }
+    },
+    "FROM MY BOOK": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Z MOJEGO ALBUMU"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

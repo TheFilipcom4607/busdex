@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 // MARK: - Medal look
@@ -27,6 +28,16 @@ extension Medal {
         case .gold: String(localized: "medal.gold", defaultValue: "GOLD", comment: "Badge medal (the tier GOLD is a separate key)")
         case .platinum: String(localized: "PLATINUM", comment: "Badge medal")
         }
+    }
+}
+
+extension Achievement {
+    /// "LEVEL 2 OF 4 · SILVER", or EARNED, SECRET or LOCKED. On the sheet and the share card.
+    var kicker: String {
+        if earned {
+            return tiered ? String(localized: "LEVEL \(level) OF \(levels) · \(medal.name)") : String(localized: "EARNED")
+        }
+        return secret ? String(localized: "SECRET") : String(localized: "LOCKED")
     }
 }
 
@@ -235,12 +246,14 @@ private struct MedalPressStyle: ButtonStyle {
 
 struct BadgeDetailSheet: View {
     let badge: Achievement
+    @Query(sort: \Sighting.date, order: .reverse) private var sightings: [Sighting]
     @Environment(Router.self) private var router
     @Environment(\.dismiss) private var dismiss
     @State private var angle: Double = 0
     @State private var dragStart: Double?
     @State private var lastFace = 0
     @State private var burst = 0
+    @State private var share: BadgeShare?
 
     private var revealed: Bool { !badge.secret || badge.earned }
 
@@ -262,11 +275,29 @@ struct BadgeDetailSheet: View {
         }
         .frame(maxWidth: .infinity)
         .foregroundStyle(Palette.ink)
+        // Earned ones only, secrets too: you found it, you can brag (#65).
+        .overlay(alignment: .topTrailing) {
+            if let share {
+                ShareLink(item: Image(uiImage: share.image), subject: Text(share.title), message: Text(share.message),
+                          preview: SharePreview(share.title, image: Image(uiImage: share.image))) {
+                    Mono("SHARE", size: 12)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 20)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 8)
+            }
+        }
         // Half height to glance; drag it up to see the medal and everything under it at once.
         .presentationDetents([.medium, .large])
         // The sheet draws its own grabber.
         .presentationDragIndicator(.hidden)
         .presentationBackground(Palette.bg)
+        .task(id: badge.id) {
+            guard badge.earned else { return }
+            share = BadgeShare.make(badge: badge, sightings: sightings)
+        }
         .task {
             // Earned medals arrive with a flourish: one full turn.
             guard badge.earned else { return }
@@ -274,13 +305,6 @@ struct BadgeDetailSheet: View {
             withAnimation(.spring(response: 0.9, dampingFraction: 0.75)) { angle = 360 }
             Haptics.shared.badgeUnlocked(medal: badge.medal, secret: false)
         }
-    }
-
-    private var kicker: String {
-        if badge.earned {
-            return badge.tiered ? String(localized: "LEVEL \(badge.level) OF \(badge.levels) · \(badge.medal.name)") : String(localized: "EARNED")
-        }
-        return badge.secret ? String(localized: "SECRET") : String(localized: "LOCKED")
     }
 
     private var details: some View {
@@ -301,7 +325,7 @@ struct BadgeDetailSheet: View {
                 }
             }
 
-            Mono(kicker, size: 11, weight: 600, spacing: 0.16, color: badge.earned ? badge.medal.ink : Palette.dim)
+            Mono(badge.kicker, size: 11, weight: 600, spacing: 0.16, color: badge.earned ? badge.medal.ink : Palette.dim)
                 .padding(.top, 12)
             Text(revealed ? badge.title : String(localized: "Secret badge"))
                 .font(TaborFont.grotesk(26, 700))

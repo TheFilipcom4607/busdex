@@ -184,3 +184,171 @@ struct ShareCard: View {
         return f
     }()
 }
+
+// MARK: - Badges
+
+/// What goes out when you share a badge (#65): the medal with the stickers that earned it.
+struct BadgeShare {
+    let image: UIImage
+    let title: String
+    let message: String
+
+    /// A vehicle on the card.
+    struct Pick {
+        let number: Int
+        let sticker: String?
+        let photo: String?
+        let note: String?
+    }
+
+    /// Two rows of three; the rest become "+N MORE".
+    static let fits = 6
+
+    @MainActor
+    static func make(badge: Achievement, sightings: [Sighting]) -> BadgeShare? {
+        let picks = picks(for: badge, sightings: sightings)
+        let card = BadgeShareCard(badge: badge, picks: picks,
+                                  more: badge.proof.isEmpty ? 0 : badge.proof.count - picks.count,
+                                  fromBook: badge.proof.isEmpty)
+        let renderer = ImageRenderer(content: card)
+        renderer.scale = 3
+        guard let image = renderer.uiImage else { return nil }
+
+        // Whole sentences, and none that say "I earned" (Polish would need a gender for that).
+        let text = badge.tiered
+            ? String(localized: "I got \(badge.medal.name) in the \(badge.title) badge!")
+            : String(localized: "I got the \(badge.title) badge!")
+        return BadgeShare(image: image, title: badge.title, message: "\(text) 🏅 — TABOR")
+    }
+
+    /// The badge's own vehicles, rarest first, then newest. Badges that don't list any (counts
+    /// like Collector) show the rarest of the whole book instead.
+    @MainActor
+    static func picks(for badge: Achievement, sightings: [Sighting]) -> [Pick] {
+        struct Key: Hashable { let modelId: String; let number: Int }
+        var newest: [Key: Date] = [:]
+        for s in sightings {
+            let k = Key(modelId: s.modelId, number: s.number)
+            newest[k] = max(newest[k] ?? .distantPast, s.date)
+        }
+        let vehicles: [(key: Key, note: String?)] = badge.proof.isEmpty
+            ? newest.keys.map { ($0, nil) }
+            : badge.proof.map { (Key(modelId: $0.modelId, number: $0.number), $0.note) }
+        let catalog = Fleet.catalog
+        let rank = { (k: Key) in catalog.model(id: k.modelId).map { Wanted.huntRank($0.tier) } ?? Int.max }
+        let ranked = vehicles.sorted { a, b in
+            (rank(a.key), newest[b.key] ?? .distantPast) < (rank(b.key), newest[a.key] ?? .distantPast)
+        }
+        // One of each model before any repeats: six of the same bus make a dull card.
+        var models = Set<String>()
+        let firsts = ranked.filter { models.insert($0.key.modelId).inserted }
+        let first = Set(firsts.map(\.key))
+        let sorted = firsts + ranked.filter { !first.contains($0.key) }
+        var picks: [Pick] = []
+        for v in sorted where picks.count < fits {
+            let sticker = sightings.sticker(number: v.key.number, modelId: v.key.modelId)
+            let photo = sightings.photo(number: v.key.number, modelId: v.key.modelId)
+            guard sticker != nil || photo != nil else { continue }
+            picks.append(Pick(number: v.key.number, sticker: sticker, photo: photo, note: v.note))
+        }
+        return picks
+    }
+}
+
+struct BadgeShareCard: View {
+    let badge: Achievement
+    let picks: [BadgeShare.Pick]
+    let more: Int
+    let fromBook: Bool
+
+    var body: some View {
+        let medal = badge.medal
+
+        VStack(spacing: 0) {
+            HStack {
+                Text("TABOR")
+                    .font(TaborFont.grotesk(15, 700))
+                    .em(0.02, size: 15)
+                    .foregroundStyle(Palette.ink)
+                Spacer()
+                Mono(badge.kicker, size: 9.5, spacing: 0.14, color: medal.ink)
+            }
+
+            Medallion(badge: badge, size: 96)
+                .shadow(color: .black.opacity(0.5), radius: 12, y: 8)
+                .padding(.top, 12)
+            Text(badge.title)
+                .font(TaborFont.grotesk(24, 700))
+                .em(-0.02, size: 24)
+                .foregroundStyle(Palette.ink)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+                .padding(.top, 12)
+            Text(badge.reached)
+                .font(TaborFont.grotesk(13))
+                .foregroundStyle(Palette.sub)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .padding(.top, 3)
+                .padding(.horizontal, 12)
+
+            Spacer(minLength: 6)
+            stickers
+            Spacer(minLength: 6)
+
+            Rectangle().fill(Palette.hairline).frame(height: 1)
+                .padding(.bottom, 12)
+            HStack(alignment: .firstTextBaseline) {
+                if more > 0 {
+                    Mono("+\(more) MORE", size: 10, weight: 600, spacing: 0.08, color: medal.ink)
+                } else if fromBook && !picks.isEmpty {
+                    Mono("FROM MY BOOK", size: 9, spacing: 0.12, color: Palette.faint)
+                }
+                Spacer()
+                Mono("WARSAW ROLLING STOCK", size: 9, spacing: 0.12, color: Palette.faint)
+            }
+        }
+        .padding(24)
+        .frame(width: 360, height: 450)
+        .background {
+            ZStack {
+                Palette.bg
+                // The medal's own light, behind it.
+                RadialGradient(stops: [
+                    .init(color: medal.glow.opacity(0.32), location: 0),
+                    .init(color: medal.glow.opacity(0.1), location: 0.45),
+                    .init(color: medal.glow.opacity(0), location: 1),
+                ], center: .init(x: 0.5, y: 0.22), startRadius: 8, endRadius: 280)
+            }
+        }
+        .environment(\.colorScheme, .dark)
+    }
+
+    /// Up to two rows of three, a little crooked like they were stuck on by hand. A single row
+    /// gets bigger stickers.
+    private var stickers: some View {
+        let height: CGFloat = picks.count > 3 ? 50 : 76
+        let rows = stride(from: 0, to: picks.count, by: 3).map { Array(picks[$0..<min($0 + 3, picks.count)]) }
+        return VStack(spacing: 8) {
+            ForEach(rows.indices, id: \.self) { r in
+                HStack(alignment: .bottom, spacing: 12) {
+                    // By position: a bus and a tram can share a number (the twins badge).
+                    ForEach(rows[r].indices, id: \.self) { i in
+                        let p = rows[r][i]
+                        VStack(spacing: 3) {
+                            DieCut(number: p.number, sticker: p.sticker, photo: p.photo, height: height,
+                                   tagSize: 9.5, maxPixel: 600)
+                                .rotationEffect(.degrees(stickerTilt(p.number, range: 5)))
+                            if let note = p.note {
+                                Mono(note, size: 8, weight: 600, spacing: 0.08, color: badge.medal.ink)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .frame(width: 96)
+                    }
+                }
+            }
+        }
+    }
+}
