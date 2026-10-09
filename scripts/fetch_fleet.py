@@ -641,9 +641,11 @@ def with_vintage_extras(vehicles):
         out.append({"ztmId": "", "number": str(number), "make": make, "model": model,
                     "carrier": owner, "depot": "", "kind": "BUS", "year": year, "vintage": True,
                     "unlisted": True})
-    # Filed as make "" and the type's display name as the model, so the model's code is the type.
+    # Filed as make "" and the type's display name as the model, so the model's code is the type;
+    # the builder rides along for the model's make.
     for make, model, number, year, depot, job in WORKS_TRAMS:
-        out.append({"ztmId": "", "number": str(number), "make": "", "model": display_name(make, model),
+        out.append({"ztmId": "", "number": str(number), "make": "", "builder": make,
+                    "model": display_name(make, model),
                     "carrier": "Tramwaje Warszawskie", "depot": depot, "kind": "TRAM", "year": year,
                     "vintage": False, "works": job, "unlisted": True})
     return out
@@ -726,7 +728,7 @@ def build(vehicles, city=None):
             "name": f"{model} {WORKS_JOBS[works][0]}" if works else display_name(make, model),
             # The type's name is English ("Gdańsk type K"); in Polish it's "typ K".
             **({"namePl": f"{model.replace(' type ', ' typ ')} {WORKS_JOBS[works][1]}"} if works else {}),
-            "make": "Tramwaje Warszawskie" if works else make,
+            "make": vs[0]["builder"] if works else make,
             "code": f"{make} {model}".strip(),
             "kind": kind,
             "operators": [c for c, _ in Counter(short_carrier(v["carrier"]) for v in vs).most_common()],
