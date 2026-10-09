@@ -1,5 +1,5 @@
 {
-"fetched": "2026-10-06",
+"fetched": "2026-10-09",
 "source": "https://dane.um.warszawa.pl/api/action/get_ztm_pojazdy",
 "vehicles": [
 {
@@ -782,7 +782,7 @@
 "idMarki": 40,
 "year": 2012,
 "carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
-"depot": "R-1 \"Woronicza\" (R-07)",
+"depot": "R-3 \"Ostrobramska\" (R-10)",
 "colour": "RAL 1003+3020"
 },
 {
@@ -10058,6 +10058,15 @@
 {
 "kind": "BUS",
 "number": "7307",
+"idMarki": 47,
+"year": 2015,
+"carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
+"depot": "R-3 \"Ostrobramska\" (R-10)",
+"colour": "RAL 1003+3020"
+},
+{
+"kind": "BUS",
+"number": "7308",
 "idMarki": 47,
 "year": 2015,
 "carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
