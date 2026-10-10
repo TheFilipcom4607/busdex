@@ -1873,22 +1873,6 @@
         }
       }
     },
-    "BETA · %@ (%@)": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "BETA · %1$@ (%2$@)"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "BETA · %@ (%@)"
-          }
-        }
-      }
-    },
     "BOOK": {
       "localizations": {
         "pl": {
@@ -8074,22 +8058,6 @@
         }
       }
     },
-    "BETA · %@ (%@) · DEBUG": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "BETA · %1$@ (%2$@) · DEBUG"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "BETA · %1$@ (%2$@) · DEBUG"
-          }
-        }
-      }
-    },
     "buses and trams caught": {
       "localizations": {
         "pl": {
@@ -9426,6 +9394,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "ŻADEN TRAMWAJ TECHNICZNY NIE MA TEGO OZNACZENIA"
+          }
+        }
+      }
+    },
+    "Thank you for using TABOR 💛": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dzięki za korzystanie z TABORU 💛"
+          }
+        }
+      }
+    },
+    "Something broken, or a bus it got wrong? Write to me:": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coś nie działa albo autobus rozpoznany źle? Napisz do mnie:"
           }
         }
       }
