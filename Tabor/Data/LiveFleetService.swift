@@ -25,6 +25,8 @@ final class LiveFleetService {
     enum Status: Equatable {
         case noKey, idle, loading, live
         case error(String)
+        /// The city answers, but its newest position is this many seconds old (#67).
+        case late(TimeInterval)
     }
 
     private(set) var snapshot: LiveSnapshot?
@@ -125,18 +127,23 @@ final class LiveFleetService {
         let results: [(VehicleKind, Result<[LiveVehicle], Error>)] = [(.bus, await buses), (.tram, await trams)]
         var vehicles: [LiveVehicle] = []
         var failure: Error?
+        var lag: TimeInterval?
         for (kind, result) in results {
             switch result {
             case .success(let list): vehicles += list
+            case .failure(LiveFeed.Failure.late(let age)):
+                // Nothing fresh of this kind: trams at night, or the feed has stalled. Last
+                // round's positions would only get older, so none are kept.
+                lag = min(lag ?? age, age)
             case .failure(let error):
                 // The API drops single calls under load; keep that kind from the last round.
                 failure = error
                 vehicles += snapshot?.vehicles.filter { $0.kind == kind } ?? []
             }
         }
-        if let failure, results.allSatisfy({ if case .failure = $0.1 { true } else { false } }) {
+        if results.allSatisfy({ if case .failure = $0.1 { true } else { false } }) {
             // Keep showing the last good snapshot; the map dims it once it goes stale.
-            status = .error(Self.describe(failure))
+            if let failure { status = .error(Self.describe(failure)) } else if let lag { status = .late(lag) }
             return
         }
         snapshot = LiveSnapshot(vehicles: vehicles, fetched: Date())

@@ -44,11 +44,14 @@ public enum LiveFeed {
         /// the new one sends `"message"`.
         case message(String)
         case malformed
+        /// Rows came, but even the newest is older than `maxAge` (this many seconds): the
+        /// city's feed has stalled, not every vehicle parked (#67).
+        case late(TimeInterval)
     }
 
     /// Parses one reply: the old `busestrams_get` shape (`{"result": [...]}`, which the proxy
     /// also sends) or the new dane.um.warszawa.pl one (the bare list). Non-numeric fleet
-    /// numbers ("d. 35154") and stale rows are dropped.
+    /// numbers ("d. 35154") and stale rows are dropped. Throws `late` when every row is stale.
     public static func parse(_ data: Data, kind: VehicleKind, now: Date = Date()) throws -> [LiveVehicle] {
         let json = try? JSONSerialization.jsonObject(with: data)
         let rows: [[String: Any]]
@@ -61,16 +64,22 @@ public enum LiveFeed {
         } else {
             throw Failure.malformed
         }
-        return rows.compactMap { row in
+        var newest: Date?
+        let fresh: [LiveVehicle] = rows.compactMap { row in
             guard let raw = row["VehicleNumber"] as? String, let number = Int(raw), number > 0,
                   let lat = double(row["Lat"]), let lon = double(row["Lon"]),
-                  let stamp = row["Time"] as? String, let time = warsawTime(stamp),
-                  now.timeIntervalSince(time) <= maxAge
+                  let stamp = row["Time"] as? String, let time = warsawTime(stamp)
             else { return nil }
+            newest = max(newest ?? time, time)
+            guard now.timeIntervalSince(time) <= maxAge else { return nil }
             let line = (row["Lines"] as? String)?.trimmingCharacters(in: .whitespaces) ?? ""
             return LiveVehicle(number: number, kind: kind, line: line, brigade: row["Brigade"] as? String ?? "",
                                latitude: lat, longitude: lon, time: time)
         }
+        // The feed always holds parked vehicles' old rows, so nothing fresh at all means it's
+        // behind; an empty map would wrongly say nothing runs near you.
+        if fresh.isEmpty, let newest { throw Failure.late(now.timeIntervalSince(newest)) }
+        return fresh
     }
 
     private static func double(_ v: Any?) -> Double? {

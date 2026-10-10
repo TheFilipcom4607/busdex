@@ -9069,6 +9069,46 @@
           }
         }
       }
+    },
+    "The city's feed is running late": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Miejski serwer się spóźnia"
+          }
+        }
+      }
+    },
+    "Its newest positions are %lld min old. Trying again every 10 seconds.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Najnowsze pozycje mają %lld min. Próbuję ponownie co 10 sekund."
+          }
+        }
+      }
+    },
+    "RUNNING LATE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OPÓŹNIENIE"
+          }
+        }
+      }
+    },
+    "Running late · %lld min behind": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opóźnienie · %lld min"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

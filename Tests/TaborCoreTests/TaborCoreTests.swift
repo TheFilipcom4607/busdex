@@ -763,6 +763,17 @@ private func nearby(_ vehicles: [LiveVehicle]) -> [NearbyVehicle] {
     #expect(parsed?.map(\.number) == [1294])
 }
 
+@Test func liveFeedThatHasStalledIsLateNotEmpty() throws {
+    // #67: every row minutes old means the city's feed is behind, not that nothing runs.
+    let stalled = Data(#"""
+    [{"Lines":"9","Lon":21.0,"VehicleNumber":"1294","Time":"2026-09-25 19:17:00","Lat":52.2,"Brigade":"1"},
+     {"Lines":"9","Lon":21.0,"VehicleNumber":"1296","Time":"2025-03-01 08:00:00","Lat":52.2,"Brigade":"2"}]
+    """#.utf8)
+    #expect(throws: LiveFeed.Failure.late(420)) { try LiveFeed.parse(stalled, kind: .tram, now: fixtureNow) }
+    // No rows at all is just an empty answer.
+    #expect(try LiveFeed.parse(Data("[]".utf8), kind: .tram, now: fixtureNow).isEmpty)
+}
+
 @Test func liveFeedParsesTheNewCityService() throws {
     // dane.um.warszawa.pl sends the rows as a bare list, and errors under "message".
     let rows = Data(#"[{"Brigade":"1","Lines":"9","Lat":52.2,"Lon":21.0,"Time":"2026-09-25 19:23:30","VehicleNumber":"1294"}]"#.utf8)

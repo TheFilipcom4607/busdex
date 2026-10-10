@@ -1055,6 +1055,10 @@ struct HuntView: View {
         case .error(let why) where live.fresh(maxAge: 120) == nil:
             return MessageCard(icon: "antenna.radiowaves.left.and.right.slash", title: String(localized: "The city's feed is down"),
                                text: String(localized: "\(why) Trying again every 10 seconds."))
+        // Every position the city sends is old: say so rather than that nothing runs near you (#67).
+        case .late(let age) where live.fresh(maxAge: 120) == nil:
+            return MessageCard(icon: "clock.badge.exclamationmark", title: String(localized: "The city's feed is running late"),
+                               text: String(localized: "Its newest positions are \(Int((age / 60).rounded())) min old. Trying again every 10 seconds."))
         case .idle, .loading:
             if live.snapshot == nil {
                 return MessageCard(icon: "dot.radiowaves.left.and.right", title: String(localized: "Finding what's running…"), text: nil)
@@ -1144,7 +1148,7 @@ struct HuntView: View {
     private var statusColor: Color {
         switch live.status {
         case .live: Palette.green
-        case .loading, .idle: Palette.yellow
+        case .loading, .idle, .late: Palette.yellow
         case .noKey, .error: Palette.red
         }
     }
@@ -1155,6 +1159,7 @@ struct HuntView: View {
         case .idle, .loading: String(localized: "CONNECTING")
         case .error: live.fresh(maxAge: 120) == nil ? String(localized: "OFFLINE") : String(localized: "RETRYING")
         case .live: String(localized: "LIVE")
+        case .late: String(localized: "RUNNING LATE")
         }
     }
 

@@ -593,6 +593,7 @@ extension SettingsSheet {
             let n = live.snapshot?.vehicles.count ?? 0
             return (String(localized: "Working · \(n) vehicles"), Palette.green)
         case .error(let why): return (live.fresh(maxAge: 120) != nil ? String(localized: "Working (last call failed)") : why, Palette.red)
+        case .late(let age): return (String(localized: "Running late · \(Int((age / 60).rounded())) min behind"), Palette.yellow)
         }
     }
 
