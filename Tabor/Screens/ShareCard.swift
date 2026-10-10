@@ -152,11 +152,14 @@ struct ShareCard: View {
                     .shadow(color: .black.opacity(0.6), radius: 14, y: 12)
                     .padding(.bottom, 16)
             } else if let photo, let img = PhotoStore.thumbnail(photo, maxPixel: 1400) {
+                // The photo's own shape, so an upright import isn't cut in half (#68). A photo of its own
+                // gets the bigger box; standing in for a missing sticker, it stays smaller.
+                let box = style == .photo ? CGSize(width: 298, height: 224) : CGSize(width: 292, height: 184)
+                let size = Self.fit(aspect: PhotoStore.aspect(photo) ?? 4 / 3, in: box)
                 Image(uiImage: img)
                     .resizable()
                     .scaledToFill()
-                    // A photo of its own fills the width; standing in for a missing sticker, it stays smaller.
-                    .frame(width: style == .photo ? 298 : 292, height: style == .photo ? 224 : 184)
+                    .frame(width: size.width, height: size.height)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .padding(7)
                     .background(Palette.paper, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -167,6 +170,15 @@ struct ShareCard: View {
             NumberTag(number: number, size: 24) { EmptyView() }
                 .offset(x: -6, y: -12)
         }
+    }
+
+    /// The biggest frame of the photo's shape that fits `box`. Panoramas are held to 2.4:1 (trimmed at the
+    /// sides) so they don't shrink to a strip.
+    private static func fit(aspect: Double, in box: CGSize) -> CGSize {
+        let a = min(aspect, 2.4)
+        return a > box.width / box.height
+            ? CGSize(width: box.width, height: box.width / a)
+            : CGSize(width: box.height * a, height: box.height)
     }
 
     /// "MOKOTÓW · RAKOWIECKA · LINE 117", whatever we know.
