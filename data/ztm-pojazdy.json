@@ -1,5 +1,5 @@
 {
-"fetched": "2026-10-09",
+"fetched": "2026-10-10",
 "source": "https://dane.um.warszawa.pl/api/action/get_ztm_pojazdy",
 "vehicles": [
 {
@@ -1835,7 +1835,7 @@
 "idMarki": 176,
 "year": 2018,
 "carrier": "Miejskie Zakłady Autobusowe Sp. z o.o.",
-"depot": "R-1 \"Woronicza\" (R-07)",
+"depot": "R-4 \"Stalowa\" (R-13)",
 "colour": "RAL 1003+3020"
 },
 {
