@@ -459,8 +459,8 @@ EXTRA_VINTAGE_BUSES = [
 # read only "models", so they don't see them at all (rather than as something they'd mislabel).
 # Each job and type is a model of its own, named spotter-style: the type, then the job
 # ("Gdańsk type K welding car"), so the name says both what it was built from and what it does.
-# Left out: the two shunters (#1, #2), which never leave the T-1 yard; the tamper P1, grinder S1
-# and S-9/S-11, whose numbers aren't numbers; and the motorless trailers. #407 stays VINTAGE and
+# Left out: the two shunters (#1, #2), which never leave the T-1 yard, and the motorless
+# trailers. The cars with a code for a number are in CODED_WORKS. #407 stays VINTAGE and
 # #1006 in the vintage 105Na, as both run for the public. "402" and "2412" are the second cars
 # to carry those numbers (402" on the page).
 # (make, model, number, build year, depot: R- depots as the city writes them, T-1 the traction
@@ -493,7 +493,46 @@ WORKS_JOBS = {
     "work": ("work car", "wagon roboczy"),
     "laboratory": ("laboratory car", "wagon-laboratorium"),
     "universal": ("universal works car", "wagon uniwersalny"),
+    "tamping": ("tamper", "podbijarka"),
+    "grinding": ("rail grinder", "szlifierka"),
 }
+
+# Works cars with a code painted on instead of a number (tramwar.pl/twgosp.html, checked
+# 2026-10-10). The camera can't read them, so the app asks for the code when it finds no number.
+# Each is stored as `coded_number(code)` and goes under fleet.json's "codedWorksModels": builds
+# from before codes would show those numbers as digits. S-9 and S-11 join the K work and welding
+# cars there; P1 is a Plasser & Theurer "Metropolitan" PT 08-16 M (tw-plasser.html), S1 a
+# Windhoff SF 50, here since October 2006 and S1 since 2008 (tw-windhoff.html).
+# (make, model, code, build year, depot, job.)
+CODED_WORKS = [
+    ("Gdańska Fabryka Wagonów / WIwK", "K", "S-9", 1940, 'T-1 "ZETiT"', "work"),
+    ("Gdańska Fabryka Wagonów / WIwK", "K", "S-11", 1940, 'T-1 "ZETiT"', "welding"),
+    ("Plasser & Theurer", "PT 08-16 M", "P1", 1989, 'T-1 "ZETiT"', "tamping"),
+    ("Windhoff", "SF 50", "S1", 2006, 'T-1 "ZETiT"', "grinding"),
+]
+CODE_SYMBOLS = "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+CODE_BASE = 1_000_000_000
+
+
+def coded_number(code):
+    """'S-9' -> the number it's kept under, as FleetNumber does in Tabor/Core/Fleet.swift."""
+    n = 0
+    for ch in code.upper():
+        n = n * (len(CODE_SYMBOLS) + 1) + CODE_SYMBOLS.index(ch) + 1
+    return CODE_BASE + n
+
+
+def is_coded(number):
+    return number > CODE_BASE
+
+
+def code_of(number):
+    """coded_number's way back: 1000043369 -> 'S-9'."""
+    n, chars = number - CODE_BASE, []
+    while n > 0:
+        n, digit = divmod(n, len(CODE_SYMBOLS) + 1)
+        chars.append(CODE_SYMBOLS[digit - 1])
+    return "".join(reversed(chars))
 
 
 # ZTM files some vehicles of one type under a different make/model string; live tracking
@@ -648,6 +687,11 @@ def with_vintage_extras(vehicles):
                     "model": display_name(make, model),
                     "carrier": "Tramwaje Warszawskie", "depot": depot, "kind": "TRAM", "year": year,
                     "vintage": False, "works": job, "unlisted": True})
+    for make, model, code, year, depot, job in CODED_WORKS:
+        out.append({"ztmId": "", "number": str(coded_number(code)), "make": "", "builder": make,
+                    "model": display_name(make, model),
+                    "carrier": "Tramwaje Warszawskie", "depot": depot, "kind": "TRAM", "year": year,
+                    "vintage": False, "works": job, "unlisted": True})
     return out
 
 
@@ -692,9 +736,10 @@ def build(vehicles, city=None):
         # run from R-1, R-3 and R-5), and the depot badges go by the batch.
         by_year = defaultdict(list)
         for v in vs:
-            by_year[(v["year"], short_carrier(v["carrier"]), parse_depot(v["depot"]))].append(v)
+            # Coded cars in batches of their own, so they can go under "codedWorksModels".
+            by_year[(v["year"], short_carrier(v["carrier"]), parse_depot(v["depot"]), is_coded(int(v["number"])))].append(v)
         batches = []
-        for (y, carrier, depot), bvs in sorted(by_year.items(), key=lambda kv: (kv[0][0] is None, -(kv[0][0] or 0), -len(kv[1]))):
+        for (y, carrier, depot, _), bvs in sorted(by_year.items(), key=lambda kv: (kv[0][0] is None, -(kv[0][0] or 0), -len(kv[1]))):
             batches.append({
                 "year": y,
                 "depotCode": depot[0], "depotName": depot[1],
@@ -779,11 +824,31 @@ def build(vehicles, city=None):
     # Works cars apart: only apps that know them read "worksModels" (see WORKS_TRAMS).
     works = [m for m in models if m.get("works")]
     models = [m for m in models if not m.get("works")]
+    # And the coded ones apart from those (see CODED_WORKS): a model's coded batches go under
+    # the same id, which the app adds to the plain model.
+    coded = []
+    for m in list(works):
+        parts = [[b for b in m["batches"] if any(is_coded(n) for n in b["numbers"]) == c] for c in (False, True)]
+        if not parts[1]:
+            continue
+        for part, into in zip(parts, (m, None)):
+            years = [b["year"] for b in part if b["year"]]
+            fields = {"batches": part, "fleet": sum(len(b["numbers"]) for b in part),
+                      "firstYear": min(years) if years else None, "lastYear": max(years) if years else None}
+            if into is None:
+                coded.append({**m, **fields})
+            elif part:
+                into.update(fields)
+            else:
+                works.remove(m)
+    # Sorted as `models` is, by the fleets that are left.
+    works.sort(key=lambda m: (m["kind"], -m["fleet"], m["name"]))
     # Phones download fleet.json when this beats theirs (a plain string comparison), so it's
     # when the content last changed, to the minute: a second push on the same day still
     # reaches them. A rebuild that changes nothing keeps the old one, so it leaves no diff;
     # --touch stamps it anyway (for a file whose old stamp phones already have).
     if (previous and previous["models"] == models and previous.get("worksModels", []) == works
+            and previous.get("codedWorksModels", []) == coded
             and previous["depots"] == depots and "--touch" not in sys.argv):
         fetched = previous["fetched"]
     else:
@@ -792,8 +857,8 @@ def build(vehicles, city=None):
     city_pl = f" i otwarte dane miasta (stan z {city['fetched']})" if city else ""
     # Phones show only the models fleet.json has, so a vanished id hides people's catches.
     if previous and "--allow-drop" not in sys.argv:
-        gone = ({m["id"] for m in previous["models"] + previous.get("worksModels", [])}
-                - {m["id"] for m in models + works})
+        gone = ({m["id"] for m in previous["models"] + previous.get("worksModels", []) + previous.get("codedWorksModels", [])}
+                - {m["id"] for m in models + works + coded})
         if gone:
             print(f"refusing to write: model ids would disappear: {', '.join(sorted(gone))}\n"
                   "(rerun with --allow-drop if that's on purpose)", file=sys.stderr)
@@ -808,11 +873,13 @@ def build(vehicles, city=None):
         "fetched": fetched,
         "models": models,
         "worksModels": works,
+        "codedWorksModels": coded,
         "depots": depots,
     }, ensure_ascii=False, separators=(",", ":")))
     total = sum(m["fleet"] for m in models)
     print(f"wrote {OUT.relative_to(ROOT)}: {len(models)} models, {total} vehicles, {len(depots)} depots"
-          f" (+ {len(works)} works models, {sum(m['fleet'] for m in works)} cars)")
+          f" (+ {len(works)} works models, {sum(m['fleet'] for m in works)} cars,"
+          f" {sum(m['fleet'] for m in coded)} with codes)")
 
 
 if __name__ == "__main__":

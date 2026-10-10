@@ -52,7 +52,7 @@ struct VehicleView: View {
                 }
 
                 HStack(alignment: .bottom, spacing: 12) {
-                    Text(String(number))
+                    Text(FleetNumber.label(number))
                         .font(TaborFont.mono(58, 700))
                         .em(0.01, size: 58)
                         .lineLimit(1)

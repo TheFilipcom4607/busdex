@@ -18,7 +18,7 @@ struct CatchShare {
         guard let image = renderer.uiImage else { return nil }
 
         let name = model?.name ?? String(localized: "vehicle")
-        let n = partner.map { "\(number)+\($0)" } ?? String(number)
+        let n = partner.map { "\(number)+\($0)" } ?? FleetNumber.label(number)
         let emoji = model?.kind == .tram ? "🚋" : "🚌"
         let place = sighting.district ?? sighting.street
         let today = Calendar.current.isDateInToday(sighting.date)

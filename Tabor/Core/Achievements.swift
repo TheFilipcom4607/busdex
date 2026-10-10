@@ -489,7 +489,7 @@ public enum Achievements {
             caught["\(id)#\(n)"]?.contains { $0.pairedWith != other } ?? false
         }
         let pairs = c.owned.flatMap { id, nums in
-            nums.filter { nums.contains($0 + 1) && apart(id, $0, $0 + 1) && apart(id, $0 + 1, $0) }.sorted().flatMap { n in
+            nums.filter { !FleetNumber.isCoded($0) && nums.contains($0 + 1) && apart(id, $0, $0 + 1) && apart(id, $0 + 1, $0) }.sorted().flatMap { n in
                 [Achievement.Proof(modelId: id, number: n), Achievement.Proof(modelId: id, number: n + 1)]
             }
         }
@@ -500,13 +500,14 @@ public enum Achievements {
     }
 
     static func roundNumber(_ c: Context) -> Achievement {
-        let hits = c.sightings.filter { $0.number > 0 && $0.number % 100 == 0 }
+        // A coded works car's number is only how its code is stored: no digits to read.
+        let hits = c.sightings.filter { $0.number > 0 && $0.number % 100 == 0 && !FleetNumber.isCoded($0.number) }
         return Achievement(id: "round-number", title: String(localized: "Round number"), detail: String(localized: "A fleet number ending in 00"),
                            symbol: "circle.circle.fill", progress: hits.isEmpty ? 0 : 1, goal: 1, secret: true, proof: c.proof(hits))
     }
 
     static func palindrome(_ c: Context) -> Achievement {
-        let hits = c.sightings.filter { $0.number >= 100 && isPalindrome($0.number) }
+        let hits = c.sightings.filter { $0.number >= 100 && !FleetNumber.isCoded($0.number) && isPalindrome($0.number) }
         return Achievement(id: "palindrome", title: String(localized: "Palindrome"), detail: String(localized: "A fleet number that reads the same backwards"),
                            symbol: "arrow.left.arrow.right", progress: hits.isEmpty ? 0 : 1, goal: 1, secret: true, proof: c.proof(hits))
     }

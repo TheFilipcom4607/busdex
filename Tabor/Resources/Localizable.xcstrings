@@ -4594,12 +4594,12 @@
         }
       }
     },
-    "Open #%lld in the book": {
+    "Open #%@ in the book": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Otwórz #%lld w albumie"
+            "value": "Otwórz #%@ w albumie"
           }
         }
       }
@@ -9106,6 +9106,76 @@
           "stringUnit": {
             "state": "translated",
             "value": "Opóźnienie · %lld min"
+          }
+        }
+      }
+    },
+    "A WORKS TRAM?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TRAMWAJ TECHNICZNY?"
+          }
+        }
+      }
+    },
+    "A few of them carry a code like S-9 instead of a number.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niektóre mają zamiast numeru oznaczenie, np. S-9."
+          }
+        }
+      }
+    },
+    "TYPE THE CODE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WPISZ OZNACZENIE"
+          }
+        }
+      }
+    },
+    "A NUMBER": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NUMER"
+          }
+        }
+      }
+    },
+    "A CODE, LIKE S-9?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OZNACZENIE, NP. S-9?"
+          }
+        }
+      }
+    },
+    "THE CODE ON THE CAR": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OZNACZENIE Z WAGONU"
+          }
+        }
+      }
+    },
+    "NO WORKS CAR HAS THIS CODE": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ŻADEN TRAMWAJ TECHNICZNY NIE MA TEGO OZNACZENIA"
           }
         }
       }

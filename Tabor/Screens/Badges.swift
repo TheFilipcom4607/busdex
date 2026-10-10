@@ -465,7 +465,7 @@ struct BadgeDetailSheet: View {
                 Text(model.name)
                     .font(TaborFont.grotesk(14, 600))
                     .lineLimit(1)
-                Mono("#\(String(p.number)) · \(model.kind.name)", size: 10, color: Palette.sub)
+                Mono("#\(FleetNumber.label(p.number)) · \(model.kind.name)", size: 10, color: Palette.sub)
             }
             Spacer(minLength: 8)
             if let note = p.note {

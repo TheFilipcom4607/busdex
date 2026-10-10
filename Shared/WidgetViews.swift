@@ -97,7 +97,7 @@ struct WidgetNumberTag: View {
     @Environment(\.widgetRenderingMode) private var mode
 
     var body: some View {
-        let text = Text(String(number)).font(mono(size, .bold))
+        let text = Text(FleetNumber.label(number)).font(mono(size, .bold))
             .padding(.horizontal, size * 0.45)
             .padding(.vertical, size * 0.18)
         // Clear and tinted Home Screens paint everything one colour, so dark text on a filled
@@ -170,7 +170,7 @@ struct ProgressWidgetView: View {
                     .widgetAccentable()
                 Text("\(progress) caught").font(.system(.caption, design: .monospaced))
                 if let number = s.latestNumber {
-                    Text("Last: \(String(number)) \(s.latestModel ?? "")").font(.caption2).lineLimit(1)
+                    Text("Last: \(FleetNumber.label(number)) \(s.latestModel ?? "")").font(.caption2).lineLimit(1)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

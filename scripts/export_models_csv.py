@@ -61,7 +61,7 @@ def vehicles():
 
 def main():
     data = json.loads(SRC.read_text())
-    models = data["models"] + data.get("worksModels", [])
+    models = data["models"] + data.get("worksModels", []) + data.get("codedWorksModels", [])
     where = vehicles()
     rows = []
     for m in models:
@@ -74,7 +74,7 @@ def main():
         for (year, depot, operator), numbers in groups.items():
             for lo, hi in spans(numbers):
                 rows.append({
-                    "number range": str(lo) if lo == hi else f"{lo}-{hi}",
+                    "number range": (fetch_fleet.code_of(lo) if fetch_fleet.is_coded(lo) else str(lo)) if lo == hi else f"{lo}-{hi}",
                     "model and make": m["name"],
                     "year": year or "",
                     "count": hi - lo + 1,

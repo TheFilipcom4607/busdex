@@ -147,7 +147,7 @@ struct ModelPageView: View {
                                 if let v = ownedByNumber[n] {
                                     sticker(n, model: model, timesSeen: v.timesSeen)
                                 } else {
-                                    EmptySlot(label: String(n)).frame(height: Self.cell)
+                                    EmptySlot(label: FleetNumber.label(n)).frame(height: Self.cell)
                                 }
                             }
                         }
@@ -183,7 +183,7 @@ struct ModelPageView: View {
         }
         .taborScreen()
         // String(n): a fleet number is an id, never "1,075".
-        .confirmationDialog(deleting.map { Text("Delete #\(String($0)) from your book?") } ?? Text(verbatim: ""),
+        .confirmationDialog(deleting.map { Text("Delete #\(FleetNumber.label($0)) from your book?") } ?? Text(verbatim: ""),
                             isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
                             titleVisibility: .visible) {
             if let n = deleting {

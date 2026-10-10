@@ -593,7 +593,7 @@ struct RevealView: View {
 
     private func stickerCaption(number: Int?, model: VehicleModel?, tier: Tier, batch: Batch?) -> some View {
         HStack(alignment: .center, spacing: 10) {
-            Text(number.map(String.init) ?? "????")
+            Text(number.map(FleetNumber.label) ?? "????")
                 .font(TaborFont.mono(30, 700))
                 .em(0.02, size: 30)
                 .foregroundStyle(Palette.stickerInk)

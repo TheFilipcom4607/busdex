@@ -407,7 +407,7 @@ private struct SpotCard: View {
                 .background(tier.mapColor, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
             }
             .buttonStyle(StickerPressStyle())
-            .accessibilityLabel("Open #\(s.number) in the book")
+            .accessibilityLabel("Open #\(FleetNumber.label(s.number)) in the book")
         }
         .padding(16)
         .background(Palette.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))

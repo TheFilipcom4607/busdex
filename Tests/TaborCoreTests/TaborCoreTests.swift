@@ -256,7 +256,11 @@ private func sampleModel() -> VehicleModel {
     let models = json["models"] as! [[String: Any]], works = json["worksModels"] as! [[String: Any]]
     #expect(!models.contains { $0["works"] as? Bool == true })
     #expect(works.count == 8 && works.allSatisfy { $0["works"] as? Bool == true && $0["vintage"] as? Bool == false })
-    #expect(catalog.models.filter(\.works).count == 8)
+    // Nor do builds before codes see coded cars: no number in either list is one.
+    let listed = (models + works).flatMap { ($0["batches"] as! [[String: Any]]).flatMap { $0["numbers"] as! [Int] } }
+    #expect(!listed.contains(where: FleetNumber.isCoded))
+    // The tamper and the grinder are works models of their own; S-9 and S-11 join others.
+    #expect(catalog.models.filter(\.works).count == 10)
 }
 
 @Test func worksOverridesVintageWhenDecoding() throws {
@@ -610,6 +614,31 @@ private func any(_ modelId: String? = nil, number: Int? = nil, date: Date = day(
     #expect(eval(twice)["deja-vu"]!.earned)
     #expect(!eval([any(date: day(2026, 5, 5)), any(date: day(2026, 5, 6))])["deja-vu"]!.earned)
     #expect(eval(Array(repeating: any(), count: 10))["old-friend"]!.earned)
+}
+
+@Test func worksCarsWithACodeForANumber() throws {
+    // The code goes into a number and back; nothing the camera reads is one.
+    for code in ["S-9", "S-11", "P1", "S1"] {
+        let n = try #require(FleetNumber.coded(code))
+        #expect(FleetNumber.code(of: n) == code && FleetNumber.label(n) == code)
+    }
+    #expect(!FleetNumber.isCoded(99_999) && FleetNumber.label(1411) == "1411")
+    #expect(FleetNumber.coded("S/9") == nil && FleetNumber.coded("") == nil)
+    // S-11 joins the K welding cars; typed any which way, it's found.
+    let s11 = try #require(catalog.vehicle(code: "s 11"))
+    #expect(s11.number == FleetNumber.coded("S-11") && s11.model.id == "tram-works-welding-gdansk-type-k")
+    #expect(catalog.vehicle(code: "S11")?.number == s11.number && catalog.vehicle(code: "X9") == nil)
+    #expect(catalog.vehicle(code: "p-1")?.model.make == "Plasser & Theurer")
+    let welding = try #require(catalog.model(id: "tram-works-welding-gdansk-type-k"))
+    #expect(welding.fleet == 3 && welding.numbers.contains(2112) && !welding.regular)
+    #expect(welding.rangeDisplay == "2112—2113 · S-11")
+    #expect(NumberSpan.display([s11.number]) == "#S-11")
+    #expect(catalog.match(number: s11.number) == .certain(welding))
+    // The number a code is kept under isn't one to read digits off.
+    let palindrome = try #require(FleetNumber.code(of: 1_000_000_001)).isEmpty == false
+    #expect(palindrome && Achievements.isPalindrome(1_000_000_001))
+    #expect(!eval([any(welding.id, number: 1_000_000_001)])["palindrome"]!.earned)
+    #expect(!eval([any(welding.id, number: 1_000_000_100)])["round-number"]!.earned)
 }
 
 @Test func placeBadges() {

@@ -49,7 +49,7 @@ struct Sticker<Trailing: View>: View {
                 .frame(height: photoHeight)
                 .clipShape(RoundedRectangle(cornerRadius: innerRadius, style: .continuous))
             HStack {
-                Text(String(number))
+                Text(FleetNumber.label(number))
                     .font(TaborFont.mono(numberSize, 700))
                     .foregroundStyle(Palette.stickerInk)
                 Spacer(minLength: 2)
@@ -295,7 +295,7 @@ struct NumberTag<Badge: View>: View {
 
     var body: some View {
         HStack(spacing: size * 0.4) {
-            Text(String(number))
+            Text(FleetNumber.label(number))
                 .font(TaborFont.mono(size, 700))
                 .foregroundStyle(Palette.stickerInk)
             badge()

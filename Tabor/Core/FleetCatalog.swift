@@ -34,9 +34,14 @@ public struct FleetCatalog: Sendable {
     public let fetched: String?
     private let byId: [String: VehicleModel]
     private let byNumber: [Int: [VehicleModel]]
+    /// Coded works cars by their normalised code ("S9").
+    private let byCode: [String: Int]
 
     public init(data: FleetData) {
-        let all = data.models + (data.worksModels ?? [])
+        var all = data.models + (data.worksModels ?? [])
+        for m in data.codedWorksModels ?? [] {
+            if let i = all.firstIndex(where: { $0.id == m.id }) { all[i] = all[i].adding(m) } else { all.append(m) }
+        }
         models = all
         depots = data.depots
         source = data.source
@@ -48,6 +53,8 @@ public struct FleetCatalog: Sendable {
             for n in m.numbers { index[n, default: []].append(m) }
         }
         byNumber = index
+        byCode = Dictionary(index.keys.compactMap { n in FleetNumber.code(of: n).map { (FleetNumber.normalised($0), n) } },
+                            uniquingKeysWith: min)
     }
 
     public init(json: Data) throws {
@@ -84,6 +91,12 @@ public struct FleetCatalog: Sendable {
     }
 
     public func model(id: String) -> VehicleModel? { byId[id] }
+
+    /// The works car with this code painted on, typed however ("s9", "S 9", "S-9").
+    public func vehicle(code: String) -> (number: Int, model: VehicleModel)? {
+        guard let n = byCode[FleetNumber.normalised(code)], let m = byNumber[n]?.first else { return nil }
+        return (n, m)
+    }
 
     /// Where a catch or pick filed under `modelId` belongs since that model was split: the
     /// model that has the number and lists `modelId` in `formerly`. Nil if it hasn't moved.

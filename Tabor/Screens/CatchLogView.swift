@@ -193,7 +193,7 @@ private struct CatchLogRow: View {
     }
 
     private func details(_ s: Sighting) -> String {
-        var parts = ["#\(s.number)"]
+        var parts = ["#\(FleetNumber.label(s.number))"]
         if let p = s.pairedWith { parts.append(String(localized: "COUPLED WITH #\(String(p))")) }
         if let line = s.line { parts.append(String(localized: "LINE \(line)")) }
         if let place = s.district ?? s.street { parts.append(place.uppercased()) }

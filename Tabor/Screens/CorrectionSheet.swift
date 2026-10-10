@@ -9,6 +9,8 @@ struct CorrectionSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var numberText = ""
+    /// Typing a works car's code (S-9) instead of a number.
+    @State private var codeMode = false
     @State private var line = ""
     @State private var modelId: String?
     @State private var pickedByHand = false
@@ -26,7 +28,7 @@ struct CorrectionSheet: View {
     private let routes = RoutesUpdater.shared
 
     var body: some View {
-        let number = Int(numberText)
+        let number = typedNumber
         let match = number.map { catalog.match(number: $0, kind: kind, manual: manual.map) } ?? .unknown
         let candidates = match.candidates
         let onLine = self.onLine
@@ -45,22 +47,43 @@ struct CorrectionSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     SectionLabel(text: String(localized: "FLEET NUMBER"))
-                    TextField("", text: $numberText, prompt: Text("0000").foregroundStyle(Palette.ghost))
+                    TextField("", text: $numberText, prompt: Text(verbatim: codeMode ? "S-9" : "0000").foregroundStyle(Palette.ghost))
                         .font(TaborFont.mono(52, 700))
-                        .keyboardType(.numberPad)
+                        .keyboardType(codeMode ? .asciiCapable : .numberPad)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
                         .focused($numberFocused)
+                        // A focused field keeps its keyboard: a new field brings the other one.
+                        .id(codeMode)
                         .padding(.vertical, 6)
                         .onChange(of: numberText) { old, new in
-                            let digits = String(new.filter(\.isNumber).prefix(5))
-                            if digits != new { numberText = digits; return }
-                            if digits != old { Haptics.shared.detent() }
+                            // Case is left as typed: rewriting it races fast typing, and codes match any case.
+                            let kept = codeMode ? String(new.filter { $0.isLetter || $0.isNumber || $0 == "-" }.prefix(5))
+                                : String(new.filter(\.isNumber).prefix(5))
+                            if kept != new { numberText = kept; return }
+                            if kept != old { Haptics.shared.detent() }
                             autoPick()
                         }
                     Rectangle().fill(numberFocused ? Palette.yellow : Palette.track).frame(height: 2)
                         .animation(.easeInOut(duration: 0.2), value: numberFocused)
 
-                    Mono(status(match, number: number), size: 10.5, color: statusColor(match, number: number))
-                        .padding(.top, 8)
+                    HStack(alignment: .firstTextBaseline) {
+                        Mono(status(match, number: number), size: 10.5, color: statusColor(match, number: number))
+                        Spacer(minLength: 8)
+                        // A few works cars have a code painted on instead of a number.
+                        if !offersCode || codeMode {
+                            Button(action: toggleCode) {
+                                Mono(codeMode ? String(localized: "A NUMBER") : String(localized: "A CODE, LIKE S-9?"),
+                                     size: 10.5, weight: 600, color: Palette.yellow)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.top, 8)
+
+                    if offersCode, !codeMode {
+                        codeBanner.padding(.top, 16)
+                    }
 
                     // Missed the number? What was running right there when you shot (#41).
                     let running = nearbyChoices
@@ -175,7 +198,8 @@ struct CorrectionSheet: View {
         .presentationDetents([.large])
         .presentationBackground(Palette.bg)
         .onAppear {
-            numberText = draft.number.map(String.init) ?? ""
+            codeMode = draft.number.map(FleetNumber.isCoded) ?? false
+            numberText = draft.number.map(FleetNumber.label) ?? ""
             line = draft.line ?? ""
             modelId = draft.modelId
             pickedByHand = draft.modelPickedByHand
@@ -322,9 +346,49 @@ struct CorrectionSheet: View {
         .buttonStyle(.plain)
     }
 
+    /// Nothing was read, which is all the camera gets off a works car with a code painted on
+    /// instead of a number (S-9, P1): say so up front. They're all trams, so not in BUS mode.
+    private var offersCode: Bool { draft.number == nil && draft.mode != .bus }
+
+    private var codeBanner: some View {
+        let tint = Tier.works.color
+        return VStack(alignment: .leading, spacing: 8) {
+            Mono(String(localized: "A WORKS TRAM?"), size: 11, weight: 600, spacing: 0.14, color: tint)
+            Text("A few of them carry a code like S-9 instead of a number.")
+                .font(TaborFont.grotesk(13))
+                .foregroundStyle(Palette.ink.opacity(0.85))
+                .fixedSize(horizontal: false, vertical: true)
+            Button(action: toggleCode) {
+                Mono(String(localized: "TYPE THE CODE"), size: 11, weight: 700, spacing: 0.1, color: Palette.bg)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 14)
+                    .background(tint, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 13)
+        .padding(.horizontal, 15)
+        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(tint.opacity(0.28)))
+    }
+
+    private func toggleCode() {
+        Haptics.shared.tick()
+        codeMode.toggle()
+        numberText = ""
+        Task { numberFocused = true }
+    }
+
+    /// The number typed, or the one a typed works car's code is kept under.
+    private var typedNumber: Int? {
+        codeMode ? catalog.vehicle(code: numberText)?.number : Int(numberText)
+    }
+
     /// When the number maps to exactly one model, select it for the user.
     private func autoPick() {
-        guard let n = Int(numberText) else { return }
+        guard let n = typedNumber else { return }
         if case .certain(let m) = catalog.match(number: n, kind: kind, manual: manual.map) {
             if modelId != m.id { Haptics.shared.numberLocked(isNew: false) }
             modelId = m.id
@@ -333,6 +397,9 @@ struct CorrectionSheet: View {
     }
 
     private func status(_ match: ModelMatch, number: Int?) -> String {
+        if codeMode, number == nil {
+            return numberText.isEmpty ? String(localized: "THE CODE ON THE CAR") : String(localized: "NO WORKS CAR HAS THIS CODE")
+        }
         guard number != nil else { return String(localized: "READ IT OFF THE FRONT, SIDE OR BACK") }
         switch match {
         case .certain(let m): return String(localized: "MATCH · \(m.name.uppercased())")

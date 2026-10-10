@@ -186,7 +186,7 @@ struct StatsSheet: View {
         case .vehicles:
             return s.topVehicles.map { v in
                 let model = catalog.model(id: v.modelId)
-                return TopList.Row(name: "#\(v.number) \(model?.name ?? "")", count: v.times,
+                return TopList.Row(name: "#\(FleetNumber.label(v.number)) \(model?.name ?? "")", count: v.times,
                                    sub: v.times == 1 ? String(localized: "SEEN ONCE") : String(localized: "SEEN \(v.times)×"),
                                    color: model.map { $0.tier.bar } ?? Palette.sub,
                                    open: { onOpen(.vehicle(modelId: v.modelId, number: v.number)) })
@@ -285,7 +285,7 @@ struct TierNumber: View {
     var size: CGFloat = 11
 
     var body: some View {
-        Text(String(number))
+        Text(FleetNumber.label(number))
             .font(TaborFont.mono(size, 700))
             .foregroundStyle(tier == .legendary ? Palette.ink : Palette.bg)
             .padding(.horizontal, size * 0.5)
@@ -747,7 +747,7 @@ private struct RecordsView: View {
         let r = records
         let temp = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(0...1)).locale(.app)
         var out: [Item] = []
-        func name(_ s: SightingRecord) -> String { "#\(s.number) \(catalog.model(id: s.modelId)?.name ?? "")" }
+        func name(_ s: SightingRecord) -> String { "#\(FleetNumber.label(s.number)) \(catalog.model(id: s.modelId)?.name ?? "")" }
         func route(_ s: SightingRecord) -> BookRoute { .vehicle(modelId: s.modelId, number: s.number) }
         if let day = r.busiestDay {
             out.append(Item(id: "busiest", label: String(localized: "BUSIEST DAY"), value: r.busiestCount.formatted(),
@@ -866,7 +866,7 @@ private struct StickerArt: View {
                 .padding(4)
                 .background(Palette.paper, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
         } else {
-            EmptySlot(label: String(number))
+            EmptySlot(label: FleetNumber.label(number))
         }
     }
 }

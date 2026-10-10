@@ -254,7 +254,7 @@ struct StatsWidgetView: View {
                         .frame(width: 62, height: 40)
                     VStack(alignment: .leading, spacing: 1) {
                         WidgetKey(text: String(localized: "RAREST · \(WidgetPalette.tierName(r.tier))"), color: WidgetPalette.tier(r.tier))
-                        Text("#\(String(r.number)) \(r.model)").font(.system(size: 13, weight: .medium))
+                        Text("#\(FleetNumber.label(r.number)) \(r.model)").font(.system(size: 13, weight: .medium))
                             .foregroundStyle(WidgetPalette.ink).lineLimit(1)
                     }
                     Spacer(minLength: 4)
@@ -324,7 +324,7 @@ struct MemoryWidgetView: View {
     /// The number, big, where a vehicle with no picture would have its sticker.
     private func numberArt(_ m: WidgetSnapshot.MemoryCard, size: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("#\(String(m.number))").font(big(size)).tracking(-1).foregroundStyle(WidgetPalette.ink)
+            Text("#\(FleetNumber.label(m.number))").font(big(size)).tracking(-1).foregroundStyle(WidgetPalette.ink)
                 .minimumScaleFactor(0.6).lineLimit(1)
             Text(m.model).font(.system(size: 13, weight: .medium)).foregroundStyle(WidgetPalette.ink).lineLimit(2)
         }
@@ -382,7 +382,7 @@ struct MemoryWidgetView: View {
                 if m.image != nil {
                     WidgetPicture(image: m.image, cutout: m.cutout, number: m.number, tier: m.tier, tag: 13)
                 } else {
-                    Text("#\(String(m.number))").font(big(64)).tracking(-2).foregroundStyle(WidgetPalette.ink)
+                    Text("#\(FleetNumber.label(m.number))").font(big(64)).tracking(-2).foregroundStyle(WidgetPalette.ink)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }

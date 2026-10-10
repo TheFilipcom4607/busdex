@@ -178,6 +178,20 @@ public struct VehicleModel: Codable, Hashable, Sendable, Identifiable {
 
     public var numbers: [Int] { batches.flatMap(\.numbers).sorted() }
 
+    /// This model with `more` of it: coded works cars come as a model of their own under
+    /// fleet.json's `codedWorksModels`, so builds that can't show a code never see them, and
+    /// join the works model of their type and job here.
+    public func adding(_ more: VehicleModel) -> VehicleModel {
+        VehicleModel(id: id, name: name, namePl: namePl, make: make, code: code, kind: kind,
+                     operators: operators + more.operators.filter { !operators.contains($0) },
+                     fleet: fleet + more.fleet,
+                     firstYear: [firstYear, more.firstYear].compactMap { $0 }.min(),
+                     lastYear: [lastYear, more.lastYear].compactMap { $0 }.max(),
+                     batches: batches + more.batches, vintage: vintage, onTest: onTest, works: works,
+                     runs: runs, trial: trial, runsPl: runsPl, trialPl: trialPl, specs: specs, variants: variants,
+                     liveries: liveries, coupled: coupled, sets: sets, trailers: trailers, tows: tows, formerly: formerly)
+    }
+
     public var yearsDisplay: String? {
         guard let a = firstYear else { return nil }
         guard let b = lastYear, b != a else { return String(a) }
@@ -399,10 +413,16 @@ public enum AppLanguage {
 }
 
 public enum NumberSpan {
-    /// "1940—1987", "#14" for a single vehicle, "" for none.
+    /// "1940—1987", "#14" for a single vehicle, "" for none; coded cars by their codes
+    /// ("2112—2113 · S-11").
     public static func display(_ numbers: [Int]) -> String {
-        guard let lo = numbers.min(), let hi = numbers.max() else { return "" }
-        return lo == hi ? "#\(lo)" : "\(lo)—\(hi)"
+        let codes = numbers.sorted().compactMap(FleetNumber.code(of:))
+        let plain = numbers.filter { !FleetNumber.isCoded($0) }
+        guard let lo = plain.min(), let hi = plain.max() else {
+            return codes.count == 1 ? "#\(codes[0])" : codes.joined(separator: ", ")
+        }
+        let span = lo == hi ? "#\(lo)" : "\(lo)—\(hi)"
+        return ([span] + codes).joined(separator: " · ")
     }
 }
 
@@ -466,15 +486,19 @@ public struct FleetData: Codable, Sendable {
     /// Tramwaje Warszawskie's works cars, kept out of `models` so app builds from before them
     /// don't see them at all. The catalog puts them back in with the rest.
     public var worksModels: [VehicleModel]? = nil
+    /// Works cars with a code for a number (`FleetNumber`), apart again for builds that can't
+    /// show one. A model here with a `worksModels` id adds to that model.
+    public var codedWorksModels: [VehicleModel]? = nil
     public let depots: [Depot]
 
     public init(source: String, sourcePl: String? = nil, fetched: String?, models: [VehicleModel],
-                worksModels: [VehicleModel]? = nil, depots: [Depot]) {
+                worksModels: [VehicleModel]? = nil, codedWorksModels: [VehicleModel]? = nil, depots: [Depot]) {
         self.source = source
         self.sourcePl = sourcePl
         self.fetched = fetched
         self.models = models
         self.worksModels = worksModels
+        self.codedWorksModels = codedWorksModels
         self.depots = depots
     }
 }

@@ -86,6 +86,13 @@
 			);
 			target = A10000000000000000000070 /* TaborShare */;
 		};
+		A1000000000000000000007E /* Exceptions for "Tabor" folder in "TaborControls" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Core/FleetNumber.swift,
+			);
+			target = A10000000000000000000050 /* TaborControls */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -93,6 +100,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				A10000000000000000000002 /* Exceptions for "Tabor" folder in "Tabor" target */,
+				A1000000000000000000007E /* Exceptions for "Tabor" folder in "TaborControls" target */,
 			);
 			path = Tabor;
 			sourceTree = "<group>";

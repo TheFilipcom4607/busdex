@@ -44,6 +44,8 @@ struct CatchDraft: Identifiable {
     var alsoInShot: [AlsoInShot.Vehicle] = []
     /// Numbers of those you added: each becomes a catch of its own.
     var alsoAdded: [Int] = []
+    /// The camera's mode at the shutter: a works car's code is only asked for outside BUS.
+    var mode: CatchMode = .auto
 }
 
 struct CatchView: View {
@@ -659,6 +661,7 @@ struct CatchView: View {
         var d = CatchDraft(photo: data, number: number, fromCamera: fromCamera, sticker: sticker, preview: preview,
                            debug: record)
         d.nearby = nearby
+        d.mode = mode
         d.photoNumbers = Task { photoNumbers }
         d.photoRead = ocr
         if let n = number {
