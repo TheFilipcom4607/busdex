@@ -640,15 +640,22 @@ private struct LinesGrid: View {
             ForEach(lines.prefix(6), id: \.name) { l in
                 // Warsaw's tram lines are 1–79; everything else is a bus.
                 let tram = Int(l.name).map { $0 < 100 } ?? false
-                HStack {
+                // No stack spacing: HStack's even split left a 3-digit line too little room on
+                // 390 pt phones and wrapped it onto two rows (#71). The number never wraps; the
+                // count shrinks first.
+                HStack(spacing: 0) {
                     Text(l.name)
                         .font(TaborFont.mono(14, 700))
+                        .lineLimit(1)
+                        .fixedSize()
                         .foregroundStyle(Palette.bg)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(tram ? Palette.radar : Palette.ink, in: RoundedRectangle(cornerRadius: 6))
-                    Spacer(minLength: 4)
+                    Spacer(minLength: 6)
                     Mono("×\(l.count)", size: 12, weight: 600, color: Palette.sub)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                 }
                 .padding(12)
                 .background(Palette.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
