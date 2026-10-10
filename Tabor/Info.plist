@@ -17,6 +17,8 @@
 	<true/>
 	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
 	<true/>
+	<key>SKIncludeConsumableInAppPurchaseHistory</key>
+	<true/>
 	<key>TaborLiveProxy</key>
 	<string>$(TABOR_LIVE_PROXY)</string>
 	<key>UIBackgroundModes</key>
