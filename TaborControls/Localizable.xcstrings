@@ -1252,7 +1252,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ zjechał z trasy przed tobą"
+            "value": "%@ skręcił, zanim do ciebie dojechał"
           }
         }
       }
@@ -1312,7 +1312,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "JEDZIE"
+            "value": "NADJEŻDŻA"
           }
         }
       }
@@ -1342,7 +1342,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "JEST"
+            "value": "JUŻ JEST"
           }
         }
       }
@@ -1372,7 +1372,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "ZJECHAŁ Z TRASY ZA: %@"
+            "value": "ZJECHAŁ Z TRASY PO PRZYSTANKU %@"
           }
         }
       }

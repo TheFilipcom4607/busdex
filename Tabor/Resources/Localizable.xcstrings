@@ -778,7 +778,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "siedzących: %@"
+            "value": "miejsc siedzących: %@"
           }
         }
       }
@@ -788,7 +788,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "siedzących: %lld"
+            "value": "miejsc siedzących: %lld"
           }
         }
       }
@@ -1123,7 +1123,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Złap coś dokładnie rok po swoim pierwszym złapaniu"
+            "value": "Złap coś równo rok po swoim pierwszym pojeździe"
           }
         }
       }
@@ -1223,7 +1223,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zabytkowy autobus — wyjeżdża tylko na linie turystyczne. Dobre wyczucie czasu."
+            "value": "Zabytkowy autobus — wyjeżdża tylko na linie turystyczne. Ale trafienie!"
           }
         }
       }
@@ -1233,7 +1233,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zabytkowy tramwaj — wyjeżdża tylko na linie turystyczne. Dobre wyczucie czasu."
+            "value": "Zabytkowy tramwaj — wyjeżdża tylko na linie turystyczne. Ale trafienie!"
           }
         }
       }
@@ -1468,7 +1468,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Każdy napiwek w sekcji Wesprzyj TABOR je odblokowuje."
+            "value": "Odblokujesz je dowolnym napiwkiem w sekcji „Wesprzyj TABOR”."
           }
         }
       }
@@ -1798,7 +1798,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wszystkie złote (%lld)"
+            "value": "Wszystkie złote"
           }
         }
       }
@@ -1808,7 +1808,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wszystkie legendarne (%lld)"
+            "value": "Wszystkie legendarne"
           }
         }
       }
@@ -1818,7 +1818,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wszystkie rzadkie (%lld)"
+            "value": "Wszystkie rzadkie"
           }
         }
       }
@@ -2112,7 +2112,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "JEDZIE"
+            "value": "NADJEŻDŻA"
           }
         }
       }
@@ -2273,7 +2273,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Złapany na jazdach testowych — jest w Warszawie tylko przez kilka tygodni. Dobre wyczucie czasu."
+            "value": "Złapany na jazdach testowych — jest w Warszawie tylko przez kilka tygodni. Ale trafienie!"
           }
         }
       }
@@ -2772,7 +2772,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "W odświętnych barwach"
+            "value": "Od święta"
           }
         }
       }
@@ -3222,7 +3222,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Przód, bok czy tył, byle z numerem taborowym w kadrze. Chodzi o numer namalowany na pojeździe, a nie o numer linii. TABOR go odczyta, rozpozna model i wytnie pojazd jako twoją naklejkę. Im rzadszy pojazd, tym efektowniejsze odsłonięcie."
+            "value": "Przód, bok czy tył — byle numer taborowy był widoczny. Chodzi o numer umieszczony na pojeździe, a nie o numer linii. TABOR odczyta go, rozpozna model i wytnie pojazd ze zdjęcia jako naklejkę. Im rzadszy model, tym bardziej widowiskowe odsłonięcie."
           }
         }
       }
@@ -3343,7 +3343,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "HUNT pokazuje na mapie autobusy i tramwaje w pobliżu, których nie masz jeszcze w albumie, razem z kierunkiem jazdy. TABOR korzysta z lokalizacji tylko wtedy, gdy jest otwarty."
+            "value": "Na mapie HUNT widzisz autobusy i tramwaje w okolicy, których brakuje w twoim albumie, a strzałki pokazują, dokąd jadą. TABOR używa lokalizacji tylko wtedy, gdy aplikacja jest otwarta."
           }
         }
       }
@@ -3383,7 +3383,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Szczęśliwego Nowego Roku"
+            "value": "Do siego roku!"
           }
         }
       }
@@ -3489,7 +3489,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Złapane: %1$@ #%2$@ · %3$@ · %4$@!"
+            "value": "Złapany: %1$@ #%2$@ · %3$@ · %4$@!"
           }
         }
       }
@@ -3505,7 +3505,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Złapane dziś: %1$@ #%2$@ · %3$@!"
+            "value": "Złapany dziś: %1$@ #%2$@ · %3$@!"
           }
         }
       }
@@ -3521,7 +3521,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Złapane: %1$@ #%2$@ · %3$@!"
+            "value": "Złapany: %1$@ #%2$@ · %3$@!"
           }
         }
       }
@@ -3537,7 +3537,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Złapane dziś: %1$@ #%2$@!"
+            "value": "Złapany dziś: %1$@ #%2$@!"
           }
         }
       }
@@ -3547,7 +3547,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "ZAMIAST TEGO WCZYTAJ ZDJĘCIE"
+            "value": "ALBO WCZYTAJ ZDJĘCIE"
           }
         }
       }
@@ -3627,7 +3627,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Łap dalej. Ta odkryje się, gdy tylko ją zdobędziesz."
+            "value": "Łap dalej. Ta odznaka odsłoni się, gdy tylko ją zdobędziesz."
           }
         }
       }
@@ -4905,7 +4905,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zjeżdża: %@"
+            "value": "%@: zjazd do zajezdni"
           }
         }
       }
@@ -4915,7 +4915,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Postaw album na ekranie początkowym"
+            "value": "Dodaj album do ekranu początkowego"
           }
         }
       }
@@ -5410,7 +5410,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wyszukaj TABOR, przesuń do widżetu i rozmiaru, który ci pasuje, i stuknij Dodaj widżet."
+            "value": "Wyszukaj TABOR, przesuń do wybranego widżetu i rozmiaru, a potem stuknij Dodaj widżet."
           }
         }
       }
@@ -5471,7 +5471,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zobacz na żywo, czego jeszcze nie masz."
+            "value": "Sprawdź na żywo, czego ci brakuje."
           }
         }
       }
@@ -5537,7 +5537,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zrób zdjęcie, a pojazd trafi do twojego albumu jako naklejka. Niektóre modele jeżdżą w setkach egzemplarzy, inne tylko w kilku. Pojazdów do znalezienia: %@."
+            "value": "Zrób zdjęcie, a pojazd trafi do albumu jako naklejka. Niektórych modeli jeżdżą setki, innych zaledwie kilka sztuk. Łącznie do złapania: %@."
           }
         }
       }
@@ -5547,7 +5547,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pobrano stan z %@ — zadziała przy następnym otwarciu TABORU."
+            "value": "Pobrano dane z %@ — zobaczysz je po ponownym otwarciu TABORU."
           }
         }
       }
@@ -5687,7 +5687,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "TABOR jest darmowy i bez reklam. Napiwki opłacają serwer, z którego HUNT bierze pojazdy na żywo, i opłatę dla Apple. Każdy napiwek dodaje serduszko przy ME i odblokowuje trzy dodatkowe ikony aplikacji, a odznaki i cała reszta zostają za darmo."
+            "value": "TABOR jest darmowy i bez reklam. Napiwki pokrywają koszt serwera, z którego HUNT bierze pozycje pojazdów na żywo, i roczną opłatę dla Apple. Każdy napiwek dodaje serduszko przy ME i odblokowuje trzy dodatkowe ikony aplikacji. Odznaki i cała reszta pozostają za darmo."
           }
         }
       }
@@ -5727,7 +5727,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "TO TEN SAM WAGON"
+            "value": "TO WAGON Z TWOJEGO ZDJĘCIA"
           }
         }
       }
@@ -5985,7 +5985,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nie udało się. Nic nie zostało pobrane."
+            "value": "Nie udało się. Nie pobrano żadnej opłaty."
           }
         }
       }
@@ -6506,7 +6506,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Czeka na zgodę. Serduszko pojawi się, gdy zakup przejdzie."
+            "value": "Zakup czeka na zatwierdzenie. Serduszko pojawi się, gdy przejdzie."
           }
         }
       }
@@ -7311,7 +7311,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Każdy model ma w albumie swoją stronę, a każdy pojazd swoje miejsce. Po drodze zdobywasz odznaki. Kolory to rzadkość: o niej za chwilę."
+            "value": "Każdy model ma w albumie własną stronę, a każdy pojazd — swoje miejsce na naklejkę. Po drodze zdobędziesz też odznaki. Kolory oznaczają rzadkość — o niej za chwilę."
           }
         }
       }
@@ -7321,7 +7321,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Im mniej ich jest, tym rzadsze."
+            "value": "Im mniej ich jeździ, tym cenniejsza naklejka."
           }
         }
       }
@@ -7331,7 +7331,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rzadkość to liczba pojazdów danego modelu w Warszawie, a nie ich wiek czy nietypowy wygląd. Model legendarny ma ich najwyżej 12, więc każdy to gratka."
+            "value": "O rzadkości decyduje wyłącznie liczba pojazdów danego modelu kursujących po Warszawie — nie wiek ani wygląd. Modele legendarne liczą do 12 sztuk, więc każdy egzemplarz to prawdziwa gratka."
           }
         }
       }
@@ -7351,7 +7351,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zdjęcie Konstala 13N #795: Janusz Jakubowski, CC BY 2.0, wycięte w formie naklejki."
+            "value": "Zdjęcie Konstala 13N #795: Janusz Jakubowski, CC BY 2.0, wycięte w formie naklejki."
           }
         }
       }
@@ -7391,7 +7391,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zabytkowe autobusy i tramwaje w letnie weekendy, autobusy na testach i tramwaje techniczne Tramwajów Warszawskich: wagony pomiarowe, spawalnicze i transportowe, bez rozkładu i bez miejsca na mapie na żywo. Zobaczysz, to łap. Żadne nie liczą się do % taboru."
+            "value": "Zabytkowe autobusy i tramwaje z letnich linii turystycznych, autobusy na testach i tabor techniczny Tramwajów Warszawskich: wagony pomiarowe, spawalnicze i transportowe, które jeżdżą bez rozkładu i poza mapą na żywo. Wypatrzysz któryś? Łap! Żaden nie wlicza się do % taboru."
           }
         }
       }
@@ -7411,7 +7411,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld I WIĘCEJ"
+            "value": "OD %lld"
           }
         }
       }
@@ -7421,7 +7421,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "NAJWYŻEJ %lld"
+            "value": "DO %lld"
           }
         }
       }
@@ -7451,7 +7451,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wciśnij przycisk, złap autobus."
+            "value": "Jeden przycisk i autobus złapany."
           }
         }
       }
@@ -7461,7 +7461,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kliknij Sterowanie aparatem albo dowolny przycisk głośności, żeby zrobić zdjęcie: to szybsze niż szukanie migawki, gdy autobus odjeżdża. Przesuń palcem po Sterowaniu aparatem, żeby przybliżyć."
+            "value": "Zdjęcie zrobisz Sterowaniem aparatem albo dowolnym przyciskiem głośności — to szybsze niż szukanie spustu migawki, gdy autobus odjeżdża. Przesuwając palcem po Sterowaniu aparatem, przybliżysz obraz."
           }
         }
       }
@@ -7471,7 +7471,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wciśnij dowolny przycisk głośności, żeby zrobić zdjęcie: to szybsze niż szukanie migawki, gdy autobus odjeżdża."
+            "value": "Zdjęcie zrobisz dowolnym przyciskiem głośności — to szybsze niż szukanie spustu migawki, gdy autobus odjeżdża."
           }
         }
       }
@@ -8513,7 +8513,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pokaż satelitę"
+            "value": "Widok satelitarny"
           }
         }
       }
@@ -8523,7 +8523,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pokaż mapę"
+            "value": "Widok mapy"
           }
         }
       }
@@ -8953,7 +8953,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aktywności na żywo są wyłączone dla TABOR. Włącz je w Ustawieniach › TABOR, żeby go obserwować."
+            "value": "Aktywności na żywo są wyłączone dla TABORU. Włącz je w Ustawieniach › TABOR, żeby go obserwować."
           }
         }
       }
@@ -9069,7 +9069,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "NIE MASZ"
+            "value": "MODELE"
           }
         }
       }
@@ -9087,7 +9087,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "BRAKI"
+            "value": "NIEZŁAPANE"
           }
         }
       }
@@ -9158,7 +9158,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tramwaj techniczny — nie wozi pasażerów i nie jeździ według rozkładu. Dobre oko."
+            "value": "Tramwaj techniczny — nie wozi pasażerów i nie jeździ według rozkładu. Masz oko!"
           }
         }
       }
@@ -9303,7 +9303,7 @@
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Najnowsze pozycje mają %lld min. Próbuję ponownie co 10 sekund."
+            "value": "Najnowsze pozycje są sprzed %lld min. Próbuję ponownie co 10 sekund."
           }
         }
       }
