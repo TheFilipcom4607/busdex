@@ -1,5 +1,4 @@
 import MapKit
-import StoreKit
 import SwiftData
 import SwiftUI
 import UniformTypeIdentifiers
@@ -441,7 +440,6 @@ struct SettingsSheet: View {
     @State private var debugCount = DebugRecord.count
     @AppStorage(DebugRecord.unlockedKey) private var debugUnlocked = false
     @State private var versionTaps = 0
-    @State private var inTestFlight = false
     @State private var exportURL: URL?
     @State private var exporting = false
     @State private var confirmDelete = false
@@ -643,21 +641,19 @@ extension SettingsSheet {
         #endif
     }
 
-    /// Signs off the bottom of Settings, with the build to quote. Only TestFlight gets the beta
-    /// note: the App Store version can't call itself a beta (guideline 2.2), and it has no Share
-    /// Beta Feedback to point at.
+    /// Signs off the bottom of Settings, with the build to quote. The same for everyone: App
+    /// Review runs in the sandbox like TestFlight, so a TestFlight-only beta note would show
+    /// the reviewer a beta too (guideline 2.2).
     var betaNote: some View {
         let info = Bundle.main.infoDictionary
         let version = info?["CFBundleShortVersionString"] as? String ?? "?"
         let build = info?["CFBundleVersion"] as? String ?? "?"
-        let line = [inTestFlight ? "BETA" : nil, "\(version) (\(build))", debugUnlocked ? "DEBUG" : nil]
-            .compactMap { $0 }.joined(separator: " · ")
+        let line = debugUnlocked ? "\(version) (\(build)) · DEBUG" : "\(version) (\(build))"
         return VStack(spacing: 6) {
-            Text(inTestFlight ? "Thank you for testing TABOR 💛" : "Thank you for using TABOR 💛")
+            Text("Thank you for using TABOR 💛")
                 .font(TaborFont.grotesk(15, 600))
                 .foregroundStyle(Palette.ink)
-            Text(inTestFlight ? "Something broken, or a bus it got wrong? Take a screenshot and tap Share Beta Feedback, or write to me:"
-                              : "Something broken, or a bus it got wrong? Write to me:")
+            Text("Something broken, or a bus it got wrong? Write to me:")
                 .multilineTextAlignment(.center)
             Link("tabor@thefilip.com", destination: URL(string: "mailto:tabor@thefilip.com")!)
                 .font(TaborFont.grotesk(14, 600))
@@ -677,18 +673,6 @@ extension SettingsSheet {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 8)
-        .task { inTestFlight = await Self.fromTestFlight() }
-    }
-
-    /// TestFlight installs come from the App Store's sandbox. Xcode builds count as the App
-    /// Store, since that's the note worth checking on a development phone.
-    static func fromTestFlight() async -> Bool {
-        #if DEBUG
-        false
-        #else
-        guard let result = try? await AppTransaction.shared else { return false }
-        return result.unsafePayloadValue.environment == .sandbox
-        #endif
     }
 
     func exportBackup() {

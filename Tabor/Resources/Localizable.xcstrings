@@ -5944,16 +5944,6 @@
         }
       }
     },
-    "Thank you for testing TABOR 💛": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dzięki za testowanie TABORU 💛"
-          }
-        }
-      }
-    },
     "Thanks for the tip! 💛": {
       "localizations": {
         "pl": {
@@ -9215,16 +9205,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Z MOJEGO ALBUMU"
-          }
-        }
-      }
-    },
-    "Something broken, or a bus it got wrong? Take a screenshot and tap Share Beta Feedback, or write to me:": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coś nie działa albo autobus rozpoznany źle? Zrób zrzut ekranu i wyślij opinię przez TestFlight albo napisz do mnie:"
           }
         }
       }
