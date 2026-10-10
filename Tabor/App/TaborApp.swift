@@ -210,12 +210,19 @@ struct RootView: View {
         .task { await FleetUpdater.checkIfDue() }
         .task { TipJar.shared.start() }
         // Badges: celebrate anything newly earned, and fill in weather for the weather ones.
+        // A catch saves several times in its first seconds (photo, sticker, place, weather):
+        // let it settle, then work the rules out off the main thread, which animates the book.
         .task(id: sightings.map(\.record)) {
-            badges.update(Achievements.evaluate(sightings.map(\.record), catalog: Fleet.catalog))
+            let records = sightings.map(\.record), catalog = Fleet.catalog
+            guard await settled() else { return }
+            let earned = await Task.detached(priority: .utility) { Achievements.evaluate(records, catalog: catalog) }.value
+            guard !Task.isCancelled else { return }
+            badges.update(earned)
             await WeatherService.backfill(sightings, context: context)
         }
         // Refresh the Home / Lock Screen widgets whenever what they show could have changed.
         .task(id: widgetKey) {
+            guard await settled() else { return }
             await WidgetBridge.publish(sightings)
             // A tracked vehicle just went into the book: its Live Activity says so and ends.
             TrackService.shared.endCaught(sightings)
@@ -223,6 +230,12 @@ struct RootView: View {
     }
 
     private func keeps(_ tab: AppTab) -> Bool { router.tab == tab || opened.contains(tab) }
+
+    /// Waits for the book to stop changing; false when it changed again meanwhile (the task
+    /// was replaced by a newer one).
+    private func settled() async -> Bool {
+        (try? await Task.sleep(for: .seconds(2))) != nil
+    }
 
     private var widgetKey: String {
         let latest = sightings.max { $0.date < $1.date }

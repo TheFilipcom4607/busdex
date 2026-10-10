@@ -5,7 +5,6 @@ import SwiftUI
 /// sticker slams down in sync with a haptic build-up that scales with rarity.
 struct RevealView: View {
     @State var draft: CatchDraft
-    @Query private var sightings: [Sighting]
     @Query private var manual: [ManualAssignment]
     @AppStorage("saveToGallery") private var saveToGallery = true
     @Environment(\.modelContext) private var context
@@ -69,7 +68,7 @@ struct RevealView: View {
     }
 
     var body: some View {
-        let stats = sightings.stats
+        let stats = draft.book.stats
         let model = model
         let number = draft.number
         let existing = (model != nil && number != nil) ? stats.vehicle(number: number!, modelId: model!.id) : nil
@@ -145,7 +144,7 @@ struct RevealView: View {
                                  valueColor: isNewModel ? Palette.green : Palette.ink,
                                  caption: isNewModel ? String(localized: "species") : String(localized: "of \(model.fleet)"))
                         if Calendar.current.isDateInToday(draft.date) {
-                            let streak = Streak.days(sightings.map(\.date) + [draft.date])
+                            let streak = draft.book.streak
                             StatTile(label: String(localized: "STREAK"), value: "\(streak)",
                                      caption: PluralCaption.days(streak))
                         } else {
@@ -718,7 +717,7 @@ struct RevealView: View {
             editing = true
             return
         }
-        let isNewModel = sightings.stats.ownedCount(modelId: model.id) == 0
+        let isNewModel = draft.book.stats.ownedCount(modelId: model.id) == 0
         let build = Self.buildTime(model.tier)
         Haptics.shared.reveal(tier: model.tier, isNewModel: isNewModel)
         withAnimation(.easeIn(duration: build)) { charge = 1 }
@@ -767,20 +766,21 @@ struct RevealView: View {
         Haptics.shared.stick()
         holdProgress = 1
 
-        let ownedBefore = Set(sightings.stats.owned(modelId: model.id).map(\.number))
+        let ownedBefore = Set(draft.book.stats.owned(modelId: model.id).map(\.number))
         let partner = secondCar(model: model, number: number)
         let cars = [number] + (partner.flatMap { $0.model.id == model.id ? [$0.number] : nil } ?? [])
         // Peel: lift and straighten.
         withAnimation(.easeOut(duration: 0.2)) { tilt = .zero }
         try? await Task.sleep(for: .milliseconds(240))
-        // Slap: fly down into the book.
+        // Slap: fly down into the book. Saving wakes every screen that shows the book, so it
+        // waits until the flight is over: on a busy phone that work made it crawl at 2 fps.
         withAnimation(.spring(response: 0.38, dampingFraction: 0.8)) { sticking = true }
+        try? await Task.sleep(for: .milliseconds(480))
         save(model: model, number: number)
 
         let owned = ownedBefore.union(cars)
         let batchDone = cars.contains { model.batch(containing: $0)?.numbers.allSatisfy(owned.contains) ?? false }
         let firstTime = !ownedBefore.isSuperset(of: cars)
-        try? await Task.sleep(for: .milliseconds(480))
         router.openModel(model.id, landing: number)
         dismiss()
         if firstTime, batchDone || model.numbers.allSatisfy(owned.contains) {

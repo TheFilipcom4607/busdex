@@ -46,6 +46,17 @@ struct CatchDraft: Identifiable {
     var alsoAdded: [Int] = []
     /// The camera's mode at the shutter: a works car's code is only asked for outside BUS.
     var mode: CatchMode = .auto
+    /// The book just before this catch, which the reveal counts from.
+    var book = BookBefore()
+}
+
+/// The book as it stood at the shutter. The reveal counts from this rather than a live query:
+/// once the catch is stuck in, a live count saw it twice (#2 of a vehicle seen once), and
+/// recounting the whole book on every frame of the hold stuttered on a busy phone.
+struct BookBefore {
+    var stats = CollectionStats(sightings: [])
+    /// Days in a row, counting this catch's day.
+    var streak = 0
 }
 
 struct CatchView: View {
@@ -702,6 +713,7 @@ struct CatchView: View {
                 d.geotag = Task { await LocationService.shared.geotag(CLLocation(latitude: lat, longitude: lon)) }
             }
         }
+        d.book = BookBefore(stats: sightings.stats, streak: Streak.days(sightings.map(\.date) + [d.date]))
         camera.stop()
         if let presentAfter { try? await Task.sleep(until: presentAfter) }
         draft = d
