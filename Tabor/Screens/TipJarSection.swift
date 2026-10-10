@@ -6,6 +6,8 @@ import SwiftUI
 struct TipJarSection: View {
     private var jar: TipJar { .shared }
     @State private var message: String?
+    /// "Thank you" only heads the alert when a tip went through or a restore found one.
+    @State private var thanks = false
     @State private var restoring = false
 
     var body: some View {
@@ -24,10 +26,18 @@ struct TipJarSection: View {
             Button(restoring ? "Restoring…" : "Restore purchases") {
                 restoring = true
                 Task {
-                    await jar.restore()
+                    let outcome = await jar.restore()
                     restoring = false
-                    message = jar.isSupporter ? String(localized: "You're a supporter. Thank you! 💛")
-                        : String(localized: "No tips found on this Apple account.")
+                    switch outcome {
+                    case .done:
+                        thanks = jar.isSupporter
+                        message = jar.isSupporter ? String(localized: "You're a supporter. Thank you! 💛")
+                            : String(localized: "No tips found on this Apple account.")
+                    case .failed:
+                        thanks = false
+                        message = String(localized: "Couldn't reach the App Store. Try again later.")
+                    case .cancelled: break
+                    }
                 }
             }
             .disabled(restoring)
@@ -37,7 +47,7 @@ struct TipJarSection: View {
             Text("TABOR is free, with no ads. Tips pay for the server behind HUNT's live map and the Apple developer fee. Any tip puts a heart next to ME and unlocks three extra app icons; badges and everything else stay free.")
         }
         .task { await jar.load() }
-        .alert("Thank you", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
+        .alert(thanks ? "Thank you" : "Support TABOR", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
             Button("OK") {}
         } message: {
             Text(message ?? "")
@@ -49,7 +59,9 @@ struct TipJarSection: View {
         return Button {
             Task {
                 let wasSupporter = jar.isSupporter
-                switch await jar.buy(product) {
+                let outcome = await jar.buy(product)
+                thanks = outcome == .thanks
+                switch outcome {
                 case .thanks:
                     Haptics.shared.completed()
                     message = wasSupporter ? String(localized: "Thanks for the tip! 💛")

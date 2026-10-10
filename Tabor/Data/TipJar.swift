@@ -84,10 +84,20 @@ final class TipJar {
         }
     }
 
-    /// For a new phone: asks the App Store for the account's purchases again.
-    func restore() async {
-        try? await AppStore.sync()
+    enum RestoreOutcome { case done, cancelled, failed }
+
+    /// For a new phone: asks the App Store for the account's purchases again. Cancelling the
+    /// Apple Account prompt throws too, and must not end in a "thank you" (#69).
+    func restore() async -> RestoreOutcome {
+        do {
+            try await AppStore.sync()
+        } catch StoreKitError.userCancelled {
+            return .cancelled
+        } catch {
+            return .failed
+        }
         await refresh()
+        return .done
     }
 
     /// Supporter if any tip on this account wasn't refunded. An empty history (offline, not

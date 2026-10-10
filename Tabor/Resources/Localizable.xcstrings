@@ -1523,6 +1523,16 @@
         }
       }
     },
+    "Couldn't reach the App Store. Try again later.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się połączyć z App Store. Spróbuj później."
+          }
+        }
+      }
+    },
     "District outlines for the badges: © OpenStreetMap contributors.": {
       "localizations": {
         "pl": {
